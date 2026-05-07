@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import {
   ArrowRight,
   Bath,
-  Building2,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
@@ -20,11 +19,26 @@ import {
 import { adminNotes, business, proofPoints, services } from './content'
 import './App.css'
 
-const projectTypes = ['Kitchen', 'Bathroom', 'Basement', 'Addition', 'Repair', 'Whole-home refresh']
+const projectTypes = ['Bathroom remodel', 'Shower conversion', 'Kitchen', 'Basement', 'Addition', 'Repair']
 const budgetRanges = ['$2k-$10k', '$10k-$25k', '$25k-$50k', '$50k+', 'Not sure yet']
 const timelines = ['ASAP', 'This month', '1-3 months', 'Planning ahead']
 
-const icons = [Home, Bath, Building2, Hammer]
+const icons = [Bath, Sparkles, Home, Hammer]
+
+const gallery = [
+  {
+    title: 'Statement Tile',
+    copy: 'Floor-to-ceiling drama, clean glass, and fixtures that feel expensive before anyone reads a word.',
+  },
+  {
+    title: 'Walk-In Showers',
+    copy: 'Curbless entries, niches, benches, rainfall heads, and proper waterproofing behind the beauty.',
+  },
+  {
+    title: 'Vanity Glow-Ups',
+    copy: 'Better storage, stone counters, mirrors, lighting, trim, and paint that make the room feel finished.',
+  },
+]
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -124,12 +138,12 @@ function App() {
         <div className="hero-copy">
           <p className="eyebrow">
             <MapPin size={16} aria-hidden="true" />
-            Newark remodels, repairs, and additions
+            Newark bathroom remodeling
           </p>
-          <h1>Turn the house you have into the home you actually want.</h1>
+          <h1>Bathrooms that make people stop scrolling.</h1>
           <p className="hero-lede">
-            Flanagan Construction helps Delaware homeowners plan smart, build clean, and move
-            from idea to finished space without the usual runaround.
+            Flanagan Construction turns tired bathrooms into sharp, high-value spaces with clean
+            tile, glass showers, waterproof details, and a quote path that takes less than a minute.
           </p>
 
           <div className="hero-actions">
@@ -229,7 +243,7 @@ function App() {
                 value={form.message}
                 onChange={handleChange}
                 rows="4"
-                placeholder="Example: replace tub with walk-in shower, update tile, and repair drywall."
+                placeholder="Example: remove tub, build walk-in shower, add tile niche, glass, vanity, and lighting."
                 required
               />
             </label>
@@ -248,22 +262,22 @@ function App() {
       <section className="quick-band" aria-label="Service area and availability">
         <span>
           <Clock3 size={18} aria-hidden="true" />
-          Free estimate workflow
+          Bathroom-first estimates
         </span>
         <span>
           <ShieldCheck size={18} aria-hidden="true" />
-          Clean jobsite standards
+          Waterproofing standards
         </span>
         <span>
           <ClipboardCheck size={18} aria-hidden="true" />
-          Written scope before work begins
+          Written scope before demo
         </span>
       </section>
 
       <section className="section" id="services">
         <div className="section-heading">
-          <p className="eyebrow">What homeowners ask for most</p>
-          <h2>High-impact remodeling with a simple customer path.</h2>
+          <p className="eyebrow">What homeowners want most</p>
+          <h2>Big bathroom energy, handled by a crew that respects the house.</h2>
         </div>
         <div className="service-grid">
           {services.map((service, index) => {
@@ -281,18 +295,39 @@ function App() {
         </div>
       </section>
 
+      <section className="gallery-section" aria-label="Bathroom remodeling inspiration">
+        <div className="gallery-copy">
+          <p className="eyebrow">Bathroom inspiration</p>
+          <h2>Show the dream before they ask the price.</h2>
+          <p>
+            Customers hit the homepage first, so the page now leads with premium bathroom visuals,
+            stronger conversion copy, and a quote form that is always close.
+          </p>
+        </div>
+        <div className="bathroom-gallery">
+          {gallery.map((item, index) => (
+            <article className={`bathroom-card bathroom-card-${index + 1}`} key={item.title}>
+              <div>
+                <span>0{index + 1}</span>
+                <h3>{item.title}</h3>
+                <p>{item.copy}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="work-section" id="work">
         <div className="work-copy">
-          <p className="eyebrow">Designed for skimming</p>
-          <h2>Customers get confidence fast. Admin gets fewer messy calls.</h2>
+          <p className="eyebrow">Built to convert</p>
+          <h2>The homepage does the heavy lifting before the phone rings.</h2>
           <p>
-            The homepage puts the quote form, phone number, proof points, services, and service
-            area within one scroll. Visitors can act immediately, while the business can update
-            the important details from one content file.
+            The first screen sells the bathroom transformation, the form captures the project
+            details, and the rest of the page answers the questions homeowners usually ask out loud.
           </p>
         </div>
         <div className="process-list">
-          {['Tell us the project', 'Get a clear follow-up', 'Approve the scope', 'Build with less stress'].map(
+          {['Show the dream', 'Capture the lead', 'Scope the remodel', 'Build the upgrade'].map(
             (step, index) => (
               <div className="process-step" key={step}>
                 <span>{String(index + 1).padStart(2, '0')}</span>

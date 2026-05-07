@@ -8,28 +8,28 @@ export const business = {
 
 export const services = [
   {
+    title: 'Spa Bathroom Remodels',
+    copy: 'Walk-in showers, soaking tubs, heated floors, tile walls, glass, lighting, and luxury finishes.',
+  },
+  {
+    title: 'Shower Conversions',
+    copy: 'Remove the old tub, fix hidden damage, waterproof correctly, and build a cleaner modern shower.',
+  },
+  {
     title: 'Kitchen Remodeling',
-    copy: 'Layout updates, custom finishes, cabinets, counters, flooring, lighting, and clean daily jobsite care.',
+    copy: 'Layout updates, custom finishes, cabinets, counters, flooring, lighting, and daily jobsite care.',
   },
   {
-    title: 'Bathroom Remodeling',
-    copy: 'Showers, tile, vanities, fixtures, accessibility upgrades, and moisture-smart repairs.',
-  },
-  {
-    title: 'Basements and Additions',
-    copy: 'Finished basements, bonus rooms, framing, drywall, trim, and living-space expansions.',
-  },
-  {
-    title: 'Repairs and Punch Lists',
-    copy: 'Doors, decks, trim, drywall, siding touch-ups, rot repair, and small projects done right.',
+    title: 'Whole-Room Refreshes',
+    copy: 'Vanities, trim, doors, drywall, flooring, paint, fixture swaps, and tight punch-list work.',
   },
 ]
 
 export const proofPoints = [
+  'Luxury bathroom transformations',
+  'Waterproofing done the right way',
+  'Clean crews and daily jobsite care',
   'Fast Newark-area estimates',
-  'Clear scopes and straight pricing',
-  'Respectful crews and clean work areas',
-  'Remodeling plans built around your schedule',
 ]
 
 export const adminNotes = [
