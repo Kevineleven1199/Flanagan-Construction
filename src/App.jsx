@@ -1,23 +1,33 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import {
   ArrowRight,
   Bath,
+  BrainCircuit,
+  Camera,
   CheckCircle2,
   ClipboardCheck,
   Clock3,
   Hammer,
   Home,
+  Layers3,
   Mail,
   MapPin,
   Menu,
+  MousePointer2,
+  Palette,
   Paintbrush,
   Phone,
+  Ruler,
+  ScanLine,
   ShieldCheck,
   Sparkles,
+  WandSparkles,
   X,
 } from 'lucide-react'
 import { adminNotes, business, proofPoints, services } from './content'
 import './App.css'
+
+const ThreeBathroomShowroom = lazy(() => import('./ThreeBathroomShowroom'))
 
 const projectTypes = ['Bathroom remodel', 'Shower conversion', 'Kitchen', 'Basement', 'Addition', 'Repair']
 const budgetRanges = ['$2k-$10k', '$10k-$25k', '$25k-$50k', '$50k+', 'Not sure yet']
@@ -40,8 +50,32 @@ const gallery = [
   },
 ]
 
+const advisorStyles = ['Hotel Spa', 'Black + Brass', 'Coastal Calm', 'Modern Organic']
+const advisorScopes = ['Tub-to-shower', 'Full gut remodel', 'Vanity + tile refresh', 'Aging-in-place']
+const advisorPriorities = ['Luxury', 'Speed', 'Budget control', 'Resale value']
+
+const styleNotes = {
+  'Hotel Spa': 'warm stone, glass, rainfall shower, hidden lighting',
+  'Black + Brass': 'dark fixtures, brass accents, high-contrast tile',
+  'Coastal Calm': 'soft tile, brushed nickel, light wood, quiet storage',
+  'Modern Organic': 'large-format tile, wood vanity, matte fixtures, plants',
+}
+
+const scopeBudgets = {
+  'Tub-to-shower': '$10k-$25k',
+  'Full gut remodel': '$25k-$50k',
+  'Vanity + tile refresh': '$10k-$25k',
+  'Aging-in-place': '$25k-$50k',
+}
+
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [reveal, setReveal] = useState(58)
+  const [advisor, setAdvisor] = useState({
+    style: advisorStyles[0],
+    scope: advisorScopes[0],
+    priority: advisorPriorities[0],
+  })
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -52,6 +86,31 @@ function App() {
     message: '',
   })
   const [status, setStatus] = useState('')
+
+  const aiPlan = useMemo(() => {
+    const score =
+      78 +
+      advisorStyles.indexOf(advisor.style) * 3 +
+      advisorScopes.indexOf(advisor.scope) * 2 +
+      advisorPriorities.indexOf(advisor.priority)
+    const priorityLine = {
+      Luxury: 'lead with the wow shot, premium fixtures, and a glass shower package',
+      Speed: 'pre-select materials early and keep the footprint close to existing plumbing',
+      'Budget control': 'separate must-haves from nice-to-haves before demo starts',
+      'Resale value': 'prioritize timeless tile, storage, lighting, and durable waterproofing',
+    }[advisor.priority]
+
+    return {
+      score: Math.min(score, 96),
+      headline: `${advisor.style} ${advisor.scope.toLowerCase()} plan`,
+      budget: scopeBudgets[advisor.scope],
+      bullets: [
+        styleNotes[advisor.style],
+        priorityLine,
+        'photo-ready finish schedule for tile, vanity, mirror, glass, lighting, and hardware',
+      ],
+    }
+  }, [advisor])
 
   const mailtoLink = useMemo(() => {
     const subject = encodeURIComponent(`New project request from ${form.name || 'website lead'}`)
@@ -86,6 +145,26 @@ function App() {
     window.location.href = mailtoLink
   }
 
+  const updateAdvisor = (name, value) => {
+    setAdvisor((current) => ({ ...current, [name]: value }))
+  }
+
+  const addAiPlanToForm = () => {
+    setForm((current) => ({
+      ...current,
+      projectType: 'Bathroom remodel',
+      budget: aiPlan.budget,
+      message: [
+        `AI showroom plan: ${aiPlan.headline}.`,
+        `Style direction: ${aiPlan.bullets[0]}.`,
+        `Priority: ${aiPlan.bullets[1]}.`,
+        'Please call me to walk through measurements, photos, and next steps.',
+      ].join('\n'),
+    }))
+    setStatus('AI plan added to the estimate form.')
+    document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   return (
     <main>
       <header className="site-header">
@@ -106,8 +185,8 @@ function App() {
           <a href="#work" onClick={() => setMenuOpen(false)}>
             Work
           </a>
-          <a href="#admin" onClick={() => setMenuOpen(false)}>
-            Admin
+          <a href="#ai" onClick={() => setMenuOpen(false)}>
+            AI Plan
           </a>
           <a className="nav-call" href={`tel:${business.phone.replace(/\D/g, '')}`}>
             <Phone size={16} aria-hidden="true" />
@@ -127,6 +206,9 @@ function App() {
       </header>
 
       <section id="top" className="hero-section">
+        <Suspense fallback={<div className="three-showroom three-fallback" aria-hidden="true" />}>
+          <ThreeBathroomShowroom />
+        </Suspense>
         <div className="hero-media" aria-hidden="true">
           <div className="photo photo-one"></div>
           <div className="photo photo-two"></div>
@@ -145,6 +227,21 @@ function App() {
             Flanagan Construction turns tired bathrooms into sharp, high-value spaces with clean
             tile, glass showers, waterproof details, and a quote path that takes less than a minute.
           </p>
+
+          <div className="hero-tech-strip" aria-label="Interactive site features">
+            <span>
+              <Layers3 size={16} aria-hidden="true" />
+              Live 3D showroom
+            </span>
+            <span>
+              <BrainCircuit size={16} aria-hidden="true" />
+              AI remodel plan
+            </span>
+            <span>
+              <MousePointer2 size={16} aria-hidden="true" />
+              Motion-led quote path
+            </span>
+          </div>
 
           <div className="hero-actions">
             <a className="primary-action" href="#estimate">
@@ -314,6 +411,155 @@ function App() {
               </div>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="ai-section" id="ai">
+        <div className="ai-copy">
+          <p className="eyebrow">
+            <BrainCircuit size={16} aria-hidden="true" />
+            AI-powered project flow
+          </p>
+          <h2>A 24/7 remodel concierge baked into the homepage.</h2>
+          <p>
+            Visitors can choose a look, scope, and priority, then the site creates a polished
+            project brief and drops it straight into the estimate form.
+          </p>
+          <div className="ai-metrics" aria-label="AI experience features">
+            <span>
+              <ScanLine size={18} aria-hidden="true" />
+              instant scope
+            </span>
+            <span>
+              <Ruler size={18} aria-hidden="true" />
+              budget signal
+            </span>
+            <span>
+              <Palette size={18} aria-hidden="true" />
+              style direction
+            </span>
+          </div>
+        </div>
+
+        <div className="ai-panel" aria-label="AI remodel advisor">
+          <div className="ai-panel-top">
+            <span>
+              <WandSparkles size={20} aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Remodel Intelligence</h3>
+              <p>Tap a few choices. Get a quote-ready plan.</p>
+            </div>
+          </div>
+
+          <div className="advisor-groups">
+            <fieldset>
+              <legend>Style</legend>
+              <div className="chip-row">
+                {advisorStyles.map((style) => (
+                  <button
+                    className={advisor.style === style ? 'choice-chip active' : 'choice-chip'}
+                    key={style}
+                    type="button"
+                    aria-pressed={advisor.style === style}
+                    onClick={() => updateAdvisor('style', style)}
+                  >
+                    {style}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Scope</legend>
+              <div className="chip-row">
+                {advisorScopes.map((scope) => (
+                  <button
+                    className={advisor.scope === scope ? 'choice-chip active' : 'choice-chip'}
+                    key={scope}
+                    type="button"
+                    aria-pressed={advisor.scope === scope}
+                    onClick={() => updateAdvisor('scope', scope)}
+                  >
+                    {scope}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Priority</legend>
+              <div className="chip-row">
+                {advisorPriorities.map((priority) => (
+                  <button
+                    className={advisor.priority === priority ? 'choice-chip active' : 'choice-chip'}
+                    key={priority}
+                    type="button"
+                    aria-pressed={advisor.priority === priority}
+                    onClick={() => updateAdvisor('priority', priority)}
+                  >
+                    {priority}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          </div>
+
+          <div className="ai-output">
+            <div className="score-ring" style={{ '--score': `${aiPlan.score}%` }}>
+              <strong>{aiPlan.score}</strong>
+              <span>fit score</span>
+            </div>
+            <div>
+              <h4>{aiPlan.headline}</h4>
+              <p>Budget signal: {aiPlan.budget}</p>
+              <ul>
+                {aiPlan.bullets.map((bullet) => (
+                  <li key={bullet}>
+                    <CheckCircle2 size={16} aria-hidden="true" />
+                    {bullet}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <button className="ai-action" type="button" onClick={addAiPlanToForm}>
+            Add this plan to my estimate
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+
+      <section className="compare-section" aria-label="Interactive before and after bathroom slider">
+        <div className="compare-copy">
+          <p className="eyebrow">
+            <Camera size={16} aria-hidden="true" />
+            Before and after
+          </p>
+          <h2>Make the transformation feel obvious before the call.</h2>
+          <p>
+            Drag the control to compare tired, builder-grade energy with the kind of finished
+            bathroom people actually brag about.
+          </p>
+        </div>
+        <div className="compare-wrap">
+          <div className="compare-stage" style={{ '--reveal': `${reveal}%` }}>
+            <div className="compare-image compare-before"></div>
+            <div className="compare-image compare-after"></div>
+            <div className="compare-label label-before">Before</div>
+            <div className="compare-label label-after">After</div>
+            <div className="compare-handle" aria-hidden="true"></div>
+          </div>
+          <input
+            className="compare-range"
+            type="range"
+            min="8"
+            max="92"
+            value={reveal}
+            aria-label="Reveal bathroom remodel after image"
+            onChange={(event) => setReveal(event.target.value)}
+          />
         </div>
       </section>
 
