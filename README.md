@@ -4,11 +4,15 @@ A fast, mobile-first lead generation homepage for a Newark, Delaware constructio
 
 ## Highlights
 
-- Hero section built for the homepage-first customer journey.
-- Animated project imagery and motion accents.
-- Lead form that saves a local browser backup and opens a prefilled email.
-- Admin-friendly business content in `src/content.js`.
-- Responsive service, process, and admin sections.
+- Conversion-focused single-page funnel: hero estimate form, AI remodel planner,
+  stats band, reviews, guarantees, "how it works", FAQ, and CTA band.
+- Server-side lead capture (`POST /api/lead`) with spam honeypot, rate limiting,
+  success state, and a `mailto:` fallback.
+- SEO: rich meta, Open Graph/Twitter, `GeneralContractor` + `FAQPage` structured
+  data, sitemap, robots, and a web manifest.
+- Accessible (skip link, visible focus, reduced-motion, native FAQ accordion) and
+  hardened (gzip, CSP, HSTS, branded 404).
+- All business content lives in `src/content.js`.
 
 ## Run Locally
 
@@ -53,15 +57,33 @@ Railway logs), appends it to `leads.log`, and optionally forwards it to
 `LEAD_WEBHOOK_URL`. If the API is unreachable (e.g. on static GitHub Pages), the
 form falls back to opening the visitor's email app via `mailto:`.
 
-## Admin Updates
+## Editing content
 
-Edit `src/content.js` to change the company phone, email, service area, services,
-proof points, and admin notes.
+Everything customer-facing is in `src/content.js`:
+
+- `business` — name, phone, email, location, service area.
+- `services`, `proofPoints` — service cards and hero trust points.
+- `stats` — the headline numbers band (verify the years/projects figures).
+- `guarantees` — the "our promise" checklist.
+- `testimonials` — **sample reviews; replace with real, verifiable ones.**
+- `faqs` — FAQ accordion. Keep it in sync with the `FAQPage` JSON-LD in `index.html`.
 
 ## SEO
 
-- Metadata, Open Graph/Twitter cards, geo tags, and `GeneralContractor`
-  structured data live in `index.html`.
-- `public/robots.txt` and `public/sitemap.xml` ship with the build.
-- The canonical/share URLs use `https://flanaganconstructionde.com`. Update them
-  (and the structured-data phone/address) to match your real domain and NAP.
+- Metadata, Open Graph/Twitter cards, geo tags, `GeneralContractor`, and
+  `FAQPage` structured data live in `index.html`.
+- `public/robots.txt`, `public/sitemap.xml`, and `public/site.webmanifest` ship
+  with the build.
+- Canonical/share URLs use `https://flanaganconstructionde.com`. Update them (and
+  the structured-data phone/address) to match your real domain and NAP.
+
+## Before you launch
+
+1. Replace the **sample testimonials** in `src/content.js` with real reviews.
+   Only add `Review`/`AggregateRating` structured data once reviews are genuine —
+   fake review markup violates Google policy.
+2. Confirm the **domain** and update the canonical/OG URLs if it differs.
+3. Verify the **stats** (years in business, projects completed) are accurate.
+4. (Optional) Set `LEAD_WEBHOOK_URL` so leads are delivered somewhere beyond logs,
+   and install a tag manager — the site already pushes `generate_lead` and
+   `phone_click` events to `window.dataLayer`.
