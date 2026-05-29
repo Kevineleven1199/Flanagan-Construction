@@ -1,7 +1,7 @@
 export const business = {
   name: 'Flanagan Construction',
   location: 'Newark, Delaware',
-  phone: '(302) 555-0198',
+  phone: '(302) 565-5724',
   email: 'quotes@flanaganconstructionde.com',
   serviceArea: 'Newark, Pike Creek, Bear, Hockessin, Wilmington, and nearby Delaware communities',
 }
@@ -30,10 +30,4 @@ export const proofPoints = [
   'Waterproofing done the right way',
   'Clean crews and daily jobsite care',
   'Fast Newark-area estimates',
-]
-
-export const adminNotes = [
-  'Update phone, email, and service area in src/content.js.',
-  'Replace project photos by changing the Unsplash image URLs in src/App.css.',
-  'Connect the lead form to Formspree, Netlify Forms, or a CRM when ready.',
 ]

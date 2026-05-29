@@ -1,6 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
-  ArrowLeft,
   ArrowRight,
   Bath,
   BrainCircuit,
@@ -10,7 +9,6 @@ import {
   Clock3,
   Hammer,
   Home,
-  Layers3,
   Mail,
   MapPin,
   Menu,
@@ -24,15 +22,19 @@ import {
   WandSparkles,
   X,
 } from 'lucide-react'
-import { adminNotes, business, proofPoints, services } from './content'
+import { business, proofPoints, services } from './content'
 import './App.css'
-
-const ThreeBathroomShowroom = lazy(() => import('./ThreeBathroomShowroom'))
 
 const projectTypes = ['Bathroom remodel', 'Shower conversion', 'Kitchen', 'Basement', 'Addition', 'Repair']
 const budgetRanges = ['$2k-$10k', '$10k-$25k', '$25k-$50k', '$50k+', 'Not sure yet']
 const timelines = ['ASAP', 'This month', '1-3 months', 'Planning ahead']
 const icons = [Bath, Sparkles, Home, Hammer]
+
+const heroCredibility = [
+  { icon: ShieldCheck, label: 'Licensed & insured' },
+  { icon: ClipboardCheck, label: 'Free written estimates' },
+  { icon: Clock3, label: 'Fast local scheduling' },
+]
 
 const gallery = [
   {
@@ -47,6 +49,13 @@ const gallery = [
     title: 'Vanity Glow-Ups',
     copy: 'Better storage, stone counters, mirrors, lighting, trim, and paint that make the room feel finished.',
   },
+]
+
+const processSteps = [
+  { title: 'Free consultation', copy: 'We visit, listen, and measure — no pressure and no obligation.' },
+  { title: 'Clear written estimate', copy: 'A detailed scope and price before any demolition begins.' },
+  { title: 'Clean, careful build', copy: 'Tidy crews, daily jobsite care, and proper waterproofing.' },
+  { title: 'Final walkthrough', copy: 'We review every detail together and handle the punch list.' },
 ]
 
 const advisorStyles = ['Hotel Spa', 'Black + Brass', 'Coastal Calm', 'Modern Organic']
@@ -67,20 +76,47 @@ const scopeBudgets = {
   'Aging-in-place': '$25k-$50k',
 }
 
-const dreamFinishes = [
-  'Large-format porcelain walls',
-  'Brushed brass or matte black fixtures',
-  'Frameless glass shower enclosure',
-  'Backlit mirror and layered warm lighting',
-]
+function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submitted, onReset }) {
+  if (submitted) {
+    const firstName = form.name ? form.name.trim().split(' ')[0] : ''
+    return (
+      <aside className="lead-panel lead-success" id="estimate" aria-label="Request received">
+        <div className="panel-heading">
+          <span>
+            <CheckCircle2 size={20} aria-hidden="true" />
+          </span>
+          <div>
+            <h2>Request received</h2>
+            <p>Thanks{firstName ? `, ${firstName}` : ''}! We will reach out within one business day.</p>
+          </div>
+        </div>
+        <ul className="success-steps">
+          <li>
+            <CheckCircle2 size={16} aria-hidden="true" />
+            We review your project details.
+          </li>
+          <li>
+            <CheckCircle2 size={16} aria-hidden="true" />
+            We call or email to confirm scope and timeline.
+          </li>
+          <li>
+            <CheckCircle2 size={16} aria-hidden="true" />
+            You get a clear written estimate before any demo.
+          </li>
+        </ul>
+        <div className="success-actions">
+          <a className="primary-action" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+            <Phone size={18} aria-hidden="true" />
+            Call now
+          </a>
+          <button className="secondary-action button-link" type="button" onClick={onReset}>
+            Send another request
+          </button>
+        </div>
+      </aside>
+    )
+  }
 
-function currentRoute() {
-  if (window.location.pathname.includes('design-your-dream-bathroom')) return 'dream'
-  if (window.location.hash.includes('design-your-dream-bathroom')) return 'dream'
-  return 'home'
-}
-
-function LeadPanel({ form, handleChange, handleSubmit, status }) {
   return (
     <aside className="lead-panel" id="estimate" aria-label="Request an estimate">
       <div className="panel-heading">
@@ -88,12 +124,25 @@ function LeadPanel({ form, handleChange, handleSubmit, status }) {
           <Sparkles size={18} aria-hidden="true" />
         </span>
         <div>
-          <h2>Start your estimate</h2>
+          <h2>Get your free estimate</h2>
           <p>Tell us what you need. We will follow up with next steps.</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
+        <div className="hp-field" aria-hidden="true">
+          <label>
+            Company
+            <input
+              name="company"
+              value={form.company}
+              onChange={handleChange}
+              tabIndex="-1"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+
         <label>
           Name
           <input name="name" value={form.name} onChange={handleChange} autoComplete="name" required />
@@ -157,8 +206,8 @@ function LeadPanel({ form, handleChange, handleSubmit, status }) {
           />
         </label>
 
-        <button className="submit-button" type="submit">
-          Send project request
+        <button className="submit-button" type="submit" disabled={submitting}>
+          {submitting ? 'Sending…' : 'Send project request'}
           <Mail size={18} aria-hidden="true" />
         </button>
         <p className="form-note" aria-live="polite">
@@ -169,7 +218,7 @@ function LeadPanel({ form, handleChange, handleSubmit, status }) {
   )
 }
 
-function SiteHeader({ menuOpen, route, goHome, goSection, goDream, setMenuOpen }) {
+function SiteHeader({ menuOpen, goHome, goSection, setMenuOpen }) {
   return (
     <header className="site-header">
       <a
@@ -192,7 +241,7 @@ function SiteHeader({ menuOpen, route, goHome, goSection, goDream, setMenuOpen }
 
       <nav className={menuOpen ? 'nav open' : 'nav'} aria-label="Primary navigation">
         <a
-          href="/#services"
+          href="#services"
           onClick={(event) => {
             event.preventDefault()
             goSection('services')
@@ -201,23 +250,22 @@ function SiteHeader({ menuOpen, route, goHome, goSection, goDream, setMenuOpen }
           Services
         </a>
         <a
-          href="/#work"
+          href="#work"
           onClick={(event) => {
             event.preventDefault()
             goSection('work')
           }}
         >
-          Work
+          How It Works
         </a>
         <a
-          className={route === 'dream' ? 'active-link' : ''}
-          href="/design-your-dream-bathroom"
+          href="#estimate"
           onClick={(event) => {
             event.preventDefault()
-            goDream()
+            goSection('estimate')
           }}
         >
-          Design
+          Estimate
         </a>
         <a className="nav-call" href={`tel:${business.phone.replace(/\D/g, '')}`}>
           <Phone size={16} aria-hidden="true" />
@@ -240,13 +288,13 @@ function SiteHeader({ menuOpen, route, goHome, goSection, goDream, setMenuOpen }
 
 function AdvisorPanel({ advisor, aiPlan, updateAdvisor, addAiPlanToForm }) {
   return (
-    <div className="ai-panel" aria-label="AI remodel advisor">
+    <div className="ai-panel" aria-label="Remodel planner">
       <div className="ai-panel-top">
         <span>
           <WandSparkles size={20} aria-hidden="true" />
         </span>
         <div>
-          <h3>Remodel Intelligence</h3>
+          <h3>Remodel planner</h3>
           <p>Tap a few choices. Get a quote-ready plan.</p>
         </div>
       </div>
@@ -338,9 +386,12 @@ function HomePage({
   handleChange,
   handleSubmit,
   status,
+  submitting,
+  submitted,
+  onReset,
   updateAdvisor,
   addAiPlanToForm,
-  goDream,
+  goSection,
   reveal,
   setReveal,
 }) {
@@ -358,7 +409,7 @@ function HomePage({
         <div className="hero-copy">
           <p className="eyebrow">
             <MapPin size={16} aria-hidden="true" />
-            Newark bathroom remodeling
+            Newark, Delaware bathroom & home remodeling
           </p>
           <h1>Luxury bathroom remodels without the contractor chaos.</h1>
           <p className="hero-lede">
@@ -366,29 +417,23 @@ function HomePage({
             that feels polished from the first click.
           </p>
 
-          <div className="hero-tech-strip" aria-label="Homepage experience features">
-            <span>
-              <Layers3 size={16} aria-hidden="true" />
-              Subtle parallax visuals
-            </span>
-            <span>
-              <BrainCircuit size={16} aria-hidden="true" />
-              AI design brief
-            </span>
-            <span>
-              <Camera size={16} aria-hidden="true" />
-              Photo-led remodel story
-            </span>
+          <div className="hero-tech-strip" aria-label="Why homeowners choose us">
+            {heroCredibility.map(({ icon: Icon, label }) => (
+              <span key={label}>
+                <Icon size={16} aria-hidden="true" />
+                {label}
+              </span>
+            ))}
           </div>
 
           <div className="hero-actions">
             <a className="primary-action" href="#estimate">
-              Get a fast estimate
+              Get a free estimate
               <ArrowRight size={18} aria-hidden="true" />
             </a>
-            <button className="secondary-action button-link" type="button" onClick={goDream}>
+            <button className="secondary-action button-link" type="button" onClick={() => goSection('ai')}>
               <Palette size={18} aria-hidden="true" />
-              Design your dream bathroom
+              Design your bathroom
             </button>
           </div>
 
@@ -402,7 +447,15 @@ function HomePage({
           </div>
         </div>
 
-        <LeadPanel form={form} handleChange={handleChange} handleSubmit={handleSubmit} status={status} />
+        <LeadPanel
+          form={form}
+          handleChange={handleChange}
+          handleSubmit={handleSubmit}
+          status={status}
+          submitting={submitting}
+          submitted={submitted}
+          onReset={onReset}
+        />
       </section>
 
       <section className="quick-band" aria-label="Service area and availability">
@@ -444,10 +497,10 @@ function HomePage({
       <section className="gallery-section" aria-label="Bathroom remodeling inspiration">
         <div className="gallery-copy">
           <p className="eyebrow">Bathroom inspiration</p>
-          <h2>Show the dream before they ask the price.</h2>
+          <h2>See the dream before you ask the price.</h2>
           <p>
-            Premium visuals set the expectation instantly. Then the form turns that inspiration
-            into a real project conversation.
+            Premium finishes, walk-in showers, and clean modern vanities — the kind of bathroom
+            people actually brag about. Tell us your favorite look and we will price it out.
           </p>
         </div>
         <div className="bathroom-gallery">
@@ -467,14 +520,14 @@ function HomePage({
         <div className="ai-copy">
           <p className="eyebrow">
             <BrainCircuit size={16} aria-hidden="true" />
-            AI-powered project flow
+            Plan your remodel
           </p>
-          <h2>A remodel concierge that turns taste into a smarter lead.</h2>
+          <h2>Design your dream bathroom in under a minute.</h2>
           <p>
-            Visitors can choose a look, scope, and priority, then the site creates a polished
-            project brief and drops it straight into the estimate form.
+            Pick a style, scope, and priority. We will build a quote-ready plan and drop it straight
+            into your estimate request — so your first call with us is already a head start.
           </p>
-          <div className="ai-metrics" aria-label="AI experience features">
+          <div className="ai-metrics" aria-label="Planner features">
             <span>
               <ScanLine size={18} aria-hidden="true" />
               instant scope
@@ -504,7 +557,7 @@ function HomePage({
             <Camera size={16} aria-hidden="true" />
             Before and after
           </p>
-          <h2>Make the transformation feel obvious before the call.</h2>
+          <h2>The transformation, made obvious.</h2>
           <p>
             Drag the control to compare tired, builder-grade energy with the kind of finished
             bathroom people actually brag about.
@@ -532,98 +585,40 @@ function HomePage({
 
       <section className="work-section" id="work">
         <div className="work-copy">
-          <p className="eyebrow">Built to convert</p>
-          <h2>The homepage does the heavy lifting before the phone rings.</h2>
+          <p className="eyebrow">How it works</p>
+          <h2>A calm, professional process from first call to final walkthrough.</h2>
           <p>
-            The first screen sells the bathroom transformation, the form captures the project
-            details, and the rest of the page answers the questions homeowners usually ask out loud.
+            No pressure and no surprises. You get a clear written scope and price before any
+            demolition begins, then a clean, careful build by a crew that respects your home.
           </p>
         </div>
         <div className="process-list">
-          {['Show the dream', 'Capture the lead', 'Scope the remodel', 'Build the upgrade'].map((step, index) => (
-            <div className="process-step" key={step}>
+          {processSteps.map((step, index) => (
+            <div className="process-step" key={step.title}>
               <span>{String(index + 1).padStart(2, '0')}</span>
-              <strong>{step}</strong>
+              <div>
+                <strong>{step.title}</strong>
+                <p>{step.copy}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="admin-section" id="admin">
+      <section className="cta-band" aria-label="Request your estimate">
         <div>
-          <p className="eyebrow">Admin friendly</p>
-          <h2>Change the basics without digging through the whole app.</h2>
+          <h2>Ready to start your remodel?</h2>
+          <p>Get a fast, free estimate from a trusted Newark-area crew.</p>
         </div>
-        <ul>
-          {adminNotes.map((note) => (
-            <li key={note}>
-              <CheckCircle2 size={18} aria-hidden="true" />
-              {note}
-            </li>
-          ))}
-        </ul>
-      </section>
-    </>
-  )
-}
-
-function DreamBathroomPage({ advisor, aiPlan, updateAdvisor, addAiPlanToForm, goHome }) {
-  return (
-    <>
-      <section className="dream-hero">
-        <div className="dream-copy">
-          <p className="eyebrow">
-            <Palette size={16} aria-hidden="true" />
-            Design your dream bathroom
-          </p>
-          <h1>Dial in the mood before we talk measurements.</h1>
-          <p>
-            Explore a quick concept studio for the look, scope, and finish direction. Then send a
-            cleaner project brief into the estimate form before we talk measurements.
-          </p>
-          <div className="hero-actions">
-            <button className="primary-action button-link" type="button" onClick={addAiPlanToForm}>
-              Add my direction to the estimate
-              <ArrowRight size={18} aria-hidden="true" />
-            </button>
-            <button className="secondary-action button-link" type="button" onClick={goHome}>
-              <ArrowLeft size={18} aria-hidden="true" />
-              Back to homepage
-            </button>
-          </div>
-        </div>
-
-        <div className="dream-lab">
-          <div className="dream-showroom-frame">
-            <Suspense fallback={<div className="three-showroom three-fallback" aria-hidden="true" />}>
-              <ThreeBathroomShowroom />
-            </Suspense>
-            <div className="dream-frame-label">
-              <span>Concept preview</span>
-              <strong>{aiPlan.headline}</strong>
-            </div>
-          </div>
-          <AdvisorPanel
-            advisor={advisor}
-            aiPlan={aiPlan}
-            updateAdvisor={updateAdvisor}
-            addAiPlanToForm={addAiPlanToForm}
-          />
-        </div>
-      </section>
-
-      <section className="dream-moodboard">
-        <div>
-          <p className="eyebrow">Finish direction</p>
-          <h2>Keep the choices premium, calm, and buildable.</h2>
-        </div>
-        <div className="finish-grid">
-          {dreamFinishes.map((finish) => (
-            <article key={finish}>
-              <CheckCircle2 size={18} aria-hidden="true" />
-              <strong>{finish}</strong>
-            </article>
-          ))}
+        <div className="cta-band-actions">
+          <a className="primary-action" href="#estimate" onClick={() => goSection('estimate')}>
+            Get a free estimate
+            <ArrowRight size={18} aria-hidden="true" />
+          </a>
+          <a className="secondary-action" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+            <Phone size={18} aria-hidden="true" />
+            {business.phone}
+          </a>
         </div>
       </section>
     </>
@@ -631,7 +626,6 @@ function DreamBathroomPage({ advisor, aiPlan, updateAdvisor, addAiPlanToForm, go
 }
 
 function App() {
-  const [route, setRoute] = useState(currentRoute)
   const [menuOpen, setMenuOpen] = useState(false)
   const [reveal, setReveal] = useState(58)
   const [advisor, setAdvisor] = useState({
@@ -647,18 +641,11 @@ function App() {
     budget: budgetRanges[0],
     timeline: timelines[0],
     message: '',
+    company: '',
   })
   const [status, setStatus] = useState('')
-
-  useEffect(() => {
-    const syncRoute = () => setRoute(currentRoute())
-    window.addEventListener('popstate', syncRoute)
-    window.addEventListener('hashchange', syncRoute)
-    return () => {
-      window.removeEventListener('popstate', syncRoute)
-      window.removeEventListener('hashchange', syncRoute)
-    }
-  }, [])
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   const aiPlan = useMemo(() => {
     const score =
@@ -704,27 +691,12 @@ function App() {
     return `mailto:${business.email}?subject=${subject}&body=${body}`
   }, [form])
 
-  const appBase = window.location.pathname.includes('/Flanagan-Construction') ? '/Flanagan-Construction' : ''
-
-  const pushRoute = (nextRoute) => {
-    const nextPath = nextRoute === 'dream' ? `${appBase}/design-your-dream-bathroom` : `${appBase}/`
-    window.history.pushState({}, '', nextPath)
-    setRoute(nextRoute)
+  const goHome = () => {
     setMenuOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const goHome = () => pushRoute('home')
-  const goDream = () => pushRoute('dream')
-
   const goSection = (id) => {
-    if (route !== 'home') {
-      window.history.pushState({}, '', `${appBase}/`)
-      setRoute('home')
-      setMenuOpen(false)
-      window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 60)
-      return
-    }
     setMenuOpen(false)
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -734,13 +706,55 @@ function App() {
     setForm((current) => ({ ...current, [name]: value }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    const leads = JSON.parse(window.localStorage.getItem('flanagan-leads') || '[]')
-    const lead = { ...form, createdAt: new Date().toISOString() }
-    window.localStorage.setItem('flanagan-leads', JSON.stringify([lead, ...leads].slice(0, 50)))
-    setStatus('Lead saved. Your email app is opening with the project details.')
-    window.location.href = mailtoLink
+    if (submitting) return
+    setSubmitting(true)
+    setStatus('Sending your request…')
+
+    // Keep a local backup so a lead is never lost to a flaky network.
+    try {
+      const leads = JSON.parse(window.localStorage.getItem('flanagan-leads') || '[]')
+      const lead = { ...form, createdAt: new Date().toISOString() }
+      window.localStorage.setItem('flanagan-leads', JSON.stringify([lead, ...leads].slice(0, 50)))
+    } catch {
+      // localStorage can be unavailable in private mode; ignore.
+    }
+
+    try {
+      const response = await fetch('/api/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+      setSubmitted(true)
+      setStatus('Request received. We will reach out within one business day.')
+      window.setTimeout(() => {
+        document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 60)
+    } catch {
+      // Static hosting (e.g. GitHub Pages) has no API — fall back to email.
+      setStatus('Opening your email app so you can send the request directly…')
+      window.location.href = mailtoLink
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const resetForm = () => {
+    setSubmitted(false)
+    setStatus('')
+    setForm({
+      name: '',
+      phone: '',
+      email: '',
+      projectType: projectTypes[0],
+      budget: budgetRanges[0],
+      timeline: timelines[0],
+      message: '',
+      company: '',
+    })
   }
 
   const updateAdvisor = (name, value) => {
@@ -760,10 +774,6 @@ function App() {
       ].join('\n'),
     }))
     setStatus('Design direction added to the estimate form.')
-    if (route !== 'home') {
-      window.history.pushState({}, '', `${appBase}/`)
-      setRoute('home')
-    }
     window.setTimeout(() => {
       document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 80)
@@ -771,44 +781,42 @@ function App() {
 
   return (
     <main>
-      <SiteHeader
-        menuOpen={menuOpen}
-        route={route}
-        goHome={goHome}
-        goSection={goSection}
-        goDream={goDream}
-        setMenuOpen={setMenuOpen}
-      />
+      <SiteHeader menuOpen={menuOpen} goHome={goHome} goSection={goSection} setMenuOpen={setMenuOpen} />
 
-      {route === 'dream' ? (
-        <DreamBathroomPage
-          advisor={advisor}
-          aiPlan={aiPlan}
-          updateAdvisor={updateAdvisor}
-          addAiPlanToForm={addAiPlanToForm}
-          goHome={goHome}
-        />
-      ) : (
-        <HomePage
-          advisor={advisor}
-          aiPlan={aiPlan}
-          form={form}
-          handleChange={handleChange}
-          handleSubmit={handleSubmit}
-          status={status}
-          updateAdvisor={updateAdvisor}
-          addAiPlanToForm={addAiPlanToForm}
-          goDream={goDream}
-          reveal={reveal}
-          setReveal={setReveal}
-        />
-      )}
+      <HomePage
+        advisor={advisor}
+        aiPlan={aiPlan}
+        form={form}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+        status={status}
+        submitting={submitting}
+        submitted={submitted}
+        onReset={resetForm}
+        updateAdvisor={updateAdvisor}
+        addAiPlanToForm={addAiPlanToForm}
+        goSection={goSection}
+        reveal={reveal}
+        setReveal={setReveal}
+      />
 
       <footer>
         <strong>{business.name}</strong>
         <span>{business.serviceArea}</span>
+        <a href={`tel:${business.phone.replace(/\D/g, '')}`}>{business.phone}</a>
         <a href={`mailto:${business.email}`}>{business.email}</a>
       </footer>
+
+      <div className="mobile-cta" aria-label="Quick contact">
+        <a className="mobile-cta-call" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+          <Phone size={18} aria-hidden="true" />
+          Call
+        </a>
+        <button className="mobile-cta-quote" type="button" onClick={() => goSection('estimate')}>
+          Get free estimate
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      </div>
     </main>
   )
 }

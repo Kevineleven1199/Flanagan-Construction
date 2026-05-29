@@ -566,7 +566,8 @@ textarea:focus {
 .ai-section,
 .compare-section,
 .work-section,
-.admin-section {
+.admin-section,
+.cta-band {
   padding: clamp(56px, 8vw, 104px) clamp(20px, 6vw, 90px);
 }
 
@@ -1252,7 +1253,7 @@ legend {
 
 .process-step {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 18px;
   border: 1px solid rgba(28, 31, 33, 0.12);
   border-radius: 8px;
@@ -1267,8 +1268,16 @@ legend {
 }
 
 .process-step strong {
+  display: block;
   color: #1c1f21;
   font-size: 1.04rem;
+}
+
+.process-step p {
+  margin: 4px 0 0;
+  color: #5a6166;
+  font-size: 0.95rem;
+  line-height: 1.45;
 }
 
 .admin-section {
@@ -1573,5 +1582,139 @@ footer a {
 
   .compare-stage {
     min-height: 340px;
+  }
+}
+
+/* Final call-to-action band before the footer */
+.cta-band {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(120deg, #161616, #24211b 60%, #2c2410);
+  color: #fff;
+}
+
+.cta-band h2 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.cta-band p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.cta-band-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Honeypot field: hidden from people and the a11y tree, visible to bots. */
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.submit-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  transform: none;
+}
+
+/* Lead form success state */
+.lead-success .success-steps {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.lead-success .success-steps li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  color: #3a4145;
+  font-size: 0.95rem;
+}
+
+.lead-success .success-steps svg {
+  flex: none;
+  margin-top: 2px;
+  color: #1f9d6b;
+}
+
+.success-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.lead-success .secondary-action {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: #fff;
+  color: #1c1f21;
+}
+
+/* Sticky mobile call / quote bar (conversion booster on phones) */
+.mobile-cta {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .mobile-cta {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 10px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(22, 22, 22, 0.92);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .mobile-cta a,
+  .mobile-cta button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 50px;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .mobile-cta-call {
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+
+  .mobile-cta-quote {
+    border: 0;
+    background: #f2b84b;
+    color: #161616;
+  }
+
+  /* Keep the fixed bar from covering footer content. */
+  footer {
+    padding-bottom: 96px;
+  }
+
+  .success-actions {
+    grid-template-columns: 1fr;
   }
 }

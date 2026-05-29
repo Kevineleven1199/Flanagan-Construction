@@ -12,6 +12,13 @@ dist
 dist-ssr
 *.local
 
+# Captured quote leads (written at runtime by server.js)
+leads.log
+
+# Local QA / proof artifacts
+.playwright-mcp/
+proof-*.png
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

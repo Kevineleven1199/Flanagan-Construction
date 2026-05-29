@@ -1,0 +1,16 @@
+# Build instructions for Railway's Nixpacks builder.
+# Pins Node 22 and mirrors the optional-dependency install flag that the
+# GitHub Pages workflow needs so platform-native build binaries resolve.
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+cmds = ["npm install --include=optional"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "node server.js"
