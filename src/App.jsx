@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react'
 import {
   ArrowRight,
+  Award,
   Bath,
   BrainCircuit,
   Camera,
   CheckCircle2,
+  ChevronDown,
   ClipboardCheck,
   Clock3,
   Hammer,
+  HelpCircle,
   Home,
   Mail,
   MapPin,
@@ -15,15 +18,30 @@ import {
   Palette,
   Paintbrush,
   Phone,
+  Quote,
   Ruler,
   ScanLine,
   ShieldCheck,
   Sparkles,
+  Star,
   WandSparkles,
   X,
 } from 'lucide-react'
-import { business, proofPoints, services } from './content'
+import { business, faqs, guarantees, proofPoints, services, stats, testimonials } from './content'
 import './App.css'
+
+// Best-effort analytics: pushes events to a GTM/GA4-style dataLayer if one
+// exists. No-ops (and never throws) until a tag manager is installed.
+function track(event, data = {}) {
+  try {
+    window.dataLayer = window.dataLayer || []
+    window.dataLayer.push({ event, ...data })
+  } catch {
+    // analytics must never break the page
+  }
+}
+
+const phoneHref = `tel:${business.phone.replace(/\D/g, '')}`
 
 const projectTypes = ['Bathroom remodel', 'Shower conversion', 'Kitchen', 'Basement', 'Addition', 'Repair']
 const budgetRanges = ['$2k-$10k', '$10k-$25k', '$25k-$50k', '$50k+', 'Not sure yet']
@@ -250,6 +268,15 @@ function SiteHeader({ menuOpen, goHome, goSection, setMenuOpen }) {
           Services
         </a>
         <a
+          href="#reviews"
+          onClick={(event) => {
+            event.preventDefault()
+            goSection('reviews')
+          }}
+        >
+          Reviews
+        </a>
+        <a
           href="#work"
           onClick={(event) => {
             event.preventDefault()
@@ -258,16 +285,7 @@ function SiteHeader({ menuOpen, goHome, goSection, setMenuOpen }) {
         >
           How It Works
         </a>
-        <a
-          href="#estimate"
-          onClick={(event) => {
-            event.preventDefault()
-            goSection('estimate')
-          }}
-        >
-          Estimate
-        </a>
-        <a className="nav-call" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+        <a className="nav-call" href={phoneHref} onClick={() => track('phone_click', { location: 'header' })}>
           <Phone size={16} aria-hidden="true" />
           Call
         </a>
@@ -379,6 +397,109 @@ function AdvisorPanel({ advisor, aiPlan, updateAdvisor, addAiPlanToForm }) {
   )
 }
 
+function StatsBand() {
+  return (
+    <section className="stats-band" aria-label="Company highlights">
+      {stats.map((stat) => (
+        <div className="stat" key={stat.label}>
+          <strong>{stat.value}</strong>
+          <span>{stat.label}</span>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+function Stars({ rating }) {
+  return (
+    <span className="stars" role="img" aria-label={`${rating} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star
+          key={index}
+          size={16}
+          aria-hidden="true"
+          fill={index < rating ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  )
+}
+
+function ReviewsSection() {
+  return (
+    <section className="reviews-section" id="reviews" aria-label="Customer reviews">
+      <div className="section-heading">
+        <p className="eyebrow">What homeowners say</p>
+        <h2>Reviews from Newark-area remodels.</h2>
+      </div>
+      <div className="reviews-grid">
+        {testimonials.map((item, index) => (
+          <article className="review-card" key={index}>
+            <Quote className="review-mark" size={26} aria-hidden="true" />
+            <Stars rating={item.rating} />
+            <p>{item.quote}</p>
+            <footer>
+              <strong>{item.name}</strong>
+              <span>{item.location}</span>
+            </footer>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function GuaranteesSection() {
+  return (
+    <section className="guarantees-section" aria-label="Our promise">
+      <div className="guarantees-copy">
+        <p className="eyebrow">
+          <Award size={16} aria-hidden="true" />
+          Our promise
+        </p>
+        <h2>Done right behind the tile, not just in front of it.</h2>
+        <p>
+          The difference between a remodel that lasts and one that leaks is the work you cannot see.
+          Here is what every Flanagan project includes.
+        </p>
+      </div>
+      <ul className="guarantees-list">
+        {guarantees.map((item) => (
+          <li key={item}>
+            <CheckCircle2 size={18} aria-hidden="true" />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function FaqSection() {
+  return (
+    <section className="faq-section" id="faq" aria-label="Frequently asked questions">
+      <div className="section-heading">
+        <p className="eyebrow">
+          <HelpCircle size={16} aria-hidden="true" />
+          FAQ
+        </p>
+        <h2>Answers before you ask.</h2>
+      </div>
+      <div className="faq-list">
+        {faqs.map((item) => (
+          <details className="faq-item" key={item.question}>
+            <summary>
+              <span>{item.question}</span>
+              <ChevronDown className="faq-chevron" size={20} aria-hidden="true" />
+            </summary>
+            <p>{item.answer}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function HomePage({
   advisor,
   aiPlan,
@@ -473,6 +594,8 @@ function HomePage({
         </span>
       </section>
 
+      <StatsBand />
+
       <section className="section" id="services">
         <div className="section-heading">
           <p className="eyebrow">What homeowners want most</p>
@@ -515,6 +638,8 @@ function HomePage({
           ))}
         </div>
       </section>
+
+      <ReviewsSection />
 
       <section className="ai-section" id="ai">
         <div className="ai-copy">
@@ -583,6 +708,8 @@ function HomePage({
         </div>
       </section>
 
+      <GuaranteesSection />
+
       <section className="work-section" id="work">
         <div className="work-copy">
           <p className="eyebrow">How it works</p>
@@ -605,6 +732,8 @@ function HomePage({
         </div>
       </section>
 
+      <FaqSection />
+
       <section className="cta-band" aria-label="Request your estimate">
         <div>
           <h2>Ready to start your remodel?</h2>
@@ -622,6 +751,72 @@ function HomePage({
         </div>
       </section>
     </>
+  )
+}
+
+function SiteFooter({ goSection }) {
+  const year = new Date().getFullYear()
+  const jump = (id) => (event) => {
+    event.preventDefault()
+    goSection(id)
+  }
+  return (
+    <footer className="site-footer">
+      <div className="footer-grid">
+        <div className="footer-brand">
+          <span className="brand-mark">
+            <Hammer size={20} aria-hidden="true" />
+          </span>
+          <strong>{business.name}</strong>
+          <p>{business.serviceArea}</p>
+        </div>
+
+        <nav className="footer-col" aria-label="Services">
+          <h3>Services</h3>
+          {services.map((service) => (
+            <a key={service.title} href="#services" onClick={jump('services')}>
+              {service.title}
+            </a>
+          ))}
+        </nav>
+
+        <nav className="footer-col" aria-label="Company">
+          <h3>Company</h3>
+          <a href="#work" onClick={jump('work')}>
+            How it works
+          </a>
+          <a href="#reviews" onClick={jump('reviews')}>
+            Reviews
+          </a>
+          <a href="#faq" onClick={jump('faq')}>
+            FAQ
+          </a>
+          <a href="#estimate" onClick={jump('estimate')}>
+            Free estimate
+          </a>
+        </nav>
+
+        <div className="footer-col footer-contact">
+          <h3>Contact</h3>
+          <a href={phoneHref} onClick={() => track('phone_click', { location: 'footer' })}>
+            {business.phone}
+          </a>
+          <a href={`mailto:${business.email}`}>{business.email}</a>
+          <p>Mon–Fri, 8am–5pm</p>
+          <p className="footer-badge">
+            <ShieldCheck size={14} aria-hidden="true" />
+            Licensed &amp; insured
+          </p>
+        </div>
+      </div>
+
+      <div className="footer-bottom">
+        <span>
+          © {year} {business.name}. Newark, Delaware.
+        </span>
+        <span>Bathroom &amp; home remodeling • Free estimates</span>
+      </div>
+    </footer>
   )
 }
 
@@ -730,6 +925,7 @@ function App() {
       if (!response.ok) throw new Error(`Request failed: ${response.status}`)
       setSubmitted(true)
       setStatus('Request received. We will reach out within one business day.')
+      track('generate_lead', { projectType: form.projectType, budget: form.budget })
       window.setTimeout(() => {
         document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 60)
@@ -781,6 +977,9 @@ function App() {
 
   return (
     <main>
+      <a className="skip-link" href="#top">
+        Skip to content
+      </a>
       <SiteHeader menuOpen={menuOpen} goHome={goHome} goSection={goSection} setMenuOpen={setMenuOpen} />
 
       <HomePage
@@ -800,15 +999,14 @@ function App() {
         setReveal={setReveal}
       />
 
-      <footer>
-        <strong>{business.name}</strong>
-        <span>{business.serviceArea}</span>
-        <a href={`tel:${business.phone.replace(/\D/g, '')}`}>{business.phone}</a>
-        <a href={`mailto:${business.email}`}>{business.email}</a>
-      </footer>
+      <SiteFooter goSection={goSection} />
 
       <div className="mobile-cta" aria-label="Quick contact">
-        <a className="mobile-cta-call" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+        <a
+          className="mobile-cta-call"
+          href={phoneHref}
+          onClick={() => track('phone_click', { location: 'mobile_bar' })}
+        >
           <Phone size={18} aria-hidden="true" />
           Call
         </a>

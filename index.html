@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/og.png" />
+    <link rel="manifest" href="/site.webmanifest" />
 
     <!-- Primary SEO -->
     <title>Bathroom Remodeling in Newark, DE | Flanagan Construction</title>
@@ -48,6 +50,12 @@
     <!-- Performance: hero photos are served from Unsplash -->
     <link rel="preconnect" href="https://images.unsplash.com" crossorigin />
     <link rel="dns-prefetch" href="https://images.unsplash.com" />
+    <link
+      rel="preload"
+      as="image"
+      href="https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1300&q=88"
+      fetchpriority="high"
+    />
 
     <!-- Local business structured data for Google -->
     <script type="application/ld+json">
@@ -101,6 +109,70 @@
         }
       }
     </script>
+
+    <!-- FAQ structured data (keep in sync with the `faqs` array in src/content.js) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How much does a bathroom remodel cost in Newark, DE?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Most bathroom remodels fall between $10,000 and $50,000 depending on size, fixtures, tile, and how much is changing behind the walls. We give a clear written estimate after a free on-site visit so you know the price before any work starts."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How long does a bathroom remodel take?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A focused refresh can be done in about a week, while a full gut remodel typically runs two to four weeks. We confirm a realistic schedule in your written scope before demolition begins."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Are you licensed and insured?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Flanagan Construction is licensed and fully insured, and our work is backed by a workmanship warranty."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do you offer free estimates?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Always. On-site estimates are free with no obligation. Tell us about your project and we will follow up within one business day."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What areas do you serve?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "We serve Newark, Pike Creek, Bear, Hockessin, Wilmington, and nearby Delaware communities."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do you handle permits and waterproofing?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. We pull required permits and waterproof every shower and wet wall to code so your remodel lasts — no shortcuts behind the tile."
+            }
+          }
+        ]
+      }
+    </script>
+
+    <!--
+      NOTE: Review / AggregateRating rich snippets are intentionally omitted.
+      Add them only once you have real, verifiable customer reviews — fabricated
+      review markup violates Google's policies and can get the site penalized.
+    -->
   </head>
   <body>
     <div id="root"></div>

@@ -1,0 +1,17 @@
+{
+  "name": "Flanagan Construction",
+  "short_name": "Flanagan",
+  "description": "Luxury bathroom remodeling and home renovation in Newark, Delaware.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f4ec",
+  "theme_color": "#161616",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}

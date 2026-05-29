@@ -567,6 +567,9 @@ textarea:focus {
 .compare-section,
 .work-section,
 .admin-section,
+.reviews-section,
+.guarantees-section,
+.faq-section,
 .cta-band {
   padding: clamp(56px, 8vw, 104px) clamp(20px, 6vw, 90px);
 }
@@ -1310,25 +1313,97 @@ legend {
   color: #9a6712;
 }
 
-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
-  justify-content: space-between;
+.site-footer {
   background: #0e1112;
   color: rgba(255, 255, 255, 0.72);
-  padding: 28px clamp(20px, 6vw, 90px);
+  padding: clamp(40px, 6vw, 64px) clamp(20px, 6vw, 90px) 28px;
 }
 
-footer strong {
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+  gap: clamp(24px, 4vw, 56px);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.footer-brand .brand-mark {
+  margin-bottom: 12px;
+}
+
+.footer-brand strong {
+  display: block;
   color: #fff;
+  font-size: 1.15rem;
 }
 
-footer a {
+.footer-brand p {
+  margin: 8px 0 0;
+  max-width: 320px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.footer-col h3 {
+  margin: 0 0 6px;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.footer-col a {
+  color: rgba(255, 255, 255, 0.74);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.footer-col a:hover {
+  color: #f2b84b;
+}
+
+.footer-contact a {
   color: #f2b84b;
   font-weight: 800;
-  text-decoration: none;
+}
+
+.footer-contact p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  max-width: 1180px;
+  margin: clamp(28px, 4vw, 44px) auto 0;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 720px) {
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .site-footer {
+    padding-bottom: 96px;
+  }
 }
 
 @keyframes float-photo {
@@ -1582,6 +1657,249 @@ footer a {
 
   .compare-stage {
     min-height: 340px;
+  }
+}
+
+/* Accessibility: skip link, visible focus, reduced motion */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -64px;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: #161616;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: none;
+  transition: top 160ms ease;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+:focus-visible {
+  outline: 3px solid #f2b84b;
+  outline-offset: 2px;
+}
+
+/* Stats band */
+.stats-band {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: rgba(28, 31, 33, 0.1);
+  border-top: 1px solid rgba(28, 31, 33, 0.08);
+  border-bottom: 1px solid rgba(28, 31, 33, 0.08);
+}
+
+.stats-band .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: clamp(24px, 4vw, 40px) 16px;
+  background: #f7f4ec;
+  text-align: center;
+}
+
+.stats-band .stat strong {
+  color: #1c1f21;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.stats-band .stat span {
+  color: #626a6e;
+  font-size: 0.92rem;
+}
+
+/* Reviews */
+.reviews-section {
+  background: #fff;
+}
+
+.reviews-section .eyebrow,
+.faq-section .eyebrow {
+  color: #9a6712;
+}
+
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid rgba(28, 31, 33, 0.12);
+  border-radius: 8px;
+  background: #faf8f2;
+  padding: 26px 24px;
+  box-shadow: 0 18px 50px rgba(28, 31, 33, 0.06);
+}
+
+.review-mark {
+  color: #e3c074;
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+  color: #f2b84b;
+}
+
+.review-card p {
+  margin: 0;
+  color: #34383a;
+  font-size: 1.02rem;
+  line-height: 1.5;
+}
+
+.review-card footer {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.review-card footer strong {
+  color: #1c1f21;
+}
+
+.review-card footer span {
+  color: #7b8388;
+  font-size: 0.88rem;
+}
+
+/* Guarantees */
+.guarantees-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 0.8fr);
+  gap: clamp(28px, 5vw, 70px);
+  align-items: center;
+  background: #161616;
+  color: #fff;
+}
+
+.guarantees-copy h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 3.5vw, 3rem);
+  line-height: 1.02;
+}
+
+.guarantees-copy .eyebrow {
+  color: #f2b84b;
+}
+
+.guarantees-copy p:not(.eyebrow) {
+  margin-top: 16px;
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.guarantees-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guarantees-list li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 16px 18px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.guarantees-list li svg {
+  flex: none;
+  margin-top: 1px;
+  color: #f2b84b;
+}
+
+/* FAQ */
+.faq-section {
+  background: #f7f4ec;
+}
+
+.faq-list {
+  display: grid;
+  gap: 10px;
+  max-width: 900px;
+}
+
+.faq-item {
+  border: 1px solid rgba(28, 31, 33, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  cursor: pointer;
+  color: #1c1f21;
+  font-weight: 800;
+  list-style: none;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-chevron {
+  flex: none;
+  color: #9a6712;
+  transition: transform 200ms ease;
+}
+
+.faq-item[open] .faq-chevron {
+  transform: rotate(180deg);
+}
+
+.faq-item p {
+  margin: 0;
+  padding: 0 20px 20px;
+  color: #4a5054;
+  line-height: 1.55;
+}
+
+@media (max-width: 980px) {
+  .stats-band {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .reviews-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guarantees-section {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
