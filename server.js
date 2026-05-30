@@ -22,6 +22,11 @@ const port = Number(process.env.PORT) || 8080
 const host = '0.0.0.0'
 const leadWebhookUrl = process.env.LEAD_WEBHOOK_URL || ''
 
+// The canonical domain baked into index.html / robots / sitemap at build time.
+// At request time it is rewritten to the actual serving origin (see withOrigin)
+// so canonical + Open Graph URLs are correct on the Railway URL or a custom domain.
+const canonicalBase = 'https://flanaganconstructionde.com'
+
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -118,6 +123,46 @@ function cacheControlFor(ext, filePath) {
   if (ext === '.html') return 'no-cache'
   if (/-[A-Za-z0-9_-]{8,}\.\w+$/.test(filePath)) return 'public, max-age=31536000, immutable'
   return 'public, max-age=3600'
+}
+
+function requestOrigin(req) {
+  const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https'
+  const hostHeader = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim()
+  return hostHeader ? `${proto}://${hostHeader}` : canonicalBase
+}
+
+function withOrigin(text, req) {
+  const origin = requestOrigin(req)
+  return origin === canonicalBase ? text : text.split(canonicalBase).join(origin)
+}
+
+async function serveIndex(req, res, gzipOk) {
+  const indexPath = join(distDir, 'index.html')
+  if (!existsSync(indexPath)) {
+    send(res, 404, { 'Content-Type': 'text/html; charset=utf-8' }, notFoundHtml, gzipOk)
+    return
+  }
+  const headers = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }
+  if (req.method === 'HEAD') {
+    send(res, 200, headers, null)
+    return
+  }
+  const html = withOrigin(await readFile(indexPath, 'utf8'), req)
+  send(res, 200, headers, html, gzipOk)
+}
+
+async function serveTextWithOrigin(req, res, filePath, contentType, gzipOk) {
+  if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+    send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found')
+    return
+  }
+  const headers = { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=3600' }
+  if (req.method === 'HEAD') {
+    send(res, 200, headers, null)
+    return
+  }
+  const body = withOrigin(await readFile(filePath, 'utf8'), req)
+  send(res, 200, headers, body, gzipOk)
 }
 
 function tryServeFile(res, filePath, method, gzipOk) {
@@ -279,6 +324,24 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
+  // robots.txt and sitemap.xml: rewrite the canonical domain to the serving
+  // origin so they are correct on the Railway URL or any custom domain.
+  if (pathname === '/robots.txt') {
+    await serveTextWithOrigin(req, res, join(distDir, 'robots.txt'), 'text/plain; charset=utf-8', gzipOk)
+    return
+  }
+  if (pathname === '/sitemap.xml') {
+    await serveTextWithOrigin(req, res, join(distDir, 'sitemap.xml'), 'application/xml; charset=utf-8', gzipOk)
+    return
+  }
+
+  // The SPA shell: canonical + Open Graph URLs are rewritten to the serving
+  // origin so links and social share previews resolve on whatever domain is used.
+  if (pathname === '/' || pathname === '/index.html') {
+    await serveIndex(req, res, gzipOk)
+    return
+  }
+
   // Resolve the request to a real file inside dist/, guarding against traversal.
   let relativePath = pathname
   if (relativePath.endsWith('/')) relativePath += 'index.html'
@@ -290,21 +353,14 @@ const server = http.createServer(async (req, res) => {
 
   if (tryServeFile(res, filePath, method, gzipOk)) return
 
-  // No matching file. A request for something with an extension is a genuine
-  // 404; anything else is a client-side route, so serve the SPA shell.
+  // A request for something with an extension is a genuine 404; anything else
+  // is a client-side route, so serve the SPA shell.
   if (pathLooksLikeFile(pathname)) {
     send(res, 404, { 'Content-Type': 'text/html; charset=utf-8' }, method === 'HEAD' ? null : notFoundHtml, gzipOk && method !== 'HEAD')
     return
   }
 
-  const indexPath = join(distDir, 'index.html')
-  if (existsSync(indexPath)) {
-    const html = await readFile(indexPath)
-    send(res, 200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }, method === 'HEAD' ? null : html, gzipOk && method !== 'HEAD')
-    return
-  }
-
-  send(res, 404, { 'Content-Type': 'text/html; charset=utf-8' }, notFoundHtml, gzipOk)
+  await serveIndex(req, res, gzipOk)
 })
 
 if (!existsSync(distDir)) {
