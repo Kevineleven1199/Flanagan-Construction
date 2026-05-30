@@ -106,43 +106,45 @@
   color: #fff;
   background-color: #0b0f10;
   --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=2200&q=80');
+  /* Dark only on the left (behind the headline); clears fully on the right so
+     the bathroom photo stays vivid and luxurious instead of greyed out. */
   background-image:
     linear-gradient(
-      100deg,
-      rgba(8, 11, 12, 0.96) 0%,
-      rgba(8, 11, 12, 0.88) 40%,
-      rgba(8, 11, 12, 0.62) 66%,
-      rgba(8, 11, 12, 0.46) 100%
+      95deg,
+      rgba(9, 11, 12, 0.94) 0%,
+      rgba(9, 11, 12, 0.88) 26%,
+      rgba(9, 11, 12, 0.6) 44%,
+      rgba(9, 11, 12, 0.2) 60%,
+      rgba(9, 11, 12, 0) 75%
     ),
     var(--hero-photo);
-  background-position: center;
+  background-position: center right;
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-/* Smaller hero image on phones (less data, faster LCP); matches the preload. */
+/* Smaller hero image on phones (less data, faster LCP); matches the preload.
+   Text stacks over the photo here, so darken top-to-bottom for legibility. */
 @media (max-width: 768px) {
   .hero-section {
     --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1000&q=72');
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(9, 11, 12, 0.9) 0%,
+        rgba(9, 11, 12, 0.74) 48%,
+        rgba(9, 11, 12, 0.82) 100%
+      ),
+      var(--hero-photo);
   }
 }
 
-/* Subtle warm glow accent (top-right), no busy boxes. */
+/* Subtle warm light from the top-right; keeps the photo vivid, not greyed. */
 .hero-section::before {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: radial-gradient(55% 55% at 86% 16%, rgba(242, 184, 75, 0.16), transparent 62%);
-  content: '';
-  pointer-events: none;
-}
-
-/* Soft vignette for depth at the base of the hero. */
-.hero-section::after {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: radial-gradient(130% 90% at 50% 122%, rgba(0, 0, 0, 0.4), transparent 58%);
+  background: radial-gradient(46% 52% at 90% 22%, rgba(242, 184, 75, 0.1), transparent 60%);
   content: '';
   pointer-events: none;
 }
