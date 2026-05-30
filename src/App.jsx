@@ -519,14 +519,6 @@ function HomePage({
   return (
     <>
       <section id="top" className="hero-section luxury-hero">
-        <div className="hero-media luxury-parallax" aria-hidden="true">
-          <div className="parallax-photo parallax-main"></div>
-          <div className="parallax-photo parallax-detail"></div>
-          <div className="parallax-photo parallax-vanity"></div>
-          <div className="marble-slab"></div>
-          <div className="light-sweep"></div>
-        </div>
-
         <div className="hero-copy">
           <p className="eyebrow">
             <MapPin size={16} aria-hidden="true" />
