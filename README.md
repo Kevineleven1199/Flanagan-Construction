@@ -53,9 +53,23 @@ npm run start   # serves dist/ on $PORT (default 8080) via server.js
 ## Lead capture
 
 The estimate form `POST`s to `/api/lead`. The server logs every lead (visible in
-Railway logs), appends it to `leads.log`, and optionally forwards it to
-`LEAD_WEBHOOK_URL`. If the API is unreachable (e.g. on static GitHub Pages), the
-form falls back to opening the visitor's email app via `mailto:`.
+Railway logs), appends it to `leads.log`, and forwards it to `LEAD_WEBHOOK_URL`
+if set. If the API is unreachable (e.g. on static GitHub Pages), the form falls
+back to opening the visitor's email app via `mailto:`.
+
+### Get leads delivered to you (60 seconds, no code)
+
+Set a `LEAD_WEBHOOK_URL` variable on the Railway service. The server auto-formats
+based on the URL:
+
+- **Slack** — create an Incoming Webhook, paste its `https://hooks.slack.com/...`
+  URL. You get a readable message per lead.
+- **Discord** — Channel → Edit → Integrations → Webhooks → New, paste the
+  `https://discord.com/api/webhooks/...` URL. Readable message per lead.
+- **Email / SMS / spreadsheet** — make a Zapier or Make webhook trigger and paste
+  its URL. The server sends raw lead JSON; map it to an email (or anything) there.
+
+No webhook? Leads still appear in the Railway deploy logs and `leads.log`.
 
 ## Editing content
 

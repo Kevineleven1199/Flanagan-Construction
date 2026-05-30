@@ -15,6 +15,7 @@ import { createReadStream, existsSync, statSync } from 'node:fs'
 import { appendFile, readFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { buildWebhookPayload } from './lead-delivery.js'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 const distDir = resolve(root, 'dist')
@@ -280,7 +281,7 @@ async function handleLead(req, res, gzipOk) {
         await fetch(leadWebhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(lead),
+          body: JSON.stringify(buildWebhookPayload(leadWebhookUrl, lead)),
         })
       } catch (error) {
         console.error('[LEAD] webhook delivery failed:', error?.message)
