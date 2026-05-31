@@ -96,57 +96,117 @@
 
 .hero-section {
   position: relative;
-  display: grid;
-  min-height: 100svh;
-  grid-template-columns: minmax(0, 1.05fr) minmax(330px, 440px);
-  gap: clamp(28px, 4vw, 72px);
+  display: flex;
   align-items: center;
+  justify-content: center;
+  min-height: 100svh;
   overflow: hidden;
-  padding: 132px clamp(20px, 6vw, 90px) 88px;
+  padding: clamp(124px, 17vh, 188px) clamp(20px, 6vw, 90px) clamp(72px, 12vh, 120px);
+  text-align: center;
   color: #fff;
   background-color: #0b0f10;
-  --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=2200&q=80');
-  /* Dark only on the left (behind the headline); clears fully on the right so
-     the bathroom photo stays vivid and luxurious instead of greyed out. */
+  --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=2400&q=82');
+  /* Bright, full-bleed photo with a light, even scrim so it stays vivid — only a
+     touch darker at the top (header) and bottom (CTA legibility). */
   background-image:
     linear-gradient(
-      95deg,
-      rgba(9, 11, 12, 0.94) 0%,
-      rgba(9, 11, 12, 0.88) 26%,
-      rgba(9, 11, 12, 0.6) 44%,
-      rgba(9, 11, 12, 0.2) 60%,
-      rgba(9, 11, 12, 0) 75%
+      180deg,
+      rgba(8, 11, 12, 0.72) 0%,
+      rgba(8, 11, 12, 0.4) 26%,
+      rgba(8, 11, 12, 0.38) 56%,
+      rgba(8, 11, 12, 0.68) 100%
     ),
     var(--hero-photo);
-  background-position: center right;
+  background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
 }
 
-/* Smaller hero image on phones (less data, faster LCP); matches the preload.
-   Text stacks over the photo here, so darken top-to-bottom for legibility. */
-@media (max-width: 768px) {
-  .hero-section {
-    --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1000&q=72');
-    background-image:
-      linear-gradient(
-        180deg,
-        rgba(9, 11, 12, 0.9) 0%,
-        rgba(9, 11, 12, 0.74) 48%,
-        rgba(9, 11, 12, 0.82) 100%
-      ),
-      var(--hero-photo);
-  }
+.hero-inner {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  max-width: 1000px;
 }
 
-/* Subtle warm light from the top-right; keeps the photo vivid, not greyed. */
-.hero-section::before {
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0;
+  color: #f2b84b;
+  font-size: clamp(0.8rem, 1.3vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow-rule {
+  width: clamp(24px, 5vw, 56px);
+  height: 2px;
+  background: rgba(242, 184, 75, 0.7);
+}
+
+.hero-inner h1 {
+  max-width: 18ch;
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2.7rem, 6.6vw, 5.7rem);
+  line-height: 0.98;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55);
+}
+
+.hero-inner .hl {
+  position: relative;
+  color: #f2b84b;
+  white-space: nowrap;
+}
+
+.hero-inner .swoosh {
   position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: radial-gradient(46% 52% at 90% 22%, rgba(242, 184, 75, 0.1), transparent 60%);
-  content: '';
-  pointer-events: none;
+  left: 0;
+  bottom: -0.26em;
+  width: 100%;
+  height: 0.32em;
+  overflow: visible;
+}
+
+.hero-inner .hero-lede {
+  max-width: 62ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.55);
+}
+
+.hero-section .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.hero-section .hero-tech-strip {
+  justify-content: center;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .hero-section {
+    --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=1100&q=72');
+  }
+
+  .hero-section .hero-actions .primary-action,
+  .hero-section .hero-actions .secondary-action {
+    width: 100%;
+    box-sizing: border-box;
+  }
 }
 
 .three-showroom {
@@ -421,6 +481,7 @@ textarea:focus {
 .reviews-section,
 .guarantees-section,
 .faq-section,
+.estimate-section,
 .cta-band {
   padding: clamp(56px, 8vw, 104px) clamp(20px, 6vw, 90px);
 }
@@ -1508,6 +1569,84 @@ legend {
 
   .compare-stage {
     min-height: 340px;
+  }
+}
+
+/* Header "Free estimate" CTA button */
+.nav a.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: #f2b84b;
+  color: #161616;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav a.nav-cta:hover {
+  background: #f5c468;
+}
+
+/* Estimate section — the hero CTA and header button scroll here */
+.estimate-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 480px);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: center;
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(242, 184, 75, 0.07), transparent 55%),
+    #f7f4ec;
+}
+
+.estimate-copy h2 {
+  margin: 0;
+  color: #1c1f21;
+  font-size: clamp(1.9rem, 3.6vw, 3rem);
+  line-height: 1.02;
+}
+
+.estimate-copy > p {
+  margin: 16px 0 0;
+  max-width: 520px;
+  color: #4a5054;
+  font-size: 1.05rem;
+}
+
+.estimate-copy .eyebrow {
+  color: #9a6712;
+}
+
+.estimate-points {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.estimate-points li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #34383a;
+  font-weight: 700;
+}
+
+.estimate-points li svg {
+  flex: none;
+  color: #1f9d6b;
+}
+
+.estimate-section .lead-panel {
+  box-shadow: 0 30px 80px rgba(28, 31, 33, 0.16);
+}
+
+@media (max-width: 860px) {
+  .estimate-section {
+    grid-template-columns: 1fr;
   }
 }
 

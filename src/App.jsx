@@ -13,7 +13,6 @@ import {
   HelpCircle,
   Home,
   Mail,
-  MapPin,
   Menu,
   Palette,
   Paintbrush,
@@ -289,6 +288,16 @@ function SiteHeader({ menuOpen, goHome, goSection, setMenuOpen }) {
           <Phone size={16} aria-hidden="true" />
           Call
         </a>
+        <a
+          className="nav-cta"
+          href="#estimate"
+          onClick={(event) => {
+            event.preventDefault()
+            goSection('estimate')
+          }}
+        >
+          Free estimate
+        </a>
       </nav>
 
       <button
@@ -519,17 +528,48 @@ function HomePage({
   return (
     <>
       <section id="top" className="hero-section luxury-hero">
-        <div className="hero-copy">
-          <p className="eyebrow">
-            <MapPin size={16} aria-hidden="true" />
-            Newark, Delaware bathroom & home remodeling
+        <div className="hero-inner">
+          <p className="hero-eyebrow">
+            <span className="eyebrow-rule" aria-hidden="true"></span>
+            Welcome to Flanagan Construction
+            <span className="eyebrow-rule" aria-hidden="true"></span>
           </p>
-          <h1>Luxury bathroom remodels without the contractor chaos.</h1>
+          <h1>
+            Luxury Bathroom Remodeling in{' '}
+            <span className="hl">
+              Newark, DE
+              <svg className="swoosh" viewBox="0 0 320 26" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M6 18 Q 160 30 314 9" stroke="#f2b84b" strokeWidth="6" fill="none" strokeLinecap="round" />
+              </svg>
+            </span>
+          </h1>
           <p className="hero-lede">
-            Elegant tile, glass showers, warm lighting, clean waterproofing, and a quote process
-            that feels polished from the first click.
+            Walk-in showers, spa bathrooms, kitchens, and additions — built right, with clean
+            waterproofing and a quote process that feels polished from the first click.
           </p>
-
+          <div className="hero-actions">
+            <a
+              className="primary-action"
+              href="#estimate"
+              onClick={(event) => {
+                event.preventDefault()
+                goSection('estimate')
+              }}
+            >
+              Get a free estimate
+              <ArrowRight size={18} aria-hidden="true" />
+            </a>
+            <a
+              className="secondary-action"
+              href="#services"
+              onClick={(event) => {
+                event.preventDefault()
+                goSection('services')
+              }}
+            >
+              Our services
+            </a>
+          </div>
           <div className="hero-tech-strip" aria-label="Why homeowners choose us">
             {heroCredibility.map(({ icon: Icon, label }) => (
               <span key={label}>
@@ -538,26 +578,25 @@ function HomePage({
               </span>
             ))}
           </div>
+        </div>
+      </section>
 
-          <div className="hero-actions">
-            <a className="primary-action" href="#estimate">
-              Get a free estimate
-              <ArrowRight size={18} aria-hidden="true" />
-            </a>
-            <button className="secondary-action button-link" type="button" onClick={() => goSection('ai')}>
-              <Palette size={18} aria-hidden="true" />
-              Design your bathroom
-            </button>
-          </div>
-
-          <div className="trust-strip" aria-label="Company highlights">
-            {proofPoints.slice(0, 3).map((point) => (
-              <span key={point}>
-                <CheckCircle2 size={16} aria-hidden="true" />
+      <section className="estimate-section" aria-label="Request an estimate">
+        <div className="estimate-copy">
+          <p className="eyebrow">Start your project</p>
+          <h2>Tell us about your remodel.</h2>
+          <p>
+            Send your project details and we will follow up within one business day with next steps
+            and a free, no-pressure estimate.
+          </p>
+          <ul className="estimate-points">
+            {proofPoints.map((point) => (
+              <li key={point}>
+                <CheckCircle2 size={18} aria-hidden="true" />
                 {point}
-              </span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         <LeadPanel
