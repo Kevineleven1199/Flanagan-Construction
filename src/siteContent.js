@@ -1,0 +1,127 @@
+import { defaultSiteContent } from './content'
+
+export const CONTENT_STORAGE_KEY = 'flanagan-site-content'
+export const LEADS_STORAGE_KEY = 'flanagan-leads'
+export const ADMIN_SESSION_KEY = 'flanagan-admin-passcode'
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+export function mergeSiteContent(base = defaultSiteContent, overrides = {}) {
+  if (Array.isArray(base)) return Array.isArray(overrides) ? overrides : base
+  if (!isPlainObject(base)) return overrides ?? base
+
+  const merged = { ...base }
+  if (!isPlainObject(overrides)) return merged
+
+  for (const [key, value] of Object.entries(overrides)) {
+    merged[key] = mergeSiteContent(base[key], value)
+  }
+
+  return merged
+}
+
+export function cloneSiteContent(content) {
+  return mergeSiteContent(defaultSiteContent, JSON.parse(JSON.stringify(content || {})))
+}
+
+export function loadStoredContent() {
+  try {
+    const stored = window.localStorage.getItem(CONTENT_STORAGE_KEY)
+    if (!stored) return defaultSiteContent
+    const parsed = JSON.parse(stored)
+    if (parsed.contentVersion && parsed.contentVersion !== defaultSiteContent.contentVersion) {
+      window.localStorage.removeItem(CONTENT_STORAGE_KEY)
+      return defaultSiteContent
+    }
+    return mergeSiteContent(defaultSiteContent, parsed)
+  } catch {
+    return defaultSiteContent
+  }
+}
+
+export function saveStoredContent(content) {
+  try {
+    window.localStorage.setItem(CONTENT_STORAGE_KEY, JSON.stringify(content))
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}
+
+export function resetStoredContent() {
+  try {
+    window.localStorage.removeItem(CONTENT_STORAGE_KEY)
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}
+
+export async function fetchPublishedContent() {
+  const response = await fetch('/api/site-content', {
+    headers: { Accept: 'application/json' },
+  })
+  if (!response.ok) throw new Error(`Content request failed: ${response.status}`)
+  const payload = await response.json()
+  return mergeSiteContent(defaultSiteContent, payload.content || payload)
+}
+
+export function cssUrl(value) {
+  const url = String(value || '').replace(/"/g, '%22')
+  return `url("${url}")`
+}
+
+export function makeLeadId(lead = {}) {
+  if (lead.id) return String(lead.id)
+  const source = [
+    lead.receivedAt,
+    lead.createdAt,
+    lead.name,
+    lead.phone,
+    lead.email,
+    Math.random().toString(36).slice(2),
+  ]
+    .filter(Boolean)
+    .join('-')
+  return `lead-${source.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64)}`
+}
+
+export function normalizeLead(lead = {}, index = 0) {
+  const receivedAt = lead.receivedAt || lead.createdAt || new Date().toISOString()
+  return {
+    id: makeLeadId({ ...lead, receivedAt }) || `lead-${index}`,
+    name: lead.name || 'Website lead',
+    phone: lead.phone || '',
+    email: lead.email || '',
+    projectType: lead.projectType || 'Project',
+    budget: lead.budget || 'Not sure yet',
+    timeline: lead.timeline || 'Planning ahead',
+    message: lead.message || '',
+    selectedNeeds: Array.isArray(lead.selectedNeeds) ? lead.selectedNeeds : [],
+    funnelGroup: lead.funnelGroup || '',
+    leadKind: lead.leadKind || 'Final request',
+    status: lead.status || 'New',
+    priority: lead.priority || 'Warm',
+    nextStep: lead.nextStep || '',
+    notes: lead.notes || '',
+    receivedAt,
+    updatedAt: lead.updatedAt || '',
+  }
+}
+
+export function loadStoredLeads() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(LEADS_STORAGE_KEY) || '[]')
+    return stored.map(normalizeLead)
+  } catch {
+    return []
+  }
+}
+
+export function saveStoredLeads(leads) {
+  try {
+    window.localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(leads.map(normalizeLead).slice(0, 200)))
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}

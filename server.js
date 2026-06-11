@@ -2,7 +2,7 @@
 //
 // Why this exists: the site is a static Vite/React build, but Railway (and any
 // container host) needs a real process that listens on the injected $PORT and
-// binds to 0.0.0.0 — otherwise the deploy has nothing to route to and the page
+// binds to 0.0.0.0; otherwise the deploy has nothing to route to and the page
 // never goes live. This zero-dependency Node server serves the built `dist/`
 // folder with gzip + caching, falls back to index.html for client-side routes,
 // exposes a /health check for Railway, and captures rate-limited quote leads at
@@ -12,7 +12,8 @@
 import http from 'node:http'
 import zlib from 'node:zlib'
 import { createReadStream, existsSync, statSync } from 'node:fs'
-import { appendFile, readFile } from 'node:fs/promises'
+import { appendFile, readFile, writeFile } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildWebhookPayload } from './lead-delivery.js'
@@ -22,6 +23,10 @@ const distDir = resolve(root, 'dist')
 const port = Number(process.env.PORT) || 8080
 const host = '0.0.0.0'
 const leadWebhookUrl = process.env.LEAD_WEBHOOK_URL || ''
+const adminPassword = process.env.ADMIN_PASSWORD || ''
+const siteContentPath = join(root, 'site-content.json')
+const leadLogPath = join(root, 'leads.log')
+const leadCrmPath = join(root, 'lead-crm.json')
 
 // The canonical domain baked into index.html / robots / sitemap at build time.
 // At request time it is rewritten to the actual serving origin (see withOrigin)
@@ -69,7 +74,7 @@ const securityHeaders = {
     "object-src 'none'",
     "frame-ancestors 'self'",
     "form-action 'self'",
-    "img-src 'self' data: https://images.unsplash.com",
+    "img-src 'self' data: https:",
     "style-src 'self' 'unsafe-inline'",
     "script-src 'self'",
     "connect-src 'self'",
@@ -116,6 +121,179 @@ function send(res, status, headers, body, gzip = false) {
 
 function sendJson(res, status, payload, gzip = false) {
   send(res, status, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(payload), gzip)
+}
+
+function readJsonBody(req, limit = 400000) {
+  return new Promise((resolveBody, rejectBody) => {
+    let body = ''
+    req.on('data', (chunk) => {
+      body += chunk
+      if (body.length > limit) {
+        rejectBody(new Error('Request body too large.'))
+        req.destroy()
+      }
+    })
+    req.on('end', () => {
+      try {
+        resolveBody(JSON.parse(body || '{}'))
+      } catch {
+        rejectBody(new Error('Invalid JSON.'))
+      }
+    })
+    req.on('error', rejectBody)
+  })
+}
+
+function requireAdmin(req, res, gzipOk) {
+  if (!adminPassword) {
+    sendJson(
+      res,
+      503,
+      {
+        ok: false,
+        error: 'Set ADMIN_PASSWORD on the server before using production admin.',
+      },
+      gzipOk,
+    )
+    return false
+  }
+
+  const header = String(req.headers.authorization || '')
+  const token = header.replace(/^Bearer\s+/i, '').trim()
+  if (token !== adminPassword) {
+    sendJson(res, 401, { ok: false, error: 'Admin passcode required.' }, gzipOk)
+    return false
+  }
+
+  return true
+}
+
+async function readJsonFile(filePath, fallback) {
+  try {
+    return JSON.parse(await readFile(filePath, 'utf8'))
+  } catch {
+    return fallback
+  }
+}
+
+async function writeJsonFile(filePath, data) {
+  await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
+}
+
+function leadIdFor(lead, index = 0) {
+  if (lead.id) return String(lead.id)
+  const seed = [lead.receivedAt, lead.createdAt, lead.name, lead.phone, lead.email, index].join('|')
+  return `lead-${createHash('sha1').update(seed).digest('hex').slice(0, 14)}`
+}
+
+function normalizeLeadRecord(lead, index = 0, updates = {}) {
+  const receivedAt = lead.receivedAt || lead.createdAt || new Date().toISOString()
+  return {
+    id: leadIdFor({ ...lead, receivedAt }, index),
+    name: String(lead.name || 'Website lead'),
+    phone: String(lead.phone || ''),
+    email: String(lead.email || ''),
+    projectType: String(lead.projectType || 'Project'),
+    budget: String(lead.budget || 'Not sure yet'),
+    timeline: String(lead.timeline || 'Planning ahead'),
+    message: String(lead.message || ''),
+    selectedNeeds: Array.isArray(lead.selectedNeeds) ? lead.selectedNeeds : [],
+    funnelGroup: String(lead.funnelGroup || ''),
+    leadKind: String(lead.leadKind || ''),
+    source: String(lead.source || 'flanagan-construction-website'),
+    receivedAt,
+    status: updates.status || lead.status || 'New',
+    priority: updates.priority || lead.priority || 'Warm',
+    nextStep: updates.nextStep || lead.nextStep || '',
+    notes: updates.notes || lead.notes || '',
+    updatedAt: updates.updatedAt || lead.updatedAt || '',
+  }
+}
+
+async function readLeadsWithCrm() {
+  const log = await readFile(leadLogPath, 'utf8').catch(() => '')
+  const lines = log.split('\n').filter(Boolean)
+  const crm = await readJsonFile(leadCrmPath, {})
+  const leadMap = new Map()
+
+  lines.forEach((line, index) => {
+      try {
+        const lead = JSON.parse(line)
+        const id = leadIdFor(lead, index)
+        leadMap.set(id, normalizeLeadRecord({ ...lead, id }, index, crm[id] || {}))
+      } catch {
+        // Ignore malformed log lines.
+      }
+    })
+
+  return [...leadMap.values()]
+    .sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())
+}
+
+async function handleSiteContent(req, res, gzipOk) {
+  if (req.method !== 'GET') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    return
+  }
+
+  const content = await readJsonFile(siteContentPath, {})
+  sendJson(res, 200, { ok: true, content }, gzipOk)
+}
+
+async function handleAdminContent(req, res, gzipOk) {
+  if (!requireAdmin(req, res, gzipOk)) return
+
+  if (req.method === 'GET') {
+    const content = await readJsonFile(siteContentPath, {})
+    sendJson(res, 200, { ok: true, content }, gzipOk)
+    return
+  }
+
+  if (req.method === 'PUT') {
+    try {
+      const data = await readJsonBody(req)
+      await writeJsonFile(siteContentPath, data.content || data)
+      sendJson(res, 200, { ok: true }, gzipOk)
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message || 'Invalid content.' }, gzipOk)
+    }
+    return
+  }
+
+  send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, PUT' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+}
+
+async function handleAdminLeads(req, res, gzipOk, pathname) {
+  if (!requireAdmin(req, res, gzipOk)) return
+
+  if (pathname === '/api/admin/leads' && req.method === 'GET') {
+    sendJson(res, 200, { ok: true, leads: await readLeadsWithCrm() }, gzipOk)
+    return
+  }
+
+  const match = pathname.match(/^\/api\/admin\/leads\/([^/]+)$/)
+  if (match && req.method === 'PATCH') {
+    try {
+      const id = decodeURIComponent(match[1])
+      const data = await readJsonBody(req, 100000)
+      const crm = await readJsonFile(leadCrmPath, {})
+      crm[id] = {
+        ...(crm[id] || {}),
+        status: data.status,
+        priority: data.priority,
+        nextStep: data.nextStep,
+        notes: data.notes,
+        updatedAt: data.updatedAt || new Date().toISOString(),
+      }
+      await writeJsonFile(leadCrmPath, crm)
+      sendJson(res, 200, { ok: true, lead: crm[id] }, gzipOk)
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message || 'Lead update failed.' }, gzipOk)
+    }
+    return
+  }
+
+  send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, PATCH' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
 }
 
 // Vite emits content-hashed asset names (e.g. index-DiNKpkIN.js). Those can be
@@ -253,6 +431,7 @@ async function handleLead(req, res, gzipOk) {
     }
 
     const lead = {
+      id: String(data.leadId || data.id || randomUUID()),
       name,
       phone,
       email: String(data.email || '').trim(),
@@ -260,8 +439,15 @@ async function handleLead(req, res, gzipOk) {
       budget: String(data.budget || '').trim(),
       timeline: String(data.timeline || '').trim(),
       message: String(data.message || '').trim(),
+      selectedNeeds: Array.isArray(data.selectedNeeds) ? data.selectedNeeds.map(String) : [],
+      funnelGroup: String(data.funnelGroup || '').trim(),
+      leadKind: String(data.leadKind || 'Final request').trim(),
       source: 'flanagan-construction-website',
       receivedAt: new Date().toISOString(),
+      status: 'New',
+      priority: String(data.priority || 'Warm'),
+      nextStep: '',
+      notes: '',
       ip,
     }
 
@@ -270,7 +456,7 @@ async function handleLead(req, res, gzipOk) {
 
     // Best-effort durable copy (note: container disks are ephemeral on Railway).
     try {
-      await appendFile(join(root, 'leads.log'), `${JSON.stringify(lead)}\n`)
+      await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
     } catch (error) {
       console.error('[LEAD] could not write leads.log:', error?.message)
     }
@@ -299,6 +485,59 @@ async function handleLead(req, res, gzipOk) {
   })
 }
 
+async function handleLeadDraft(req, res, gzipOk) {
+  let data
+  try {
+    data = await readJsonBody(req, 100000)
+  } catch {
+    sendJson(res, 400, { ok: false, error: 'Invalid request.' }, gzipOk)
+    return
+  }
+
+  if (data.company) {
+    sendJson(res, 200, { ok: true }, gzipOk)
+    return
+  }
+
+  const phone = String(data.phone || '').trim()
+  const email = String(data.email || '').trim()
+  if (!phone && !email) {
+    sendJson(res, 422, { ok: false, error: 'Phone or email is required.' }, gzipOk)
+    return
+  }
+
+  const lead = {
+    id: String(data.leadId || data.id || randomUUID()),
+    name: String(data.name || '').trim() || 'Started website request',
+    phone,
+    email,
+    projectType: String(data.projectType || data.funnelGroup || 'Started request').trim(),
+    budget: String(data.budget || '').trim(),
+    timeline: String(data.timeline || '').trim(),
+    message: String(data.message || '').trim(),
+    selectedNeeds: Array.isArray(data.selectedNeeds) ? data.selectedNeeds.map(String) : [],
+    funnelGroup: String(data.funnelGroup || '').trim(),
+    leadKind: 'Started funnel',
+    source: 'flanagan-construction-started-funnel',
+    receivedAt: new Date().toISOString(),
+    status: 'Started',
+    priority: String(data.priority || 'Warm'),
+    nextStep: '',
+    notes: '',
+    ip: clientIp(req),
+  }
+
+  console.log('[LEAD_DRAFT]', JSON.stringify(lead))
+
+  try {
+    await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
+  } catch (error) {
+    console.error('[LEAD_DRAFT] could not write leads.log:', error?.message)
+  }
+
+  sendJson(res, 200, { ok: true, leadId: lead.id }, gzipOk)
+}
+
 const server = http.createServer(async (req, res) => {
   const method = req.method || 'GET'
   const pathname = decodeURIComponent((req.url || '/').split('?')[0])
@@ -307,6 +546,30 @@ const server = http.createServer(async (req, res) => {
   // Health check for Railway / uptime monitors.
   if (pathname === '/health' || pathname === '/healthz') {
     sendJson(res, 200, { status: 'ok' })
+    return
+  }
+
+  if (pathname === '/api/site-content') {
+    await handleSiteContent(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/admin/content') {
+    await handleAdminContent(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/admin/leads' || pathname.startsWith('/api/admin/leads/')) {
+    await handleAdminLeads(req, res, gzipOk, pathname)
+    return
+  }
+
+  if (pathname === '/api/lead-draft') {
+    if (method === 'POST') {
+      await handleLeadDraft(req, res, gzipOk)
+    } else {
+      send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'POST' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    }
     return
   }
 

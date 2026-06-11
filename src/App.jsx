@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   Award,
@@ -26,7 +26,18 @@ import {
   WandSparkles,
   X,
 } from 'lucide-react'
-import { business, faqs, guarantees, proofPoints, services, stats, testimonials } from './content'
+import AdminDashboard from './AdminDashboard'
+import { defaultSiteContent } from './content'
+import {
+  cssUrl,
+  fetchPublishedContent,
+  loadStoredContent,
+  makeLeadId,
+  mergeSiteContent,
+  normalizeLead,
+  saveStoredContent,
+  saveStoredLeads,
+} from './siteContent'
 import './App.css'
 
 // Best-effort analytics: pushes events to a GTM/GA4-style dataLayer if one
@@ -40,60 +51,62 @@ function track(event, data = {}) {
   }
 }
 
-const phoneHref = `tel:${business.phone.replace(/\D/g, '')}`
+const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
 
-const projectTypes = ['Bathroom remodel', 'Shower conversion', 'Kitchen', 'Basement', 'Addition', 'Repair']
-const budgetRanges = ['$2k-$10k', '$10k-$25k', '$25k-$50k', '$50k+', 'Not sure yet']
+const projectTypes = ['Kitchen', 'Bathroom', 'Deck', 'Addition', 'Interior work', 'Exterior work', 'Concrete', 'Commercial', 'Referral']
+const budgetRanges = ['Small repair', 'Medium project', 'Large project', 'Not sure yet']
 const timelines = ['ASAP', 'This month', '1-3 months', 'Planning ahead']
 const icons = [Bath, Sparkles, Home, Hammer]
 
-const heroCredibility = [
-  { icon: ShieldCheck, label: 'Licensed & insured' },
-  { icon: ClipboardCheck, label: 'Free written estimates' },
-  { icon: Clock3, label: 'Fast local scheduling' },
-]
-
-const gallery = [
-  {
-    title: 'Statement Tile',
-    copy: 'Floor-to-ceiling drama, clean glass, and fixtures that feel expensive before anyone reads a word.',
-  },
-  {
-    title: 'Walk-In Showers',
-    copy: 'Curbless entries, niches, benches, rainfall heads, and proper waterproofing behind the beauty.',
-  },
-  {
-    title: 'Vanity Glow-Ups',
-    copy: 'Better storage, stone counters, mirrors, lighting, trim, and paint that make the room feel finished.',
-  },
-]
+const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
+const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
+const aiMetricIcons = [ScanLine, Ruler, Palette]
 
 const processSteps = [
-  { title: 'Free consultation', copy: 'We visit, listen, and measure — no pressure and no obligation.' },
+  { title: 'Free consultation', copy: 'We visit, listen, and measure, with no pressure and no obligation.' },
   { title: 'Clear written estimate', copy: 'A detailed scope and price before any demolition begins.' },
   { title: 'Clean, careful build', copy: 'Tidy crews, daily jobsite care, and proper waterproofing.' },
   { title: 'Final walkthrough', copy: 'We review every detail together and handle the punch list.' },
 ]
 
-const advisorStyles = ['Hotel Spa', 'Black + Brass', 'Coastal Calm', 'Modern Organic']
-const advisorScopes = ['Tub-to-shower', 'Full gut remodel', 'Vanity + tile refresh', 'Aging-in-place']
-const advisorPriorities = ['Luxury', 'Speed', 'Budget control', 'Resale value']
+const advisorStyles = ['Kitchen', 'Bathroom', 'Deck/porch', 'Concrete']
+const advisorScopes = ['Remodel', 'Repair', 'Build new', 'Fix bad work']
+const advisorPriorities = ['Quality', 'Speed', 'Budget control', 'Resale value']
 
 const styleNotes = {
-  'Hotel Spa': 'warm stone, glass, rainfall shower, hidden lighting',
-  'Black + Brass': 'dark fixtures, brass accents, high-contrast tile',
-  'Coastal Calm': 'soft tile, brushed nickel, light wood, quiet storage',
-  'Modern Organic': 'large-format tile, wood vanity, matte fixtures, plants',
+  Kitchen: 'layout, cabinets, counters, flooring, lighting, and trade coordination',
+  Bathroom: 'tile, ventilation, plumbing coordination, waterproofing, and finish work',
+  'Deck/porch': 'framing, decking, railings, stairs, screens, and exterior details',
+  Concrete: 'sidewalks, driveways, pavers, patios, walls, and site work',
 }
 
 const scopeBudgets = {
-  'Tub-to-shower': '$10k-$25k',
-  'Full gut remodel': '$25k-$50k',
-  'Vanity + tile refresh': '$10k-$25k',
-  'Aging-in-place': '$25k-$50k',
+  Remodel: 'Medium project',
+  Repair: 'Small repair',
+  'Build new': 'Large project',
+  'Fix bad work': 'Not sure yet',
 }
 
-function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submitted, onReset }) {
+function LeadPanel({
+  business,
+  estimateContent,
+  leadFunnel,
+  form,
+  handleChange,
+  handleSubmit,
+  status,
+  submitting,
+  submitted,
+  onReset,
+  selectedGroupId,
+  setSelectedGroupId,
+  selectedNeeds,
+  toggleNeed,
+  draftSaving,
+  lastSavedAt,
+}) {
+  const activeGroup = leadFunnel.groups.find((group) => group.id === selectedGroupId) || leadFunnel.groups[0]
+
   if (submitted) {
     const firstName = form.name ? form.name.trim().split(' ')[0] : ''
     return (
@@ -103,8 +116,8 @@ function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submi
             <CheckCircle2 size={20} aria-hidden="true" />
           </span>
           <div>
-            <h2>Request received</h2>
-            <p>Thanks{firstName ? `, ${firstName}` : ''}! We will reach out within one business day.</p>
+            <h2>{estimateContent.successTitle}</h2>
+            <p>Thanks{firstName ? `, ${firstName}` : ''}! {estimateContent.successCopy}</p>
           </div>
         </div>
         <ul className="success-steps">
@@ -122,7 +135,7 @@ function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submi
           </li>
         </ul>
         <div className="success-actions">
-          <a className="primary-action" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+          <a className="primary-action" href={phoneHrefFor(business.phone)}>
             <Phone size={18} aria-hidden="true" />
             Call now
           </a>
@@ -141,8 +154,8 @@ function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submi
           <Sparkles size={18} aria-hidden="true" />
         </span>
         <div>
-          <h2>Get your free estimate</h2>
-          <p>Tell us what you need. We will follow up with next steps.</p>
+          <h2>{estimateContent.formTitle}</h2>
+          <p>{estimateContent.formCopy}</p>
         </div>
       </div>
 
@@ -160,11 +173,6 @@ function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submi
           </label>
         </div>
 
-        <label>
-          Name
-          <input name="name" value={form.name} onChange={handleChange} autoComplete="name" required />
-        </label>
-
         <div className="field-grid">
           <label>
             Phone
@@ -179,63 +187,121 @@ function LeadPanel({ form, handleChange, handleSubmit, status, submitting, submi
           </label>
           <label>
             Email
-            <input name="email" type="email" value={form.email} onChange={handleChange} autoComplete="email" />
+            <input name="email" type="email" value={form.email} onChange={handleChange} autoComplete="email" required />
           </label>
+        </div>
+
+        <label>
+          Name
+          <input name="name" value={form.name} onChange={handleChange} autoComplete="name" required />
+        </label>
+
+        <div className="funnel-save-note" aria-live="polite">
+          <CheckCircle2 size={16} aria-hidden="true" />
+          {draftSaving
+            ? 'Saving your started request...'
+            : lastSavedAt
+              ? `Started request saved at ${lastSavedAt}`
+              : leadFunnel.contactNudge}
+        </div>
+
+        <div className="funnel-roadmap" aria-label="Project category">
+          {leadFunnel.groups.map((group) => (
+            <button
+              className={group.id === activeGroup.id ? 'funnel-road active' : 'funnel-road'}
+              key={group.id}
+              type="button"
+              aria-pressed={group.id === activeGroup.id}
+              onClick={() => setSelectedGroupId(group.id)}
+            >
+              <strong>{group.label}</strong>
+              <span>{group.summary}</span>
+            </button>
+          ))}
+        </div>
+
+        <fieldset className="funnel-needs">
+          <legend>{activeGroup.label} needs</legend>
+          <div className="need-chip-grid">
+            {activeGroup.needs.map((need) => {
+              const selected = selectedNeeds.includes(need)
+              return (
+                <button
+                  className={selected ? 'need-chip active' : 'need-chip'}
+                  key={need}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleNeed(need)}
+                >
+                  {selected ? <CheckCircle2 size={16} aria-hidden="true" /> : <span aria-hidden="true">+</span>}
+                  {need}
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+
+        <div className="selected-needs-box">
+          <strong>Selected work</strong>
+          {selectedNeeds.length ? (
+            <div>
+              {selectedNeeds.map((need) => (
+                <button key={need} type="button" onClick={() => toggleNeed(need)}>
+                  {need}
+                  <X size={14} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p>Tap anything that fits. You can choose more than one.</p>
+          )}
         </div>
 
         <div className="field-grid">
           <label>
-            Project
-            <select name="projectType" value={form.projectType} onChange={handleChange}>
-              {projectTypes.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Budget
+            Job size
             <select name="budget" value={form.budget} onChange={handleChange}>
               {budgetRanges.map((item) => (
                 <option key={item}>{item}</option>
               ))}
             </select>
           </label>
+          <label>
+            Timeline
+            <select name="timeline" value={form.timeline} onChange={handleChange}>
+              {timelines.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <label>
-          Timeline
-          <select name="timeline" value={form.timeline} onChange={handleChange}>
-            {timelines.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          What should we look at?
+          Anything else we should know?
           <textarea
             name="message"
             value={form.message}
             onChange={handleChange}
             rows="4"
-            placeholder="Example: remove tub, build walk-in shower, add tile niche, glass, vanity, and lighting."
-            required
+            placeholder="Example: kitchen and bathroom work, a cheaper bid that went wrong, concrete driveway, siding, or a subcontractor introduction."
           />
         </label>
 
         <button className="submit-button" type="submit" disabled={submitting}>
-          {submitting ? 'Sending…' : 'Send project request'}
+          {submitting ? 'Sending...' : 'Send project request'}
           <Mail size={18} aria-hidden="true" />
         </button>
         <p className="form-note" aria-live="polite">
-          {status || 'No pressure. Just a simple first step.'}
+          {status || estimateContent.formNote}
         </p>
       </form>
     </aside>
   )
 }
 
-function SiteHeader({ menuOpen, goHome, goSection, setMenuOpen }) {
+function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
+  const phoneHref = phoneHrefFor(business.phone)
+
   return (
     <header className="site-header">
       <a
@@ -386,7 +452,7 @@ function AdvisorPanel({ advisor, aiPlan, updateAdvisor, addAiPlanToForm }) {
         </div>
         <div>
           <h4>{aiPlan.headline}</h4>
-          <p>Budget signal: {aiPlan.budget}</p>
+          <p>Job size: {aiPlan.budget}</p>
           <ul>
             {aiPlan.bullets.map((bullet) => (
               <li key={bullet}>
@@ -406,7 +472,7 @@ function AdvisorPanel({ advisor, aiPlan, updateAdvisor, addAiPlanToForm }) {
   )
 }
 
-function StatsBand() {
+function StatsBand({ stats }) {
   return (
     <section className="stats-band" aria-label="Company highlights">
       {stats.map((stat) => (
@@ -434,12 +500,12 @@ function Stars({ rating }) {
   )
 }
 
-function ReviewsSection() {
+function ReviewsSection({ reviews, testimonials }) {
   return (
     <section className="reviews-section" id="reviews" aria-label="Customer reviews">
       <div className="section-heading">
-        <p className="eyebrow">What homeowners say</p>
-        <h2>Reviews from Newark-area remodels.</h2>
+        <p className="eyebrow">{reviews.eyebrow}</p>
+        <h2>{reviews.title}</h2>
       </div>
       <div className="reviews-grid">
         {testimonials.map((item, index) => (
@@ -458,19 +524,16 @@ function ReviewsSection() {
   )
 }
 
-function GuaranteesSection() {
+function GuaranteesSection({ guaranteesIntro, guarantees }) {
   return (
     <section className="guarantees-section" aria-label="Our promise">
       <div className="guarantees-copy">
         <p className="eyebrow">
           <Award size={16} aria-hidden="true" />
-          Our promise
+          {guaranteesIntro.eyebrow}
         </p>
-        <h2>Done right behind the tile, not just in front of it.</h2>
-        <p>
-          The difference between a remodel that lasts and one that leaks is the work you cannot see.
-          Here is what every Flanagan project includes.
-        </p>
+        <h2>{guaranteesIntro.title}</h2>
+        <p>{guaranteesIntro.copy}</p>
       </div>
       <ul className="guarantees-list">
         {guarantees.map((item) => (
@@ -484,15 +547,15 @@ function GuaranteesSection() {
   )
 }
 
-function FaqSection() {
+function FaqSection({ faqIntro, faqs }) {
   return (
     <section className="faq-section" id="faq" aria-label="Frequently asked questions">
       <div className="section-heading">
         <p className="eyebrow">
           <HelpCircle size={16} aria-hidden="true" />
-          FAQ
+          {faqIntro.eyebrow}
         </p>
-        <h2>Answers before you ask.</h2>
+        <h2>{faqIntro.title}</h2>
       </div>
       <div className="faq-list">
         {faqs.map((item) => (
@@ -509,7 +572,44 @@ function FaqSection() {
   )
 }
 
+function ReferralSection({ referralSpeech }) {
+  return (
+    <section className="referral-section" aria-label="BNI referral speech">
+      <div className="referral-copy">
+        <p className="eyebrow">{referralSpeech.eyebrow}</p>
+        <h2>{referralSpeech.title}</h2>
+        <p>{referralSpeech.copy}</p>
+      </div>
+      <div className="referral-lists">
+        <article>
+          <h3>{referralSpeech.referralIntro}</h3>
+          <ul>
+            {referralSpeech.referralPartners.map((item) => (
+              <li key={item}>
+                <CheckCircle2 size={17} aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </article>
+        <article>
+          <h3>{referralSpeech.workIntro}</h3>
+          <ul>
+            {referralSpeech.targetWork.map((item) => (
+              <li key={item}>
+                <CheckCircle2 size={17} aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </article>
+      </div>
+    </section>
+  )
+}
+
 function HomePage({
+  content,
   advisor,
   aiPlan,
   form,
@@ -524,29 +624,61 @@ function HomePage({
   goSection,
   reveal,
   setReveal,
+  selectedGroupId,
+  setSelectedGroupId,
+  selectedNeeds,
+  toggleNeed,
+  draftSaving,
+  lastSavedAt,
 }) {
+  const {
+    aiPlanner,
+    business,
+    compare,
+    cta,
+    estimate,
+    faqIntro,
+    faqs,
+    gallery,
+    guarantees,
+    guaranteesIntro,
+    hero,
+    heroCredibility,
+    images,
+    leadFunnel,
+    processSteps: contentProcessSteps,
+    proofPoints,
+    quickBand,
+    referralSpeech,
+    reviews,
+    services,
+    servicesIntro,
+    stats,
+    testimonials,
+    work,
+  } = content
+  const phoneHref = phoneHrefFor(business.phone)
+  const activeProcessSteps = contentProcessSteps?.length ? contentProcessSteps : processSteps
+
   return (
     <>
-      <section id="top" className="hero-section luxury-hero">
+      <section id="top" className="hero-section grounded-hero" style={{ '--hero-photo': cssUrl(images.hero) }}>
         <div className="hero-inner">
           <p className="hero-eyebrow">
             <span className="eyebrow-rule" aria-hidden="true"></span>
-            Welcome to Flanagan Construction
+            {hero.eyebrow}
             <span className="eyebrow-rule" aria-hidden="true"></span>
           </p>
           <h1>
-            Luxury Bathroom Remodeling in{' '}
+            {hero.titlePrefix}{' '}
             <span className="hl">
-              Newark, DE
+              {hero.highlight}
               <svg className="swoosh" viewBox="0 0 320 26" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M6 18 Q 160 30 314 9" stroke="#f2b84b" strokeWidth="6" fill="none" strokeLinecap="round" />
               </svg>
             </span>
           </h1>
-          <p className="hero-lede">
-            Walk-in showers, spa bathrooms, kitchens, and additions — built right, with clean
-            waterproofing and a quote process that feels polished from the first click.
-          </p>
+          <p className="hero-lede">{hero.lede}</p>
           <div className="hero-actions">
             <a
               className="primary-action"
@@ -556,7 +688,7 @@ function HomePage({
                 goSection('estimate')
               }}
             >
-              Get a free estimate
+              {hero.primaryCta}
               <ArrowRight size={18} aria-hidden="true" />
             </a>
             <a
@@ -567,28 +699,28 @@ function HomePage({
                 goSection('services')
               }}
             >
-              Our services
+              {hero.secondaryCta}
             </a>
           </div>
           <div className="hero-tech-strip" aria-label="Why homeowners choose us">
-            {heroCredibility.map(({ icon: Icon, label }) => (
-              <span key={label}>
-                <Icon size={16} aria-hidden="true" />
-                {label}
-              </span>
-            ))}
+            {heroCredibility.map((label, index) => {
+              const Icon = heroCredibilityIcons[index] || ShieldCheck
+              return (
+                <span key={label}>
+                  <Icon size={16} aria-hidden="true" />
+                  {label}
+                </span>
+              )
+            })}
           </div>
         </div>
       </section>
 
-      <section className="estimate-section" aria-label="Request an estimate">
+      <section id="estimate" className="estimate-section" aria-label="Request an estimate">
         <div className="estimate-copy">
-          <p className="eyebrow">Start your project</p>
-          <h2>Tell us about your remodel.</h2>
-          <p>
-            Send your project details and we will follow up within one business day with next steps
-            and a free, no-pressure estimate.
-          </p>
+          <p className="eyebrow">{estimate.eyebrow}</p>
+          <h2>{estimate.title}</h2>
+          <p>{estimate.copy}</p>
           <ul className="estimate-points">
             {proofPoints.map((point) => (
               <li key={point}>
@@ -600,6 +732,9 @@ function HomePage({
         </div>
 
         <LeadPanel
+          business={business}
+          estimateContent={estimate}
+          leadFunnel={leadFunnel}
           form={form}
           handleChange={handleChange}
           handleSubmit={handleSubmit}
@@ -607,36 +742,40 @@ function HomePage({
           submitting={submitting}
           submitted={submitted}
           onReset={onReset}
+          selectedGroupId={selectedGroupId}
+          setSelectedGroupId={setSelectedGroupId}
+          selectedNeeds={selectedNeeds}
+          toggleNeed={toggleNeed}
+          draftSaving={draftSaving}
+          lastSavedAt={lastSavedAt}
         />
       </section>
 
       <section className="quick-band" aria-label="Service area and availability">
-        <span>
-          <Clock3 size={18} aria-hidden="true" />
-          Bathroom-first estimates
-        </span>
-        <span>
-          <ShieldCheck size={18} aria-hidden="true" />
-          Waterproofing standards
-        </span>
-        <span>
-          <ClipboardCheck size={18} aria-hidden="true" />
-          Written scope before demo
-        </span>
+        {quickBand.map((item, index) => {
+          const Icon = quickBandIcons[index] || CheckCircle2
+          return (
+            <span key={item}>
+              <Icon size={18} aria-hidden="true" />
+              {item}
+            </span>
+          )
+        })}
       </section>
 
-      <StatsBand />
+      <StatsBand stats={stats} />
 
       <section className="section" id="services">
         <div className="section-heading">
-          <p className="eyebrow">What homeowners want most</p>
-          <h2>High-end details, handled by a crew that respects the house.</h2>
+          <p className="eyebrow">{servicesIntro.eyebrow}</p>
+          <h2>{servicesIntro.title}</h2>
         </div>
         <div className="service-grid">
           {services.map((service, index) => {
             const Icon = icons[index] || Paintbrush
             return (
-              <article className="service-card" key={service.title}>
+              <article className={index < 3 ? 'service-card priority-service-card' : 'service-card'} key={service.title}>
+                {index < 3 ? <span className="priority-rank">Top {index + 1}</span> : null}
                 <span className="service-icon">
                   <Icon size={22} aria-hidden="true" />
                 </span>
@@ -650,16 +789,17 @@ function HomePage({
 
       <section className="gallery-section" aria-label="Bathroom remodeling inspiration">
         <div className="gallery-copy">
-          <p className="eyebrow">Bathroom inspiration</p>
-          <h2>See the dream before you ask the price.</h2>
-          <p>
-            Premium finishes, walk-in showers, and clean modern vanities — the kind of bathroom
-            people actually brag about. Tell us your favorite look and we will price it out.
-          </p>
+          <p className="eyebrow">{gallery.eyebrow}</p>
+          <h2>{gallery.title}</h2>
+          <p>{gallery.copy}</p>
         </div>
         <div className="bathroom-gallery">
-          {gallery.map((item, index) => (
-            <article className={`bathroom-card bathroom-card-${index + 1}`} key={item.title}>
+          {gallery.items.map((item, index) => (
+            <article
+              className={`bathroom-card bathroom-card-${index + 1}`}
+              key={item.title}
+              style={{ backgroundImage: cssUrl(item.image) }}
+            >
               <div>
                 <span>0{index + 1}</span>
                 <h3>{item.title}</h3>
@@ -670,32 +810,28 @@ function HomePage({
         </div>
       </section>
 
-      <ReviewsSection />
+      <ReferralSection referralSpeech={referralSpeech} />
 
-      <section className="ai-section" id="ai">
+      <ReviewsSection reviews={reviews} testimonials={testimonials} />
+
+      <section className="ai-section" id="ai" style={{ '--ai-photo': cssUrl(images.aiBackground) }}>
         <div className="ai-copy">
           <p className="eyebrow">
             <BrainCircuit size={16} aria-hidden="true" />
-            Plan your remodel
+            {aiPlanner.eyebrow}
           </p>
-          <h2>Design your dream bathroom in under a minute.</h2>
-          <p>
-            Pick a style, scope, and priority. We will build a quote-ready plan and drop it straight
-            into your estimate request — so your first call with us is already a head start.
-          </p>
+          <h2>{aiPlanner.title}</h2>
+          <p>{aiPlanner.copy}</p>
           <div className="ai-metrics" aria-label="Planner features">
-            <span>
-              <ScanLine size={18} aria-hidden="true" />
-              instant scope
-            </span>
-            <span>
-              <Ruler size={18} aria-hidden="true" />
-              budget signal
-            </span>
-            <span>
-              <Palette size={18} aria-hidden="true" />
-              style direction
-            </span>
+            {aiPlanner.metrics.map((metric, index) => {
+              const Icon = aiMetricIcons[index] || Sparkles
+              return (
+                <span key={metric}>
+                  <Icon size={18} aria-hidden="true" />
+                  {metric}
+                </span>
+              )
+            })}
           </div>
         </div>
 
@@ -711,18 +847,15 @@ function HomePage({
         <div className="compare-copy">
           <p className="eyebrow">
             <Camera size={16} aria-hidden="true" />
-            Before and after
+            {compare.eyebrow}
           </p>
-          <h2>The transformation, made obvious.</h2>
-          <p>
-            Drag the control to compare tired, builder-grade energy with the kind of finished
-            bathroom people actually brag about.
-          </p>
+          <h2>{compare.title}</h2>
+          <p>{compare.copy}</p>
         </div>
         <div className="compare-wrap">
           <div className="compare-stage" style={{ '--reveal': `${reveal}%` }}>
-            <div className="compare-image compare-before"></div>
-            <div className="compare-image compare-after"></div>
+            <div className="compare-image compare-before" style={{ backgroundImage: cssUrl(compare.beforeImage) }}></div>
+            <div className="compare-image compare-after" style={{ backgroundImage: cssUrl(compare.afterImage) }}></div>
             <div className="compare-label label-before">Before</div>
             <div className="compare-label label-after">After</div>
             <div className="compare-handle" aria-hidden="true"></div>
@@ -739,19 +872,16 @@ function HomePage({
         </div>
       </section>
 
-      <GuaranteesSection />
+      <GuaranteesSection guaranteesIntro={guaranteesIntro} guarantees={guarantees} />
 
-      <section className="work-section" id="work">
+      <section className="work-section" id="work" style={{ '--work-photo': cssUrl(images.workBackground) }}>
         <div className="work-copy">
-          <p className="eyebrow">How it works</p>
-          <h2>A calm, professional process from first call to final walkthrough.</h2>
-          <p>
-            No pressure and no surprises. You get a clear written scope and price before any
-            demolition begins, then a clean, careful build by a crew that respects your home.
-          </p>
+          <p className="eyebrow">{work.eyebrow}</p>
+          <h2>{work.title}</h2>
+          <p>{work.copy}</p>
         </div>
         <div className="process-list">
-          {processSteps.map((step, index) => (
+          {activeProcessSteps.map((step, index) => (
             <div className="process-step" key={step.title}>
               <span>{String(index + 1).padStart(2, '0')}</span>
               <div>
@@ -763,19 +893,19 @@ function HomePage({
         </div>
       </section>
 
-      <FaqSection />
+      <FaqSection faqIntro={faqIntro} faqs={faqs} />
 
       <section className="cta-band" aria-label="Request your estimate">
         <div>
-          <h2>Ready to start your remodel?</h2>
-          <p>Get a fast, free estimate from a trusted Newark-area crew.</p>
+          <h2>{cta.title}</h2>
+          <p>{cta.copy}</p>
         </div>
         <div className="cta-band-actions">
           <a className="primary-action" href="#estimate" onClick={() => goSection('estimate')}>
-            Get a free estimate
+            {cta.primaryCta}
             <ArrowRight size={18} aria-hidden="true" />
           </a>
-          <a className="secondary-action" href={`tel:${business.phone.replace(/\D/g, '')}`}>
+          <a className="secondary-action" href={phoneHref}>
             <Phone size={18} aria-hidden="true" />
             {business.phone}
           </a>
@@ -785,8 +915,9 @@ function HomePage({
   )
 }
 
-function SiteFooter({ goSection }) {
+function SiteFooter({ business, services, goSection }) {
   const year = new Date().getFullYear()
+  const phoneHref = phoneHrefFor(business.phone)
   const jump = (id) => (event) => {
     event.preventDefault()
     goSection(id)
@@ -833,7 +964,7 @@ function SiteFooter({ goSection }) {
             {business.phone}
           </a>
           <a href={`mailto:${business.email}`}>{business.email}</a>
-          <p>Mon–Fri, 8am–5pm</p>
+          <p>Mon-Fri, 8am-5pm</p>
           <p className="footer-badge">
             <ShieldCheck size={14} aria-hidden="true" />
             Licensed &amp; insured
@@ -843,15 +974,17 @@ function SiteFooter({ goSection }) {
 
       <div className="footer-bottom">
         <span>
-          © {year} {business.name}. Newark, Delaware.
+          Copyright {year} {business.name}. {business.location}.
         </span>
-        <span>Bathroom &amp; home remodeling • Free estimates</span>
+        <span>Construction, remodeling, repairs, and referrals</span>
       </div>
     </footer>
   )
 }
 
 function App() {
+  const [siteContent, setSiteContent] = useState(() => mergeSiteContent(defaultSiteContent, loadStoredContent()))
+  const [routePath, setRoutePath] = useState(() => window.location.pathname)
   const [menuOpen, setMenuOpen] = useState(false)
   const [reveal, setReveal] = useState(58)
   const [advisor, setAdvisor] = useState({
@@ -869,9 +1002,39 @@ function App() {
     message: '',
     company: '',
   })
+  const [selectedGroupId, setSelectedGroupId] = useState(defaultSiteContent.leadFunnel.groups[0].id)
+  const [selectedNeeds, setSelectedNeeds] = useState([])
+  const [draftSaving, setDraftSaving] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState('')
+  const leadIdRef = useRef(makeLeadId({ createdAt: new Date().toISOString(), source: 'funnel' }))
   const [status, setStatus] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const business = siteContent.business
+  const phoneHref = phoneHrefFor(business.phone)
+
+  useEffect(() => {
+    let ignore = false
+    fetchPublishedContent()
+      .then((publishedContent) => {
+        if (ignore) return
+        setSiteContent(publishedContent)
+        saveStoredContent(publishedContent)
+      })
+      .catch(() => {
+        // Static hosting or local Vite dev can run without the production API.
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleRoute = () => setRoutePath(window.location.pathname)
+    window.addEventListener('popstate', handleRoute)
+    return () => window.removeEventListener('popstate', handleRoute)
+  }, [])
 
   const aiPlan = useMemo(() => {
     const score =
@@ -880,7 +1043,7 @@ function App() {
       advisorScopes.indexOf(advisor.scope) * 2 +
       advisorPriorities.indexOf(advisor.priority)
     const priorityLine = {
-      Luxury: 'lead with the wow shot, premium fixtures, and a glass shower package',
+      Quality: 'price the real scope and line up the right trades before work starts',
       Speed: 'pre-select materials early and keep the footprint close to existing plumbing',
       'Budget control': 'separate must-haves from nice-to-haves before demo starts',
       'Resale value': 'prioritize timeless tile, storage, lighting, and durable waterproofing',
@@ -905,7 +1068,7 @@ function App() {
         `Name: ${form.name}`,
         `Phone: ${form.phone}`,
         `Email: ${form.email}`,
-        `Project type: ${form.projectType}`,
+        `Project type: ${selectedNeeds.length ? selectedNeeds.join(', ') : 'Not selected yet'}`,
         `Budget: ${form.budget}`,
         `Timeline: ${form.timeline}`,
         '',
@@ -915,10 +1078,14 @@ function App() {
     )
 
     return `mailto:${business.email}?subject=${subject}&body=${body}`
-  }, [form])
+  }, [business.email, form, selectedNeeds])
 
   const goHome = () => {
     setMenuOpen(false)
+    if (window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/')
+      setRoutePath('/')
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -932,37 +1099,130 @@ function App() {
     setForm((current) => ({ ...current, [name]: value }))
   }
 
+  const toggleNeed = (need) => {
+    setSelectedNeeds((current) =>
+      current.includes(need) ? current.filter((item) => item !== need) : [...current, need],
+    )
+  }
+
+  const leadPayload = (statusOverride = 'Started') => {
+    const activeGroup =
+      siteContent.leadFunnel.groups.find((group) => group.id === selectedGroupId) ||
+      siteContent.leadFunnel.groups[0]
+    const projectType = selectedNeeds.length ? selectedNeeds.join(', ') : activeGroup.label
+    const summaryLines = [
+      selectedNeeds.length ? `Selected needs: ${selectedNeeds.join(', ')}` : `Selected lane: ${activeGroup.label}`,
+      `Job size: ${form.budget}`,
+      `Timeline: ${form.timeline}`,
+      form.message ? `Notes: ${form.message}` : '',
+    ].filter(Boolean)
+
+    return {
+      ...form,
+      id: leadIdRef.current,
+      leadId: leadIdRef.current,
+      leadKind: statusOverride === 'Started' ? 'Started funnel' : 'Final request',
+      funnelGroup: activeGroup.label,
+      selectedNeeds,
+      projectType,
+      message: summaryLines.join('\n'),
+      status: statusOverride,
+      priority: selectedNeeds.some((need) => /fix|bad|commercial|addition|foundation/i.test(need))
+        ? 'Hot'
+        : 'Warm',
+    }
+  }
+
+  const saveLocalLeadBackup = (lead) => {
+    try {
+      const leads = JSON.parse(window.localStorage.getItem('flanagan-leads') || '[]').map(normalizeLead)
+      const nextLead = normalizeLead({
+        ...lead,
+        createdAt: lead.createdAt || new Date().toISOString(),
+        receivedAt: lead.receivedAt || new Date().toISOString(),
+      })
+      const deduped = [nextLead, ...leads.filter((item) => item.id !== nextLead.id)]
+      saveStoredLeads(deduped.slice(0, 200))
+    } catch {
+      // localStorage can be unavailable in private mode; ignore.
+    }
+  }
+
+  useEffect(() => {
+    const hasPhone = form.phone.replace(/\D/g, '').length >= 7
+    const hasEmail = /\S+@\S+\.\S+/.test(form.email)
+    if (submitted || form.company || (!hasPhone && !hasEmail)) return
+
+    const timeout = window.setTimeout(async () => {
+      setDraftSaving(true)
+      const draft = {
+        ...leadPayload('Started'),
+        receivedAt: new Date().toISOString(),
+      }
+      saveLocalLeadBackup(draft)
+
+      try {
+        await fetch('/api/lead-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(draft),
+        })
+      } catch {
+        // Static hosting can still keep the local backup.
+      } finally {
+        setLastSavedAt(new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
+        setDraftSaving(false)
+      }
+    }, 800)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  // leadPayload reads the same fields listed here; keeping the dependency list
+  // explicit prevents the autosave timer from resetting on every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    form.name,
+    form.phone,
+    form.email,
+    form.budget,
+    form.timeline,
+    form.message,
+    form.company,
+    selectedGroupId,
+    selectedNeeds,
+    submitted,
+  ])
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (submitting) return
     setSubmitting(true)
-    setStatus('Sending your request…')
+    setStatus('Sending your request...')
 
     // Keep a local backup so a lead is never lost to a flaky network.
-    try {
-      const leads = JSON.parse(window.localStorage.getItem('flanagan-leads') || '[]')
-      const lead = { ...form, createdAt: new Date().toISOString() }
-      window.localStorage.setItem('flanagan-leads', JSON.stringify([lead, ...leads].slice(0, 50)))
-    } catch {
-      // localStorage can be unavailable in private mode; ignore.
+    const finalLead = {
+      ...leadPayload('New'),
+      receivedAt: new Date().toISOString(),
     }
+    saveLocalLeadBackup(finalLead)
 
     try {
       const response = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(finalLead),
       })
       if (!response.ok) throw new Error(`Request failed: ${response.status}`)
       setSubmitted(true)
       setStatus('Request received. We will reach out within one business day.')
-      track('generate_lead', { projectType: form.projectType, budget: form.budget })
+      track('generate_lead', { projectType: finalLead.projectType, budget: form.budget })
       window.setTimeout(() => {
         document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 60)
     } catch {
-      // Static hosting (e.g. GitHub Pages) has no API — fall back to email.
-      setStatus('Opening your email app so you can send the request directly…')
+      // Static hosting (e.g. GitHub Pages) has no API, so fall back to email.
+      setStatus('Opening your email app so you can send the request directly...')
       window.location.href = mailtoLink
     } finally {
       setSubmitting(false)
@@ -972,6 +1232,10 @@ function App() {
   const resetForm = () => {
     setSubmitted(false)
     setStatus('')
+    setSelectedGroupId(defaultSiteContent.leadFunnel.groups[0].id)
+    setSelectedNeeds([])
+    setLastSavedAt('')
+    leadIdRef.current = makeLeadId({ createdAt: new Date().toISOString(), source: 'funnel' })
     setForm({
       name: '',
       phone: '',
@@ -991,7 +1255,7 @@ function App() {
   const addAiPlanToForm = () => {
     setForm((current) => ({
       ...current,
-      projectType: 'Bathroom remodel',
+      projectType: aiPlan.headline,
       budget: aiPlan.budget,
       message: [
         `Design direction: ${aiPlan.headline}.`,
@@ -1006,14 +1270,25 @@ function App() {
     }, 80)
   }
 
+  if (routePath.startsWith('/admin')) {
+    return <AdminDashboard content={siteContent} setContent={setSiteContent} goHome={goHome} />
+  }
+
   return (
     <main>
       <a className="skip-link" href="#top">
         Skip to content
       </a>
-      <SiteHeader menuOpen={menuOpen} goHome={goHome} goSection={goSection} setMenuOpen={setMenuOpen} />
+      <SiteHeader
+        business={business}
+        menuOpen={menuOpen}
+        goHome={goHome}
+        goSection={goSection}
+        setMenuOpen={setMenuOpen}
+      />
 
       <HomePage
+        content={siteContent}
         advisor={advisor}
         aiPlan={aiPlan}
         form={form}
@@ -1028,9 +1303,15 @@ function App() {
         goSection={goSection}
         reveal={reveal}
         setReveal={setReveal}
+        selectedGroupId={selectedGroupId}
+        setSelectedGroupId={setSelectedGroupId}
+        selectedNeeds={selectedNeeds}
+        toggleNeed={toggleNeed}
+        draftSaving={draftSaving}
+        lastSavedAt={lastSavedAt}
       />
 
-      <SiteFooter goSection={goSection} />
+      <SiteFooter business={business} services={siteContent.services} goSection={goSection} />
 
       <div className="mobile-cta" aria-label="Quick contact">
         <a
@@ -1042,7 +1323,7 @@ function App() {
           Call
         </a>
         <button className="mobile-cta-quote" type="button" onClick={() => goSection('estimate')}>
-          Get free estimate
+          {siteContent.cta.primaryCta}
           <ArrowRight size={18} aria-hidden="true" />
         </button>
       </div>
