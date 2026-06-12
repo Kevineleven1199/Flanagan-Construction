@@ -67,7 +67,8 @@ the visitor's email app via `mailto:`.
 
 ## Admin dashboard
 
-Visit `/admin` to manage leads and edit site content. The dashboard supports
+Visit `/admin` to manage leads and edit site content. From the public site,
+press `g` then `a` to jump straight to the admin login. The dashboard supports
 named super-admin email/password login. Two default super admins are configured
 by hashed credentials in the server:
 

@@ -34,13 +34,13 @@ const builtInSuperAdmins = [
     email: 'nickflanagan73@gmail.com',
     name: 'Nick Flanagan',
     role: 'super_admin',
-    passwordHash: 'pbkdf2$210000$vj0QBhsedwkF_atZg2kl9A$ECjKWLfRvKLCFAx6RHzfLOLxJapEw0Htp4fvcLfqz6A',
+    passwordHash: 'pbkdf2$210000$iNICwQ74kgvAY3uN5fFoaA$j_uG3bm_GAZOD0BYX9gFHJLds3iTlf1BSwBBOkpur-w',
   },
   {
     email: 'kevin@ndabox.com',
     name: 'Kevin',
     role: 'super_admin',
-    passwordHash: 'pbkdf2$210000$bsztpyNnLo2Y3AI-Bwujeg$POiqeDoyM0SzQh_71jUpOhbh6Bxs2FVbgrkMmJncvjA',
+    passwordHash: 'pbkdf2$210000$etgtn-tg34DgVmOFrcElZQ$7sE9yewvulV5_WjFtImncU9kK4-MfrvKZXLig0IBz54',
   },
 ]
 
