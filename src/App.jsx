@@ -10,6 +10,7 @@ import {
   MapPin,
   Mail,
   Menu,
+  PaintRoller,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -48,6 +49,7 @@ const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
 const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
 const splashServices = ['Kitchens & baths', 'Concrete work', 'Roofing & siding']
 const heroPathSteps = ['Start request', 'Scope the work', 'Get a call back']
+const SPLASH_SESSION_KEY = 'flanagan-paint-splash-seen-v1'
 const heroProjectCards = [
   { label: 'Kitchen & bath', detail: 'Tile, layout, plumbing, ventilation', icon: Bath },
   { label: 'Concrete', detail: 'Driveways, sidewalks, pavers, patios', icon: Hammer },
@@ -107,18 +109,26 @@ function addressComponent(place, type, useShortName = false) {
 
 function SplashIntro({ business, heroImage, onDone }) {
   return (
-    <div className="splash-intro" role="status" aria-live="polite">
-      <div className="splash-photo" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
-      <div className="splash-blueprint" aria-hidden="true">
-        <span></span>
-        <span></span>
-        <span></span>
+    <div className="splash-intro paint-splash" role="status" aria-live="polite">
+      <div className="splash-site-preview" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
+      <div className="paint-wash paint-wash-one" aria-hidden="true"></div>
+      <div className="paint-wash paint-wash-two" aria-hidden="true"></div>
+      <div className="paint-wash paint-wash-three" aria-hidden="true"></div>
+      <div className="paint-drips" aria-hidden="true">
+        <span style={{ '--drip-left': '18%', '--drip-delay': '0ms', '--drip-height': '86px' }}></span>
+        <span style={{ '--drip-left': '43%', '--drip-delay': '220ms', '--drip-height': '58px' }}></span>
+        <span style={{ '--drip-left': '69%', '--drip-delay': '380ms', '--drip-height': '74px' }}></span>
       </div>
-      <div className="splash-card">
-        <span className="brand-mark splash-mark">
-          <Hammer size={30} aria-hidden="true" />
+      <div className="paint-roller-track" aria-hidden="true">
+        <span className="paint-roller">
+          <PaintRoller size={38} />
         </span>
-        <p>New Castle County</p>
+      </div>
+      <div className="splash-card paint-splash-card">
+        <span className="brand-mark splash-mark">
+          <PaintRoller size={30} aria-hidden="true" />
+        </span>
+        <p>Painting in the next project</p>
         <h2>{business.name}</h2>
         <div className="splash-service-track" aria-label="Main work">
           {splashServices.map((service) => (
@@ -608,10 +618,25 @@ function HomePage({
     services,
     servicesIntro,
   } = content
+  const heroVideo = images.heroVideo || defaultSiteContent.images.heroVideo
 
   return (
     <>
       <section id="top" className="hero-section simple-home-hero" style={{ '--hero-photo': cssUrl(images.hero) }}>
+        {heroVideo ? (
+          <video
+            className="hero-video"
+            src={heroVideo}
+            poster={images.hero}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          ></video>
+        ) : null}
+        <div className="hero-video-scrim" aria-hidden="true"></div>
         <HeroMotionLayer />
         <div className="hero-inner">
           <p className="hero-eyebrow">
@@ -768,7 +793,7 @@ function App() {
       const params = new URLSearchParams(window.location.search)
       if (params.has('splash')) return true
       if (prefersReducedMotion()) return false
-      return !window.sessionStorage.getItem('flanagan-splash-seen')
+      return !window.sessionStorage.getItem(SPLASH_SESSION_KEY)
     } catch {
       return !prefersReducedMotion()
     }
@@ -804,7 +829,7 @@ function App() {
 
   const dismissSplash = useCallback(() => {
     try {
-      window.sessionStorage.setItem('flanagan-splash-seen', 'true')
+      window.sessionStorage.setItem(SPLASH_SESSION_KEY, 'true')
     } catch {
       // Session storage is optional; animation can still dismiss normally.
     }
@@ -842,7 +867,7 @@ function App() {
 
   useEffect(() => {
     if (!showSplash) return undefined
-    const timeout = window.setTimeout(dismissSplash, 2700)
+    const timeout = window.setTimeout(dismissSplash, 3650)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
 

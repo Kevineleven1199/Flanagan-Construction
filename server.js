@@ -113,6 +113,7 @@ const securityHeaders = {
     "frame-ancestors 'self'",
     "form-action 'self'",
     "img-src 'self' data: https:",
+    "media-src 'self' https:",
     "style-src 'self' 'unsafe-inline'",
     "script-src 'self' https://maps.googleapis.com https://maps.gstatic.com",
     "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com",

@@ -1,5 +1,5 @@
 export const defaultSiteContent = {
-  contentVersion: 9,
+  contentVersion: 10,
 
   business: {
     name: 'Flanagan Construction',
@@ -437,6 +437,7 @@ export const defaultSiteContent = {
   images: {
     hero:
       'https://images.pexels.com/photos/6474482/pexels-photo-6474482.jpeg?auto=compress&cs=tinysrgb&w=2200',
+    heroVideo: 'https://cdn.coverr.co/videos/coverr-bathroom-in-a-mobile-home-3685/1080p.mp4',
     aiBackground:
       'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1800&q=82',
     workBackground:
