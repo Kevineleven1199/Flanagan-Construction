@@ -58,6 +58,12 @@ function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 }
 
+function isTypingTarget(target) {
+  const element = target instanceof HTMLElement ? target : null
+  if (!element) return false
+  return Boolean(element.closest('input, textarea, select, [contenteditable="true"]'))
+}
+
 function googleMapsApiKey() {
   return import.meta.env.VITE_GOOGLE_MAPS_API_KEY || window.__GOOGLE_MAPS_API_KEY__ || ''
 }
@@ -789,6 +795,7 @@ function App() {
   const [draftSaving, setDraftSaving] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState('')
   const leadIdRef = useRef(makeLeadId({ createdAt: new Date().toISOString(), source: 'funnel' }))
+  const adminHotkeyRef = useRef({ armed: false, timeoutId: 0 })
   const [status, setStatus] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -803,6 +810,18 @@ function App() {
     }
     setShowSplash(false)
   }, [])
+
+  const goAdminLogin = useCallback(() => {
+    dismissSplash()
+    setMenuOpen(false)
+    if (window.location.pathname !== '/admin') {
+      window.history.pushState({}, '', '/admin')
+      setRoutePath('/admin')
+    } else {
+      setRoutePath('/admin')
+    }
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }, [dismissSplash])
 
   useEffect(() => {
     let ignore = false
@@ -891,6 +910,39 @@ function App() {
     window.addEventListener('popstate', handleRoute)
     return () => window.removeEventListener('popstate', handleRoute)
   }, [])
+
+  useEffect(() => {
+    const clearHotkey = () => {
+      window.clearTimeout(adminHotkeyRef.current.timeoutId)
+      adminHotkeyRef.current = { armed: false, timeoutId: 0 }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return
+
+      const key = event.key.toLowerCase()
+      if (key === 'g') {
+        window.clearTimeout(adminHotkeyRef.current.timeoutId)
+        adminHotkeyRef.current = {
+          armed: true,
+          timeoutId: window.setTimeout(clearHotkey, 1200),
+        }
+        return
+      }
+
+      if (key === 'a' && adminHotkeyRef.current.armed) {
+        event.preventDefault()
+        clearHotkey()
+        goAdminLogin()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      clearHotkey()
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [goAdminLogin])
 
   const mailtoLink = useMemo(() => {
     const subject = encodeURIComponent(`New project request from ${form.name || 'website lead'}`)
