@@ -1,5 +1,5 @@
 export const defaultSiteContent = {
-  contentVersion: 4,
+  contentVersion: 5,
 
   business: {
     name: 'Flanagan Construction',
@@ -10,11 +10,11 @@ export const defaultSiteContent = {
   },
 
   hero: {
-    eyebrow: 'Trusted local construction help',
-    titlePrefix: 'Kitchens, baths, concrete, roofing, siding and windows in',
+    eyebrow: 'Friendly local remodeling help',
+    titlePrefix: 'Home remodeling that feels easier in',
     highlight: 'Newark, DE',
     lede:
-      'Our main work is kitchen and bathroom remodeling, concrete driveways and sidewalks, plus roofing, siding, and windows. We also handle decks, additions, interior work, and the trades each job needs.',
+      'Start with kitchens, bathrooms, concrete driveways and sidewalks, roofing, siding, or windows. We keep the process simple, practical, and easy to follow for busy homeowners.',
     primaryCta: 'Start a simple request',
     secondaryCta: 'See what we do',
   },
@@ -22,7 +22,7 @@ export const defaultSiteContent = {
   heroCredibility: [
     'Licensed & insured',
     'Straight written estimates',
-    'Office help for better follow-up',
+    'Friendly follow-up',
   ],
 
   estimate: {
@@ -379,7 +379,7 @@ export const defaultSiteContent = {
 
   images: {
     hero:
-      'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=2400&q=82',
+      'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=2400&q=84',
     aiBackground:
       'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1800&q=82',
     workBackground:
