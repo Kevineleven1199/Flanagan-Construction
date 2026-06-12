@@ -78,9 +78,13 @@ still works as a legacy bearer token fallback for emergency scripts.
 - CRM pipeline: search leads, update status/priority, add next steps and notes,
   track estimate/payment/follow-up fields, prepare stage-based email drafts,
   call/email a lead, see selected funnel needs, and export CSV.
+- Money & reports: track internal labor/material/subcontractor costs, markup,
+  customer quote price, received revenue, expenses, gross profit, Joist estimate
+  and invoice references, payment links, CPA CSV exports, and CPA email summary
+  drafts.
 - Site editor: update business info, hero/CTA copy, service text, gallery
   photos, before/after photos, reviews, FAQs, process copy, optional HTML
-  blocks, and drag/drop asset swaps.
+  blocks, New Castle County service locations, and drag/drop asset swaps.
 
 Saved content is written to `site-content.json`, while lead status/notes are
 written to `lead-crm.json`. During local Vite development, the dashboard falls
@@ -97,6 +101,12 @@ when you are ready to move from mailto drafts to server-sent email:
 - `SMTP_USER=nickflanagan73@gmail.com`
 - `SMTP_SECRET_KEY=<Gmail app password>`
 - `SMTP_FROM=Nick Flanagan <nickflanagan73@gmail.com>`
+
+### Joist and Square transition
+
+See [docs/joist-square-transition.md](docs/joist-square-transition.md) for the
+Joist bridge workflow, Square payment-link path, CPA reporting routine, and
+future `info@yourdomain.com` email sender plan.
 
 ### Get leads delivered to you (60 seconds, no code)
 

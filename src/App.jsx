@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Home,
   Mail,
+  MapPin,
   Menu,
   Palette,
   Paintbrush,
@@ -61,6 +62,7 @@ const icons = [Bath, Sparkles, Home, Hammer]
 const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
 const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
 const aiMetricIcons = [ScanLine, Ruler, Palette]
+const priorityServiceLabels = ['Most requested', 'Driveways & walks', 'Exterior help']
 
 const processSteps = [
   { title: 'Free consultation', copy: 'We visit, listen, and measure, with no pressure and no obligation.' },
@@ -623,6 +625,29 @@ function SafeHtmlBlock({ html }) {
   return <section className="custom-html-section" dangerouslySetInnerHTML={{ __html: cleanHtml }} />
 }
 
+function ServiceLocationsSection({ serviceLocations }) {
+  const places = serviceLocations?.places || []
+  if (!places.length) return null
+
+  return (
+    <section className="service-area-section" aria-label="New Castle County service locations">
+      <div className="service-area-copy">
+        <p className="eyebrow">
+          <MapPin size={16} aria-hidden="true" />
+          {serviceLocations.eyebrow}
+        </p>
+        <h2>{serviceLocations.title}</h2>
+        <p>{serviceLocations.copy}</p>
+      </div>
+      <div className="location-chip-grid">
+        {places.map((place) => (
+          <span key={place}>{place}</span>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function HomePage({
   content,
   advisor,
@@ -667,6 +692,7 @@ function HomePage({
     quickBand,
     referralSpeech,
     reviews,
+    serviceLocations,
     services,
     servicesIntro,
     stats,
@@ -793,7 +819,7 @@ function HomePage({
             const Icon = icons[index] || Paintbrush
             return (
               <article className={index < 3 ? 'service-card priority-service-card' : 'service-card'} key={service.title}>
-                {index < 3 ? <span className="priority-rank">Top {index + 1}</span> : null}
+                {index < 3 ? <span className="priority-rank">{priorityServiceLabels[index]}</span> : null}
                 <span className="service-icon">
                   <Icon size={22} aria-hidden="true" />
                 </span>
@@ -804,6 +830,8 @@ function HomePage({
           })}
         </div>
       </section>
+
+      <ServiceLocationsSection serviceLocations={serviceLocations} />
 
       <SafeHtmlBlock html={customHtml?.afterServices} />
 

@@ -1,12 +1,12 @@
 export const defaultSiteContent = {
-  contentVersion: 5,
+  contentVersion: 6,
 
   business: {
     name: 'Flanagan Construction',
     location: 'Newark, Delaware',
     phone: '(302) 565-5724',
     email: 'quotes@flanaganconstructionde.com',
-    serviceArea: 'Newark, Pike Creek, Bear, Hockessin, Wilmington, and nearby Delaware communities',
+    serviceArea: 'All of New Castle County, including Newark, Wilmington, Middletown, Bear, Pike Creek, Hockessin, and nearby Delaware communities',
   },
 
   hero: {
@@ -38,9 +38,9 @@ export const defaultSiteContent = {
   },
 
   quickBand: [
-    '#1 Kitchens and bathrooms',
-    '#2 Concrete driveways and sidewalks',
-    '#3 Roofing, siding, and windows',
+    'Kitchen and bath remodels',
+    'Driveways and sidewalks',
+    'Roofing, siding, windows',
   ],
 
   leadFunnel: {
@@ -135,22 +135,22 @@ export const defaultSiteContent = {
   },
 
   servicesIntro: {
-    eyebrow: 'Top work we want',
-    title: 'Double down on the three best-fit jobs: kitchens and baths, concrete, then roofing, siding, and windows.',
+    eyebrow: 'Most requested work',
+    title: 'Easy starting points for the home projects Delaware families ask us about most.',
   },
 
   services: [
     {
       title: '#1 Kitchen & Bathroom Remodeling',
-      copy: 'Our best-fit work: kitchens, bathrooms, tile, showers, vanities, layout fixes, plumbing coordination, ventilation, and repairs when another bid goes wrong.',
+      copy: 'Practical kitchen and bath updates, tile, showers, vanities, layout fixes, ventilation, plumbing coordination, and repairs when old work needs to be made right.',
     },
     {
       title: '#2 Concrete Driveways & Sidewalks',
-      copy: 'Driveways, sidewalks, concrete repairs, blacktop coordination, pavers, patios, hardscape walls, retaining walls, and outdoor kitchens.',
+      copy: 'Driveways, sidewalks, concrete repairs, blacktop coordination, pavers, patios, hardscape walls, retaining walls, and outdoor kitchens with clear scope up front.',
     },
     {
       title: '#3 Roofing, Siding & Windows',
-      copy: 'Roofing, siding, windows, doors, gutters, gutter guards, garage doors, exterior repairs, and the subcontractor coordination these jobs need.',
+      copy: 'Roofing, siding, windows, doors, gutters, gutter guards, garage doors, exterior repairs, and the right trade coordination for each house.',
     },
     {
       title: 'Decks, Porches & Fences',
@@ -167,24 +167,24 @@ export const defaultSiteContent = {
   ],
 
   proofPoints: [
-    'Kitchen and bathroom leads are priority',
-    'Concrete driveway and sidewalk leads are priority',
-    'Roofing, siding, and window leads are priority',
+    'Kitchen and bath estimates made simple',
+    'Driveways and sidewalks explained clearly',
+    'Roofing, siding, and windows handled straight',
     'Started requests are saved early',
   ],
 
   stats: [
-    { value: 'Top 3', label: 'Service lanes' },
-    { value: 'Free', label: 'Estimate requests' },
-    { value: '1 place', label: 'To start the job' },
-    { value: 'Local', label: 'Newark-area crew' },
+    { value: 'Local', label: 'Delaware homes' },
+    { value: 'Free', label: 'Estimate request' },
+    { value: 'Easy', label: 'Project path' },
+    { value: 'Clear', label: 'Office follow-up' },
   ],
 
   gallery: {
-    eyebrow: 'Real work, real houses',
-    title: 'No big sales act. Just clear work and better follow-up.',
+    eyebrow: 'Homes people live in',
+    title: 'Practical work for busy families and everyday Delaware houses.',
     copy:
-      'We want the jobs that fit us best: kitchen and bath remodeling, concrete driveways and sidewalks, and roofing, siding, and windows. We price the real scope and keep communication moving.',
+      'Start with one project or a whole list. We keep the language plain, price the real scope, and help homeowners understand the next step.',
     items: [
       {
         title: 'Kitchens & Baths',
@@ -194,16 +194,61 @@ export const defaultSiteContent = {
       },
       {
         title: 'Concrete',
-        copy: 'Driveways, sidewalks, blacktop, pavers, patios, walls, and outdoor kitchens.',
+        copy: 'Driveways, sidewalks, concrete repairs, pavers, patios, walls, and outdoor kitchens.',
         image:
-          'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1000&q=84',
+          'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1000&q=80',
       },
       {
         title: 'Roofing, Siding & Windows',
         copy: 'Roofing, siding, windows, doors, gutters, gutter guards, and exterior repairs.',
         image:
-          'https://images.unsplash.com/photo-1621750679714-6a0fb744f54e?auto=format&fit=crop&w=1000&q=84',
+          'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1000&q=82',
       },
+    ],
+  },
+
+  serviceLocations: {
+    eyebrow: 'Service locations',
+    title: 'Serving New Castle County homes, from Wilmington to Townsend.',
+    copy:
+      'If you are in New Castle County, start the request and we will confirm scheduling, access, and the right next step.',
+    places: [
+      'Arden',
+      'Ardencroft',
+      'Ardentown',
+      'Bear',
+      'Bellefonte',
+      'Brookside',
+      'Claymont',
+      'Clayton',
+      'Delaware City',
+      'Edgemoor',
+      'Elsmere',
+      'Glasgow',
+      'Greenville',
+      'Hockessin',
+      'Middletown',
+      'New Castle',
+      'Newark',
+      'Newport',
+      'North Star',
+      'Odessa',
+      'Pike Creek',
+      'Pike Creek Valley',
+      'Smyrna',
+      'St. Georges',
+      'Townsend',
+      'Wilmington',
+      'Wilmington Manor',
+      'Christiana',
+      'Marshallton',
+      'Minquadale',
+      'Montchanin',
+      'Ogletown',
+      'Port Penn',
+      'Rockland',
+      'Stanton',
+      'Talleyville',
     ],
   },
 
@@ -350,7 +395,7 @@ export const defaultSiteContent = {
     {
       question: 'What areas do you serve?',
       answer:
-        'We serve Newark, Pike Creek, Bear, Hockessin, Wilmington, and nearby Delaware communities.',
+        'We serve New Castle County, including Newark, Wilmington, Middletown, Bear, Pike Creek, Hockessin, and nearby Delaware communities.',
     },
   ],
 
