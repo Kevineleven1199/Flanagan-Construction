@@ -76,12 +76,12 @@ const emailTemplates = {
   Contacted: {
     subject: 'Thanks for reaching out to Flanagan Construction',
     body:
-      'Hi {name},\n\nThanks for reaching out to Flanagan Construction. I saw your request for {projectType}. I wanted to confirm the best details before we set up the next step.\n\nSelected needs: {selectedNeeds}\n\nWhat is the best time to talk?\n\nThanks,\nNick Flanagan',
+      'Hi {name},\n\nThanks for reaching out to Flanagan Construction. I saw your request for {projectType}. I wanted to confirm the best details before we set up the next step.\n\nProject address: {address}\nSelected needs: {selectedNeeds}\n\nWhat is the best time to talk?\n\nThanks,\nNick Flanagan',
   },
   'Estimate Scheduled': {
     subject: 'Your Flanagan Construction estimate appointment',
     body:
-      'Hi {name},\n\nYou are on our list for an estimate for {projectType}. Please reply with the project address, best access instructions, and anything you want us to look closely at.\n\nThanks,\nNick Flanagan',
+      'Hi {name},\n\nYou are on our list for an estimate for {projectType}. I have the project address as {address}. Please reply with the best access instructions and anything you want us to look closely at.\n\nThanks,\nNick Flanagan',
   },
   'Estimate Sent': {
     subject: 'Your Flanagan Construction estimate',
@@ -241,6 +241,7 @@ function fillTemplate(template, lead) {
   return String(template || '')
     .replaceAll('{name}', lead.name || 'there')
     .replaceAll('{projectType}', lead.projectType || 'your project')
+    .replaceAll('{address}', lead.address || 'Not listed yet')
     .replaceAll('{selectedNeeds}', selectedNeeds)
     .replaceAll('{estimateAmount}', formatMoney(lead.estimateAmount))
     .replaceAll('{paymentLink}', lead.paymentLink || '[paste payment link]')
@@ -533,6 +534,7 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     `Customer: ${joistClientName || lead.name || 'Website lead'}`,
     `Phone: ${lead.phone || 'Not listed'}`,
     `Email: ${lead.email || 'Not listed'}`,
+    `Address: ${lead.address || 'Not listed'}`,
     `Project: ${lead.projectType || 'Project'}`,
     lead.selectedNeeds?.length ? `Selected needs: ${lead.selectedNeeds.join(', ')}` : '',
     '',
@@ -616,6 +618,10 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <label>
           Project
           <input value={lead.projectType} readOnly />
+        </label>
+        <label className="lead-address-field">
+          Project address
+          <input value={lead.address || 'Not listed yet'} readOnly />
         </label>
         <label>
           Budget
@@ -1137,7 +1143,7 @@ function ReviewsEditor({ draft, updateSection, updateArrayItem, addArrayItem, re
               addArrayItem('testimonials', {
                 quote: 'Add the customer review here.',
                 name: 'Customer name',
-                location: 'Newark, DE',
+                location: 'New Castle County, DE',
                 rating: 5,
               })
             }
@@ -1439,6 +1445,7 @@ function exportFinancialCsv(leads) {
   const headers = [
     'Name',
     'Project',
+    'Address',
     'Status',
     'Joist Client',
     'Joist Estimate #',
@@ -1464,6 +1471,7 @@ function exportFinancialCsv(leads) {
     return [
       lead.name,
       lead.projectType,
+      lead.address,
       lead.status,
       lead.joistClientName,
       lead.joistEstimateNumber,
@@ -1646,6 +1654,7 @@ function exportCsv(leads) {
     'Name',
     'Phone',
     'Email',
+    'Address',
     'Project',
     'Budget',
     'Timeline',
@@ -1663,6 +1672,7 @@ function exportCsv(leads) {
     lead.name,
     lead.phone,
     lead.email,
+    lead.address,
     lead.projectType,
     lead.budget,
     lead.timeline,

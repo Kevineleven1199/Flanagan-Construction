@@ -63,7 +63,9 @@ export async function fetchPublishedContent() {
   })
   if (!response.ok) throw new Error(`Content request failed: ${response.status}`)
   const payload = await response.json()
-  return mergeSiteContent(defaultSiteContent, payload.content || payload)
+  const content = payload.content || payload
+  if (content.contentVersion && content.contentVersion !== defaultSiteContent.contentVersion) return defaultSiteContent
+  return mergeSiteContent(defaultSiteContent, content)
 }
 
 export function cssUrl(value) {
@@ -93,6 +95,13 @@ export function normalizeLead(lead = {}, index = 0) {
     name: lead.name || 'Website lead',
     phone: lead.phone || '',
     email: lead.email || '',
+    address: lead.address || '',
+    addressPlaceId: lead.addressPlaceId || '',
+    addressLat: lead.addressLat || '',
+    addressLng: lead.addressLng || '',
+    addressCity: lead.addressCity || '',
+    addressState: lead.addressState || '',
+    addressPostalCode: lead.addressPostalCode || '',
     projectType: lead.projectType || 'Project',
     budget: lead.budget || 'Not sure yet',
     timeline: lead.timeline || 'Planning ahead',

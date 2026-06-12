@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   Bath,
@@ -46,6 +46,47 @@ const icons = [Bath, Hammer, Home]
 const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
 const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
 
+function googleMapsApiKey() {
+  return import.meta.env.VITE_GOOGLE_MAPS_API_KEY || window.__GOOGLE_MAPS_API_KEY__ || ''
+}
+
+function loadGooglePlaces() {
+  if (typeof window === 'undefined') return Promise.resolve(false)
+  if (window.google?.maps?.places?.Autocomplete) return Promise.resolve(true)
+  if (window.__flanaganGooglePlacesPromise) return window.__flanaganGooglePlacesPromise
+
+  const key = googleMapsApiKey()
+  if (!key) return Promise.resolve(false)
+
+  window.__flanaganGooglePlacesPromise = new Promise((resolve) => {
+    const existing = document.querySelector('script[data-flanagan-google-places="true"]')
+    const finish = () => resolve(Boolean(window.google?.maps?.places?.Autocomplete))
+
+    if (existing) {
+      existing.addEventListener('load', finish, { once: true })
+      existing.addEventListener('error', () => resolve(false), { once: true })
+      return
+    }
+
+    const script = document.createElement('script')
+    script.async = true
+    script.defer = true
+    script.dataset.flanaganGooglePlaces = 'true'
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places`
+    script.addEventListener('load', finish, { once: true })
+    script.addEventListener('error', () => resolve(false), { once: true })
+    document.head.appendChild(script)
+  })
+
+  return window.__flanaganGooglePlacesPromise
+}
+
+function addressComponent(place, type, useShortName = false) {
+  const component = place?.address_components?.find((item) => item.types?.includes(type))
+  if (!component) return ''
+  return useShortName ? component.short_name || component.long_name || '' : component.long_name || component.short_name || ''
+}
+
 function LeadPanel({
   business,
   estimateContent,
@@ -61,10 +102,66 @@ function LeadPanel({
   toggleNeed,
   draftSaving,
   lastSavedAt,
+  onAddressSelect = () => {},
 }) {
+  const addressInputRef = useRef(null)
+  const [addressAssist, setAddressAssist] = useState('manual')
   const simpleNeeds = leadFunnel.simpleNeeds?.length
     ? leadFunnel.simpleNeeds
     : [...new Set(leadFunnel.groups.flatMap((group) => group.needs))].slice(0, 14)
+
+  useEffect(() => {
+    let autocomplete
+    let listener
+    let cancelled = false
+
+    loadGooglePlaces().then((ready) => {
+      if (cancelled) return
+      const input = addressInputRef.current
+      if (!ready || !input || !window.google?.maps?.places?.Autocomplete) {
+        setAddressAssist('manual')
+        return
+      }
+
+      const bounds = new window.google.maps.LatLngBounds(
+        new window.google.maps.LatLng(39.29, -75.84),
+        new window.google.maps.LatLng(39.84, -75.35),
+      )
+
+      autocomplete = new window.google.maps.places.Autocomplete(input, {
+        bounds,
+        componentRestrictions: { country: 'us' },
+        fields: ['formatted_address', 'place_id', 'geometry', 'address_components'],
+        strictBounds: false,
+        types: ['address'],
+      })
+
+      listener = autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace()
+        const location = place?.geometry?.location
+        onAddressSelect({
+          address: place?.formatted_address || input.value,
+          addressPlaceId: place?.place_id || '',
+          addressLat: location?.lat ? String(location.lat()) : '',
+          addressLng: location?.lng ? String(location.lng()) : '',
+          addressCity:
+            addressComponent(place, 'locality') ||
+            addressComponent(place, 'postal_town') ||
+            addressComponent(place, 'sublocality_level_1'),
+          addressState: addressComponent(place, 'administrative_area_level_1', true),
+          addressPostalCode: addressComponent(place, 'postal_code'),
+        })
+      })
+
+      setAddressAssist('google')
+    })
+
+    return () => {
+      cancelled = true
+      if (listener?.remove) listener.remove()
+      if (autocomplete) window.google?.maps?.event?.clearInstanceListeners?.(autocomplete)
+    }
+  }, [onAddressSelect])
 
   if (submitted) {
     const firstName = form.name ? form.name.trim().split(' ')[0] : ''
@@ -153,6 +250,36 @@ function LeadPanel({
         <label>
           Name
           <input name="name" value={form.name} onChange={handleChange} autoComplete="name" required />
+        </label>
+
+        <label className="address-field">
+          Project address
+          <input
+            ref={addressInputRef}
+            name="address"
+            value={form.address}
+            onChange={(event) => {
+              handleChange(event)
+              if (form.addressPlaceId || form.addressLat || form.addressLng) {
+                onAddressSelect({
+                  addressPlaceId: '',
+                  addressLat: '',
+                  addressLng: '',
+                  addressCity: '',
+                  addressState: '',
+                  addressPostalCode: '',
+                })
+              }
+            }}
+            autoComplete="street-address"
+            placeholder="Start typing the job address"
+            required
+          />
+          <span className="address-helper">
+            {addressAssist === 'google'
+              ? 'Pick the matching address when it appears.'
+              : 'Type the job address so we know where to schedule.'}
+          </span>
         </label>
 
         <div className="funnel-save-note" aria-live="polite">
@@ -295,7 +422,7 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
           <p className="eyebrow">{servicesIntro.eyebrow}</p>
           <h2>{servicesIntro.title}</h2>
         </div>
-        <p>{gallery.copy}</p>
+        <p>{servicesIntro.copy || gallery.copy}</p>
       </div>
 
       <div className="simple-service-grid">
@@ -357,6 +484,7 @@ function HomePage({
   toggleNeed,
   draftSaving,
   lastSavedAt,
+  onAddressSelect,
 }) {
   const {
     business,
@@ -441,6 +569,7 @@ function HomePage({
           toggleNeed={toggleNeed}
           draftSaving={draftSaving}
           lastSavedAt={lastSavedAt}
+          onAddressSelect={onAddressSelect}
         />
       </section>
 
@@ -526,6 +655,13 @@ function App() {
     name: '',
     phone: '',
     email: '',
+    address: '',
+    addressPlaceId: '',
+    addressLat: '',
+    addressLng: '',
+    addressCity: '',
+    addressState: '',
+    addressPostalCode: '',
     projectType: 'Project',
     budget: 'Not sure yet',
     timeline: 'Not sure yet',
@@ -573,6 +709,7 @@ function App() {
         `Name: ${form.name}`,
         `Phone: ${form.phone}`,
         `Email: ${form.email}`,
+        `Address: ${form.address}`,
         `Project type: ${selectedNeeds.length ? selectedNeeds.join(', ') : 'Not selected yet'}`,
         '',
         'Project details:',
@@ -602,6 +739,10 @@ function App() {
     setForm((current) => ({ ...current, [name]: value }))
   }
 
+  const handleAddressSelect = useCallback((addressData) => {
+    setForm((current) => ({ ...current, ...addressData }))
+  }, [])
+
   const toggleNeed = (need) => {
     const matchingGroup = siteContent.leadFunnel.groups.find((group) => group.needs.includes(need))
     if (matchingGroup) setSelectedGroupId(matchingGroup.id)
@@ -617,6 +758,7 @@ function App() {
     const projectType = selectedNeeds.length ? selectedNeeds.join(', ') : activeGroup.label
     const summaryLines = [
       selectedNeeds.length ? `Selected needs: ${selectedNeeds.join(', ')}` : `Selected lane: ${activeGroup.label}`,
+      form.address ? `Project address: ${form.address}` : '',
       form.message ? `Notes: ${form.message}` : '',
     ].filter(Boolean)
 
@@ -688,6 +830,13 @@ function App() {
     form.name,
     form.phone,
     form.email,
+    form.address,
+    form.addressPlaceId,
+    form.addressLat,
+    form.addressLng,
+    form.addressCity,
+    form.addressState,
+    form.addressPostalCode,
     form.budget,
     form.timeline,
     form.message,
@@ -743,6 +892,13 @@ function App() {
       name: '',
       phone: '',
       email: '',
+      address: '',
+      addressPlaceId: '',
+      addressLat: '',
+      addressLng: '',
+      addressCity: '',
+      addressState: '',
+      addressPostalCode: '',
       projectType: 'Project',
       budget: 'Not sure yet',
       timeline: 'Not sure yet',
@@ -782,6 +938,7 @@ function App() {
         toggleNeed={toggleNeed}
         draftSaving={draftSaving}
         lastSavedAt={lastSavedAt}
+        onAddressSelect={handleAddressSelect}
       />
 
       <SiteFooter business={business} services={siteContent.services} goSection={goSection} />

@@ -13,6 +13,7 @@ export function formatLeadMessage(lead) {
     `Phone: ${lead.phone}`,
   ]
   if (lead.email) lines.push(`Email: ${lead.email}`)
+  if (lead.address) lines.push(`Address: ${lead.address}`)
   const meta = [lead.projectType, lead.budget, lead.timeline].filter(Boolean).join(' • ')
   if (meta) lines.push(meta)
   if (lead.message) lines.push('', lead.message)

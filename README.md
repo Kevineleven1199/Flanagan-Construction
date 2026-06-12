@@ -1,6 +1,6 @@
 # Flanagan Construction
 
-A fast, mobile-first lead generation homepage for a Newark, Delaware construction and remodeling company.
+A fast, mobile-first lead generation homepage for a New Castle County, Delaware construction and remodeling company.
 
 ## Highlights
 
@@ -50,7 +50,10 @@ npm run start   # serves dist/ on $PORT (default 8080) via server.js
 2. It runs `npm install` > `npm run build` > `node server.js`. No extra settings needed.
 3. (Optional) set `LEAD_WEBHOOK_URL` to forward every lead as JSON to Zapier, Make,
    Slack, Discord, or a CRM. Without it, leads still appear in the deploy logs.
-4. Add your custom domain in Railway and point DNS to it.
+4. (Optional) set `VITE_GOOGLE_MAPS_API_KEY` to enable Google Places address
+   autocomplete on the estimate form. Restrict the key to your domain in Google
+   Cloud and enable Maps JavaScript API plus Places API.
+5. Add your custom domain in Railway and point DNS to it.
 
 ## Lead capture
 
