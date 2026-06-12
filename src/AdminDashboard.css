@@ -66,6 +66,7 @@
 .admin-page-actions button,
 .admin-secondary-button,
 .admin-primary-button,
+.admin-primary-link,
 .content-tab,
 .panel-title-row button,
 .repeater-actions button,
@@ -93,6 +94,7 @@
 .admin-main-tabs button,
 .admin-topbar-actions button,
 .admin-secondary-button,
+.admin-primary-link,
 .content-tab,
 .panel-title-row button,
 .repeater-actions button,
@@ -121,7 +123,8 @@
   color: #1c1f21;
 }
 
-.admin-primary-button {
+.admin-primary-button,
+.admin-primary-link {
   border: 0;
   background: #f2b84b;
   color: #161616;
@@ -538,6 +541,77 @@
   color: #fff;
 }
 
+.quote-workbench,
+.joist-bridge-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(18, 63, 109, 0.16);
+  border-radius: 8px;
+  background: #f8fbfd;
+  padding: 16px;
+}
+
+.quote-workbench-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.quote-workbench-head strong {
+  display: block;
+  color: #1c1f21;
+  line-height: 1.35;
+}
+
+.quote-workbench-head svg {
+  color: #123f6d;
+  flex: 0 0 auto;
+}
+
+.quote-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.quote-metric-grid article {
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.quote-metric-grid span,
+.finance-table td span,
+.integration-card span,
+.bridge-note {
+  color: #687075;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.quote-metric-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: #1c1f21;
+  font-size: 1.15rem;
+}
+
+.joist-bridge-panel {
+  border-color: rgba(242, 184, 75, 0.42);
+  background: #fff8e6;
+}
+
+.joist-actions {
+  justify-content: flex-start;
+}
+
+.bridge-note {
+  margin: 0;
+  font-weight: 750;
+}
+
 .smtp-note {
   margin: 0;
   color: #fff4cf;
@@ -558,6 +632,87 @@
 .admin-empty strong {
   color: #1c1f21;
   font-size: 1.05rem;
+}
+
+.finance-metric-grid article:nth-child(2) {
+  border-color: rgba(35, 125, 84, 0.22);
+  background: #f1fbf5;
+}
+
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.integration-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.integration-card svg {
+  color: #123f6d;
+  flex: 0 0 auto;
+}
+
+.integration-card strong {
+  display: block;
+  color: #1c1f21;
+  line-height: 1.35;
+}
+
+.finance-table-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.finance-table-panel .panel-title-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.finance-table-panel .panel-title-row .admin-eyebrow {
+  margin-bottom: 0;
+}
+
+.finance-table-panel .panel-title-row a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #123f6d;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.finance-table-wrap {
+  overflow-x: auto;
+}
+
+.finance-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.finance-table th,
+.finance-table td {
+  border-bottom: 1px solid #ece8dd;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.finance-table th {
+  color: #34383a;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.finance-table td strong,
+.finance-table td span {
+  display: block;
 }
 
 .content-tab-row {
@@ -857,7 +1012,8 @@
 @media (max-width: 1100px) {
   .admin-topbar,
   .crm-layout,
-  .content-layout {
+  .content-layout,
+  .integration-grid {
     grid-template-columns: 1fr;
   }
 
@@ -885,6 +1041,7 @@
   .admin-form-grid,
   .repeater-list.two-col,
   .repeater-list.three-col,
+  .quote-metric-grid,
   .lead-tools {
     grid-template-columns: 1fr;
   }
@@ -899,7 +1056,8 @@
   }
 
   .builder-intro,
-  .email-workbench-head {
+  .email-workbench-head,
+  .quote-workbench-head {
     align-items: stretch;
     flex-direction: column;
   }

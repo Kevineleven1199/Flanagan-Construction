@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  Calculator,
   CheckCircle2,
   Clipboard,
+  DollarSign,
   Download,
   Edit3,
   Eye,
+  ExternalLink,
   FileText,
+  FileSpreadsheet,
   GripVertical,
   Home,
   Image,
@@ -16,6 +20,7 @@ import {
   Phone,
   Plus,
   RefreshCw,
+  ReceiptText,
   Save,
   Search,
   Send,
@@ -186,6 +191,49 @@ function formatMoney(value) {
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(number)
+}
+
+function moneyValue(value) {
+  const number = Number(String(value ?? '').replace(/[^0-9.-]/g, ''))
+  return Number.isFinite(number) ? number : 0
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(moneyValue(value))
+}
+
+function leadFinancials(lead) {
+  const labor = moneyValue(lead.quoteLaborCost)
+  const materials = moneyValue(lead.quoteMaterialCost)
+  const subcontractors = moneyValue(lead.quoteSubCost)
+  const other = moneyValue(lead.quoteOtherCost)
+  const totalCost = labor + materials + subcontractors + other
+  const markupPercent = moneyValue(lead.quoteMarkupPercent)
+  const suggestedPrice = totalCost * (1 + markupPercent / 100)
+  const customerPrice = moneyValue(lead.quoteCustomerPrice) || moneyValue(lead.estimateAmount) || suggestedPrice
+  const revenueReceived = moneyValue(lead.revenueReceived)
+  const expenseTotal = moneyValue(lead.expenseTotal) || totalCost
+  const grossProfit = customerPrice - expenseTotal
+  const margin = customerPrice > 0 ? (grossProfit / customerPrice) * 100 : 0
+
+  return {
+    labor,
+    materials,
+    subcontractors,
+    other,
+    totalCost,
+    markupPercent,
+    suggestedPrice,
+    customerPrice,
+    revenueReceived,
+    expenseTotal,
+    grossProfit,
+    margin,
+  }
 }
 
 function fillTemplate(template, lead) {
@@ -359,6 +407,19 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
   const [estimateAmount, setEstimateAmount] = useState(lead?.estimateAmount || '')
   const [paymentLink, setPaymentLink] = useState(lead?.paymentLink || '')
   const [followUpAt, setFollowUpAt] = useState(toDateTimeInputValue(lead?.followUpAt))
+  const [quoteLaborCost, setQuoteLaborCost] = useState(lead?.quoteLaborCost || '')
+  const [quoteMaterialCost, setQuoteMaterialCost] = useState(lead?.quoteMaterialCost || '')
+  const [quoteSubCost, setQuoteSubCost] = useState(lead?.quoteSubCost || '')
+  const [quoteOtherCost, setQuoteOtherCost] = useState(lead?.quoteOtherCost || '')
+  const [quoteMarkupPercent, setQuoteMarkupPercent] = useState(lead?.quoteMarkupPercent || '25')
+  const [quoteCustomerPrice, setQuoteCustomerPrice] = useState(lead?.quoteCustomerPrice || '')
+  const [quoteDepositPercent, setQuoteDepositPercent] = useState(lead?.quoteDepositPercent || '33')
+  const [revenueReceived, setRevenueReceived] = useState(lead?.revenueReceived || '')
+  const [expenseTotal, setExpenseTotal] = useState(lead?.expenseTotal || '')
+  const [joistClientName, setJoistClientName] = useState(lead?.joistClientName || '')
+  const [joistEstimateNumber, setJoistEstimateNumber] = useState(lead?.joistEstimateNumber || '')
+  const [joistInvoiceNumber, setJoistInvoiceNumber] = useState(lead?.joistInvoiceNumber || '')
+  const [joistStatus, setJoistStatus] = useState(lead?.joistStatus || '')
 
   if (!lead) {
     return (
@@ -379,6 +440,19 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
       estimateAmount,
       paymentLink,
       followUpAt: fromDateTimeInputValue(followUpAt),
+      quoteLaborCost,
+      quoteMaterialCost,
+      quoteSubCost,
+      quoteOtherCost,
+      quoteMarkupPercent,
+      quoteCustomerPrice,
+      quoteDepositPercent,
+      revenueReceived,
+      expenseTotal,
+      joistClientName,
+      joistEstimateNumber,
+      joistInvoiceNumber,
+      joistStatus,
     })
   }
 
@@ -389,8 +463,23 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     estimateAmount,
     paymentLink,
     followUpAt: fromDateTimeInputValue(followUpAt),
+    quoteLaborCost,
+    quoteMaterialCost,
+    quoteSubCost,
+    quoteOtherCost,
+    quoteMarkupPercent,
+    quoteCustomerPrice,
+    quoteDepositPercent,
+    revenueReceived,
+    expenseTotal,
+    joistClientName,
+    joistEstimateNumber,
+    joistInvoiceNumber,
+    joistStatus,
   }
   const currentEmailDraft = emailDraftFor(workingLead)
+  const financials = leadFinancials(workingLead)
+  const depositAmount = financials.customerPrice * (moneyValue(quoteDepositPercent) / 100)
 
   const applyStage = (status) => {
     const play = stagePlaybook.find((item) => item.status === status)
@@ -402,6 +491,19 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
       estimateAmount,
       paymentLink,
       followUpAt: fromDateTimeInputValue(followUpAt),
+      quoteLaborCost,
+      quoteMaterialCost,
+      quoteSubCost,
+      quoteOtherCost,
+      quoteMarkupPercent,
+      quoteCustomerPrice,
+      quoteDepositPercent,
+      revenueReceived,
+      expenseTotal,
+      joistClientName,
+      joistEstimateNumber,
+      joistInvoiceNumber,
+      joistStatus,
       emailStage: status,
       emailSubject: draft.subject,
       emailBody: draft.body,
@@ -421,6 +523,46 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     } catch {
       updateLead(lead.id, {
         notes: `${notes}\n\nEmail draft:\nSubject: ${currentEmailDraft.subject}\n\n${currentEmailDraft.body}`.trim(),
+      })
+    }
+  }
+
+  const joistHandOffText = [
+    'Joist handoff - Flanagan Construction',
+    '',
+    `Customer: ${joistClientName || lead.name || 'Website lead'}`,
+    `Phone: ${lead.phone || 'Not listed'}`,
+    `Email: ${lead.email || 'Not listed'}`,
+    `Project: ${lead.projectType || 'Project'}`,
+    lead.selectedNeeds?.length ? `Selected needs: ${lead.selectedNeeds.join(', ')}` : '',
+    '',
+    'Internal job-cost check:',
+    `Labor: ${formatCurrency(quoteLaborCost)}`,
+    `Materials: ${formatCurrency(quoteMaterialCost)}`,
+    `Subcontractors: ${formatCurrency(quoteSubCost)}`,
+    `Other: ${formatCurrency(quoteOtherCost)}`,
+    `Total cost: ${formatCurrency(financials.totalCost)}`,
+    `Suggested price: ${formatCurrency(financials.suggestedPrice)}`,
+    `Customer price: ${formatCurrency(financials.customerPrice)}`,
+    `Deposit target: ${formatCurrency(depositAmount)}`,
+    `Gross profit: ${formatCurrency(financials.grossProfit)} (${Math.round(financials.margin)}%)`,
+    '',
+    `Joist estimate #: ${joistEstimateNumber || 'Not entered'}`,
+    `Joist invoice #: ${joistInvoiceNumber || 'Not entered'}`,
+    `Joist status: ${joistStatus || 'Not started'}`,
+    `Payment link: ${paymentLink || 'Not entered'}`,
+    '',
+    'Notes:',
+    notes || lead.message || 'No notes yet.',
+  ].filter(Boolean).join('\n')
+
+  const copyJoistHandOff = async () => {
+    saveNotes()
+    try {
+      await navigator.clipboard.writeText(joistHandOffText)
+    } catch {
+      updateLead(lead.id, {
+        notes: `${notes}\n\n${joistHandOffText}`.trim(),
       })
     }
   }
@@ -558,6 +700,124 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           Last contacted
           <input value={lead.lastContactedAt ? formatDate(lead.lastContactedAt) : 'Not logged yet'} readOnly />
         </label>
+      </div>
+
+      <div className="quote-workbench">
+        <div className="quote-workbench-head">
+          <div>
+            <p className="admin-eyebrow">Internal quote check</p>
+            <strong>See job cost, customer price, and profit before sending the estimate.</strong>
+          </div>
+          <Calculator size={22} aria-hidden="true" />
+        </div>
+        <div className="quote-metric-grid">
+          <article>
+            <span>Total cost</span>
+            <strong>{formatCurrency(financials.totalCost)}</strong>
+          </article>
+          <article>
+            <span>Suggested price</span>
+            <strong>{formatCurrency(financials.suggestedPrice)}</strong>
+          </article>
+          <article>
+            <span>Customer price</span>
+            <strong>{formatCurrency(financials.customerPrice)}</strong>
+          </article>
+          <article>
+            <span>Gross margin</span>
+            <strong>{Math.round(financials.margin)}%</strong>
+          </article>
+        </div>
+        <div className="lead-detail-grid">
+          <label>
+            Labor cost
+            <input value={quoteLaborCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteLaborCost(event.target.value)} />
+          </label>
+          <label>
+            Materials cost
+            <input value={quoteMaterialCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteMaterialCost(event.target.value)} />
+          </label>
+          <label>
+            Subcontractors
+            <input value={quoteSubCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteSubCost(event.target.value)} />
+          </label>
+          <label>
+            Other costs
+            <input value={quoteOtherCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteOtherCost(event.target.value)} />
+          </label>
+          <label>
+            Markup %
+            <input value={quoteMarkupPercent} inputMode="decimal" onBlur={saveNotes} onChange={(event) => setQuoteMarkupPercent(event.target.value)} />
+          </label>
+          <label>
+            Customer quote price
+            <input value={quoteCustomerPrice} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteCustomerPrice(event.target.value)} />
+          </label>
+          <label>
+            Deposit %
+            <input value={quoteDepositPercent} inputMode="decimal" onBlur={saveNotes} onChange={(event) => setQuoteDepositPercent(event.target.value)} />
+          </label>
+          <label>
+            Deposit target
+            <input value={formatCurrency(depositAmount)} readOnly />
+          </label>
+          <label>
+            Revenue received
+            <input value={revenueReceived} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setRevenueReceived(event.target.value)} />
+          </label>
+          <label>
+            Expense total
+            <input value={expenseTotal} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setExpenseTotal(event.target.value)} />
+          </label>
+        </div>
+      </div>
+
+      <div className="joist-bridge-panel">
+        <div className="quote-workbench-head">
+          <div>
+            <p className="admin-eyebrow">Joist and Square bridge</p>
+            <strong>Keep Joist as the invoice source while this CRM tracks follow-up.</strong>
+          </div>
+          <ReceiptText size={22} aria-hidden="true" />
+        </div>
+        <div className="lead-detail-grid">
+          <label>
+            Joist client name
+            <input value={joistClientName} onBlur={saveNotes} onChange={(event) => setJoistClientName(event.target.value)} />
+          </label>
+          <label>
+            Joist status
+            <input value={joistStatus} placeholder="Estimate drafted, invoice sent..." onBlur={saveNotes} onChange={(event) => setJoistStatus(event.target.value)} />
+          </label>
+          <label>
+            Joist estimate #
+            <input value={joistEstimateNumber} onBlur={saveNotes} onChange={(event) => setJoistEstimateNumber(event.target.value)} />
+          </label>
+          <label>
+            Joist invoice #
+            <input value={joistInvoiceNumber} onBlur={saveNotes} onChange={(event) => setJoistInvoiceNumber(event.target.value)} />
+          </label>
+        </div>
+        <div className="lead-contact-actions joist-actions">
+          <button type="button" onClick={copyJoistHandOff}>
+            <Clipboard size={16} aria-hidden="true" />
+            Copy for Joist
+          </button>
+          {paymentLink ? (
+            <a href={paymentLink} target="_blank" rel="noreferrer">
+              <ExternalLink size={16} aria-hidden="true" />
+              Open payment link
+            </a>
+          ) : (
+            <a href="https://www.joist.com/" target="_blank" rel="noreferrer">
+              <ExternalLink size={16} aria-hidden="true" />
+              Open Joist
+            </a>
+          )}
+        </div>
+        <p className="bridge-note">
+          For now, create/send the official invoice from Joist, then paste the Joist numbers and payment link here. When Square is wired later, this same spot can store or create payment links.
+        </p>
       </div>
 
       <label className="admin-field">
@@ -761,6 +1021,40 @@ function ServicesEditor({ draft, updateArrayItem, updateStringArray, addArrayIte
               <Field label="Label" value={stat.label} onChange={(value) => updateArrayItem('stats', index, 'label', value)} />
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <p className="admin-eyebrow">Service locations</p>
+        <div className="admin-form-grid">
+          <Field
+            label="Section heading"
+            value={draft.serviceLocations?.title || ''}
+            onChange={(value) => updateSection('serviceLocations', 'title', value)}
+          />
+          <Field
+            label="Section copy"
+            value={draft.serviceLocations?.copy || ''}
+            textarea
+            rows={3}
+            onChange={(value) => updateSection('serviceLocations', 'copy', value)}
+          />
+          <Field
+            label="Places, one per line"
+            value={(draft.serviceLocations?.places || []).join('\n')}
+            textarea
+            rows={10}
+            onChange={(value) =>
+              updateSection(
+                'serviceLocations',
+                'places',
+                value
+                  .split('\n')
+                  .map((item) => item.trim())
+                  .filter(Boolean),
+              )
+            }
+          />
         </div>
       </section>
 
@@ -1115,6 +1409,238 @@ function AiReadyEditor({ draft, updateSection }) {
   )
 }
 
+function financeSummaryLines(rows, totals) {
+  return [
+    'Flanagan Construction revenue and expense summary',
+    `Report date: ${new Date().toLocaleDateString()}`,
+    '',
+    `Leads/jobs reviewed: ${rows.length}`,
+    `Quoted/customer price: ${formatCurrency(totals.customerPrice)}`,
+    `Revenue received: ${formatCurrency(totals.revenueReceived)}`,
+    `Expenses/job cost: ${formatCurrency(totals.expenseTotal)}`,
+    `Gross profit: ${formatCurrency(totals.grossProfit)}`,
+    `Gross margin: ${Math.round(totals.margin)}%`,
+    '',
+    'Job details:',
+    ...rows.map(({ lead, financials }) =>
+      [
+        `- ${lead.name} | ${lead.projectType} | ${lead.status}`,
+        ` customer price ${formatCurrency(financials.customerPrice)}`,
+        ` received ${formatCurrency(financials.revenueReceived)}`,
+        ` expenses ${formatCurrency(financials.expenseTotal)}`,
+        ` profit ${formatCurrency(financials.grossProfit)}`,
+        lead.joistInvoiceNumber ? ` Joist invoice ${lead.joistInvoiceNumber}` : '',
+      ].join(''),
+    ),
+  ].join('\n')
+}
+
+function exportFinancialCsv(leads) {
+  const headers = [
+    'Name',
+    'Project',
+    'Status',
+    'Joist Client',
+    'Joist Estimate #',
+    'Joist Invoice #',
+    'Joist Status',
+    'Labor Cost',
+    'Material Cost',
+    'Subcontractor Cost',
+    'Other Cost',
+    'Total Cost',
+    'Markup %',
+    'Suggested Price',
+    'Customer Price',
+    'Revenue Received',
+    'Expense Total',
+    'Gross Profit',
+    'Gross Margin %',
+    'Payment Link',
+    'Received',
+  ]
+  const rows = leads.map((lead) => {
+    const financials = leadFinancials(lead)
+    return [
+      lead.name,
+      lead.projectType,
+      lead.status,
+      lead.joistClientName,
+      lead.joistEstimateNumber,
+      lead.joistInvoiceNumber,
+      lead.joistStatus,
+      financials.labor,
+      financials.materials,
+      financials.subcontractors,
+      financials.other,
+      financials.totalCost,
+      financials.markupPercent,
+      financials.suggestedPrice,
+      financials.customerPrice,
+      financials.revenueReceived,
+      financials.expenseTotal,
+      financials.grossProfit,
+      Math.round(financials.margin),
+      lead.paymentLink,
+      lead.receivedAt,
+    ]
+  })
+  const csv = [headers, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+    .join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `flanagan-financial-report-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function FinancialDashboard({ leads, emailSettings }) {
+  const rows = useMemo(() => leads.map((lead) => ({ lead, financials: leadFinancials(lead) })), [leads])
+  const totals = rows.reduce(
+    (sum, row) => ({
+      customerPrice: sum.customerPrice + row.financials.customerPrice,
+      revenueReceived: sum.revenueReceived + row.financials.revenueReceived,
+      expenseTotal: sum.expenseTotal + row.financials.expenseTotal,
+      grossProfit: sum.grossProfit + row.financials.grossProfit,
+    }),
+    { customerPrice: 0, revenueReceived: 0, expenseTotal: 0, grossProfit: 0 },
+  )
+  totals.margin = totals.customerPrice > 0 ? (totals.grossProfit / totals.customerPrice) * 100 : 0
+  const summaryText = financeSummaryLines(rows, totals)
+  const cpaMailto = `mailto:?${new URLSearchParams({
+    subject: `Flanagan Construction revenue and expense report - ${new Date().toLocaleDateString()}`,
+    body: summaryText,
+  }).toString()}`
+
+  const copySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(summaryText)
+    } catch {
+      // The mailto link still gives the office manager a fallback.
+    }
+  }
+
+  return (
+    <section className="admin-page">
+      <div className="admin-page-head">
+        <div>
+          <p className="admin-eyebrow">Money</p>
+          <h1>Reports, margins, Joist and Square</h1>
+        </div>
+        <div className="admin-page-actions">
+          <button className="admin-secondary-button" type="button" onClick={() => exportFinancialCsv(leads)}>
+            <FileSpreadsheet size={17} aria-hidden="true" />
+            Export CPA CSV
+          </button>
+          <a className="admin-primary-link" href={cpaMailto} onClick={copySummary}>
+            <Mail size={17} aria-hidden="true" />
+            Email CPA summary
+          </a>
+        </div>
+      </div>
+
+      <div className="admin-metric-grid finance-metric-grid" aria-label="Financial summary">
+        <article>
+          <span>Quoted total</span>
+          <strong>{formatCurrency(totals.customerPrice)}</strong>
+        </article>
+        <article>
+          <span>Revenue received</span>
+          <strong>{formatCurrency(totals.revenueReceived)}</strong>
+        </article>
+        <article>
+          <span>Expenses / cost</span>
+          <strong>{formatCurrency(totals.expenseTotal)}</strong>
+        </article>
+        <article>
+          <span>Gross profit</span>
+          <strong>{formatCurrency(totals.grossProfit)}</strong>
+        </article>
+      </div>
+
+      <div className="integration-grid">
+        <section className="admin-panel integration-card">
+          <ReceiptText size={22} aria-hidden="true" />
+          <div>
+            <p className="admin-eyebrow">Joist bridge</p>
+            <strong>Keep sending official estimates and invoices from Joist for now.</strong>
+            <span>Paste the Joist estimate number, invoice number, status, and payment link into each lead so follow-up stays visible here.</span>
+          </div>
+        </section>
+        <section className="admin-panel integration-card">
+          <DollarSign size={22} aria-hidden="true" />
+          <div>
+            <p className="admin-eyebrow">Square payments</p>
+            <strong>Ready for payment links first, API later.</strong>
+            <span>Use the payment link field today. Later, Square Checkout can create hosted payment links and Square Invoices can publish invoice payments.</span>
+          </div>
+        </section>
+        <section className="admin-panel integration-card">
+          <Mail size={22} aria-hidden="true" />
+          <div>
+            <p className="admin-eyebrow">Outbound email</p>
+            <strong>{emailSettings?.from || 'Nick Flanagan <nickflanagan73@gmail.com>'}</strong>
+            <span>{emailSettings?.configured ? 'SMTP is ready for future one-click sending.' : 'Use mailto drafts now; add Gmail SMTP settings in Railway when ready.'}</span>
+          </div>
+        </section>
+      </div>
+
+      <section className="admin-panel finance-table-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Job margin list</p>
+            <strong>Use this for quick office review before emailing the CPA.</strong>
+          </div>
+          <a href="https://developer.squareup.com/docs/checkout-api" target="_blank" rel="noreferrer">
+            <ExternalLink size={16} aria-hidden="true" />
+            Square docs
+          </a>
+        </div>
+        <div className="finance-table-wrap">
+          <table className="finance-table">
+            <thead>
+              <tr>
+                <th>Lead</th>
+                <th>Status</th>
+                <th>Customer price</th>
+                <th>Received</th>
+                <th>Cost</th>
+                <th>Profit</th>
+                <th>Margin</th>
+                <th>Joist invoice</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length ? rows.map(({ lead, financials }) => (
+                <tr key={lead.id}>
+                  <td>
+                    <strong>{lead.name}</strong>
+                    <span>{lead.projectType}</span>
+                  </td>
+                  <td>{lead.status}</td>
+                  <td>{formatCurrency(financials.customerPrice)}</td>
+                  <td>{formatCurrency(financials.revenueReceived)}</td>
+                  <td>{formatCurrency(financials.expenseTotal)}</td>
+                  <td>{formatCurrency(financials.grossProfit)}</td>
+                  <td>{Math.round(financials.margin)}%</td>
+                  <td>{lead.joistInvoiceNumber || 'Not entered'}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="8">No leads yet. New requests will appear here after the funnel captures them.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  )
+}
+
 function exportCsv(leads) {
   const headers = [
     'Name',
@@ -1151,7 +1677,7 @@ function exportCsv(leads) {
     lead.receivedAt,
   ])
   const csv = [headers, ...rows]
-    .map((row) => row.map((cell) => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
+    .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
     .join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -1472,6 +1998,10 @@ function AdminDashboard({ content, setContent, goHome }) {
             <Users size={17} aria-hidden="true" />
             Leads
           </button>
+          <button className={activeView === 'money' ? 'active' : ''} type="button" onClick={() => setActiveView('money')}>
+            <DollarSign size={17} aria-hidden="true" />
+            Money
+          </button>
           <button className={activeView === 'content' ? 'active' : ''} type="button" onClick={() => setActiveView('content')}>
             <Edit3 size={17} aria-hidden="true" />
             Site editor
@@ -1564,7 +2094,13 @@ function AdminDashboard({ content, setContent, goHome }) {
             />
           </div>
         </section>
-      ) : (
+      ) : null}
+
+      {activeView === 'money' ? (
+        <FinancialDashboard leads={leads} emailSettings={emailSettings} />
+      ) : null}
+
+      {activeView === 'content' ? (
         <section className="admin-page">
           <div className="admin-page-head">
             <div>
@@ -1637,7 +2173,7 @@ function AdminDashboard({ content, setContent, goHome }) {
             <ContentPreview draft={draft} />
           </div>
         </section>
-      )}
+      ) : null}
     </main>
   )
 }
