@@ -1,5 +1,5 @@
 export const defaultSiteContent = {
-  contentVersion: 6,
+  contentVersion: 7,
 
   business: {
     name: 'Flanagan Construction',
@@ -11,12 +11,12 @@ export const defaultSiteContent = {
 
   hero: {
     eyebrow: 'Friendly local remodeling help',
-    titlePrefix: 'Home remodeling that feels easier in',
+    titlePrefix: 'What do you need fixed or built in',
     highlight: 'Newark, DE',
     lede:
-      'Start with kitchens, bathrooms, concrete driveways and sidewalks, roofing, siding, or windows. We keep the process simple, practical, and easy to follow for busy homeowners.',
-    primaryCta: 'Start a simple request',
-    secondaryCta: 'See what we do',
+      'Tell us the job, leave your phone and email, and we will follow up with a clear next step. Kitchens, baths, concrete, roofs, siding, and windows are our main work.',
+    primaryCta: 'Start request',
+    secondaryCta: 'Main work',
   },
 
   heroCredibility: [
@@ -27,12 +27,12 @@ export const defaultSiteContent = {
 
   estimate: {
     eyebrow: 'Start here',
-    title: 'Tell us what you need. Pick one thing or a whole list.',
+    title: 'Tap what you need. We will sort it out.',
     copy:
-      'Phone and email come first so we can save your request if you step away. Then choose interior, exterior, concrete, commercial, or referral work.',
-    formTitle: 'Quick project path',
-    formCopy: 'Start with your contact info, then tap every item that fits.',
-    formNote: 'Your request saves as soon as we have a way to reach you.',
+      'Phone and email come first so your request is saved. Then pick one item or a few.',
+    formTitle: 'Quick request',
+    formCopy: 'Phone and email first, then tap the work.',
+    formNote: 'No pressure. We will follow up like normal people.',
     successTitle: 'Request received',
     successCopy: 'We will review it and follow up with the next step.',
   },
@@ -48,6 +48,16 @@ export const defaultSiteContent = {
     copy:
       'Choose a lane, then select as many needs as you want. Every job is different, so this helps us line up the right crew and subcontractors.',
     contactNudge: 'Phone and email save your started request automatically.',
+    simpleNeeds: [
+      'Kitchen',
+      'Bathroom',
+      'Concrete',
+      'Roofing',
+      'Siding',
+      'Windows',
+      'Deck / porch',
+      'Addition',
+    ],
     groups: [
       {
         id: 'interior',
@@ -135,22 +145,22 @@ export const defaultSiteContent = {
   },
 
   servicesIntro: {
-    eyebrow: 'Most requested work',
-    title: 'Easy starting points for the home projects Delaware families ask us about most.',
+    eyebrow: 'Main work',
+    title: 'A few things we do well.',
   },
 
   services: [
     {
       title: '#1 Kitchen & Bathroom Remodeling',
-      copy: 'Practical kitchen and bath updates, tile, showers, vanities, layout fixes, ventilation, plumbing coordination, and repairs when old work needs to be made right.',
+      copy: 'Kitchens, bathrooms, tile, layout fixes, and repair work when old work needs to be made right.',
     },
     {
       title: '#2 Concrete Driveways & Sidewalks',
-      copy: 'Driveways, sidewalks, concrete repairs, blacktop coordination, pavers, patios, hardscape walls, retaining walls, and outdoor kitchens with clear scope up front.',
+      copy: 'Driveways, sidewalks, repairs, pavers, patios, retaining walls, and outdoor work.',
     },
     {
       title: '#3 Roofing, Siding & Windows',
-      copy: 'Roofing, siding, windows, doors, gutters, gutter guards, garage doors, exterior repairs, and the right trade coordination for each house.',
+      copy: 'Roofing, siding, windows, doors, gutters, and exterior repairs.',
     },
     {
       title: 'Decks, Porches & Fences',
@@ -181,10 +191,10 @@ export const defaultSiteContent = {
   ],
 
   gallery: {
-    eyebrow: 'Homes people live in',
-    title: 'Practical work for busy families and everyday Delaware houses.',
+    eyebrow: 'Simple work lanes',
+    title: 'Start with the job. We will handle the next conversation.',
     copy:
-      'Start with one project or a whole list. We keep the language plain, price the real scope, and help homeowners understand the next step.',
+      'Most people just need to know who to call, what it might take, and whether the job is worth pricing. Start there.',
     items: [
       {
         title: 'Kitchens & Baths',
@@ -202,7 +212,7 @@ export const defaultSiteContent = {
         title: 'Roofing, Siding & Windows',
         copy: 'Roofing, siding, windows, doors, gutters, gutter guards, and exterior repairs.',
         image:
-          'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1000&q=82',
+          'https://images.unsplash.com/photo-1621750679714-6a0fb744f54e?auto=format&fit=crop&w=1000&q=82',
       },
     ],
   },

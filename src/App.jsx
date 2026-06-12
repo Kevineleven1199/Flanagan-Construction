@@ -1,30 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
-  Award,
   Bath,
-  BrainCircuit,
-  Camera,
   CheckCircle2,
-  ChevronDown,
   ClipboardCheck,
   Clock3,
   Hammer,
-  HelpCircle,
   Home,
   Mail,
-  MapPin,
   Menu,
-  Palette,
-  Paintbrush,
   Phone,
-  Quote,
-  Ruler,
-  ScanLine,
   ShieldCheck,
   Sparkles,
-  Star,
-  WandSparkles,
   X,
 } from 'lucide-react'
 import AdminDashboard from './AdminDashboard'
@@ -54,40 +41,10 @@ function track(event, data = {}) {
 
 const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
 
-const projectTypes = ['Kitchen', 'Bathroom', 'Deck', 'Addition', 'Interior work', 'Exterior work', 'Concrete', 'Commercial', 'Referral']
-const budgetRanges = ['Small repair', 'Medium project', 'Large project', 'Not sure yet']
-const timelines = ['ASAP', 'This month', '1-3 months', 'Planning ahead']
-const icons = [Bath, Sparkles, Home, Hammer]
+const icons = [Bath, Hammer, Home]
 
 const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
 const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
-const aiMetricIcons = [ScanLine, Ruler, Palette]
-const priorityServiceLabels = ['Most requested', 'Driveways & walks', 'Exterior help']
-
-const processSteps = [
-  { title: 'Free consultation', copy: 'We visit, listen, and measure, with no pressure and no obligation.' },
-  { title: 'Clear written estimate', copy: 'A detailed scope and price before any demolition begins.' },
-  { title: 'Clean, careful build', copy: 'Tidy crews, daily jobsite care, and proper waterproofing.' },
-  { title: 'Final walkthrough', copy: 'We review every detail together and handle the punch list.' },
-]
-
-const advisorStyles = ['Kitchen', 'Bathroom', 'Deck/porch', 'Concrete']
-const advisorScopes = ['Remodel', 'Repair', 'Build new', 'Fix bad work']
-const advisorPriorities = ['Quality', 'Speed', 'Budget control', 'Resale value']
-
-const styleNotes = {
-  Kitchen: 'layout, cabinets, counters, flooring, lighting, and trade coordination',
-  Bathroom: 'tile, ventilation, plumbing coordination, waterproofing, and finish work',
-  'Deck/porch': 'framing, decking, railings, stairs, screens, and exterior details',
-  Concrete: 'sidewalks, driveways, pavers, patios, walls, and site work',
-}
-
-const scopeBudgets = {
-  Remodel: 'Medium project',
-  Repair: 'Small repair',
-  'Build new': 'Large project',
-  'Fix bad work': 'Not sure yet',
-}
 
 function LeadPanel({
   business,
@@ -100,14 +57,14 @@ function LeadPanel({
   submitting,
   submitted,
   onReset,
-  selectedGroupId,
-  setSelectedGroupId,
   selectedNeeds,
   toggleNeed,
   draftSaving,
   lastSavedAt,
 }) {
-  const activeGroup = leadFunnel.groups.find((group) => group.id === selectedGroupId) || leadFunnel.groups[0]
+  const simpleNeeds = leadFunnel.simpleNeeds?.length
+    ? leadFunnel.simpleNeeds
+    : [...new Set(leadFunnel.groups.flatMap((group) => group.needs))].slice(0, 14)
 
   if (submitted) {
     const firstName = form.name ? form.name.trim().split(' ')[0] : ''
@@ -207,25 +164,10 @@ function LeadPanel({
               : leadFunnel.contactNudge}
         </div>
 
-        <div className="funnel-roadmap" aria-label="Project category">
-          {leadFunnel.groups.map((group) => (
-            <button
-              className={group.id === activeGroup.id ? 'funnel-road active' : 'funnel-road'}
-              key={group.id}
-              type="button"
-              aria-pressed={group.id === activeGroup.id}
-              onClick={() => setSelectedGroupId(group.id)}
-            >
-              <strong>{group.label}</strong>
-              <span>{group.summary}</span>
-            </button>
-          ))}
-        </div>
-
         <fieldset className="funnel-needs">
-          <legend>{activeGroup.label} needs</legend>
+          <legend>What do you want help with?</legend>
           <div className="need-chip-grid">
-            {activeGroup.needs.map((need) => {
+            {simpleNeeds.map((need) => {
               const selected = selectedNeeds.includes(need)
               return (
                 <button
@@ -243,9 +185,9 @@ function LeadPanel({
           </div>
         </fieldset>
 
-        <div className="selected-needs-box">
-          <strong>Selected work</strong>
-          {selectedNeeds.length ? (
+        {selectedNeeds.length ? (
+          <div className="selected-needs-box">
+            <strong>Selected work</strong>
             <div>
               {selectedNeeds.map((need) => (
                 <button key={need} type="button" onClick={() => toggleNeed(need)}>
@@ -254,38 +196,17 @@ function LeadPanel({
                 </button>
               ))}
             </div>
-          ) : (
-            <p>Tap anything that fits. You can choose more than one.</p>
-          )}
-        </div>
-
-        <div className="field-grid">
-          <label>
-            Job size
-            <select name="budget" value={form.budget} onChange={handleChange}>
-              {budgetRanges.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Timeline
-            <select name="timeline" value={form.timeline} onChange={handleChange}>
-              {timelines.map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-        </div>
+          </div>
+        ) : null}
 
         <label>
-          Anything else we should know?
+          Anything else? Photos can come later.
           <textarea
             name="message"
             value={form.message}
             onChange={handleChange}
-            rows="4"
-            placeholder="Example: kitchen and bathroom work, a cheaper bid that went wrong, concrete driveway, siding, or a subcontractor introduction."
+            rows="3"
+            placeholder="Example: kitchen estimate, sidewalk repair, roof leak, new windows."
           />
         </label>
 
@@ -332,25 +253,7 @@ function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
             goSection('services')
           }}
         >
-          Services
-        </a>
-        <a
-          href="#reviews"
-          onClick={(event) => {
-            event.preventDefault()
-            goSection('reviews')
-          }}
-        >
-          Reviews
-        </a>
-        <a
-          href="#work"
-          onClick={(event) => {
-            event.preventDefault()
-            goSection('work')
-          }}
-        >
-          How It Works
+          Work
         </a>
         <a className="nav-call" href={phoneHref} onClick={() => track('phone_click', { location: 'header' })}>
           <Phone size={16} aria-hidden="true" />
@@ -381,268 +284,60 @@ function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
   )
 }
 
-function AdvisorPanel({ advisor, aiPlan, updateAdvisor, addAiPlanToForm }) {
+function SimpleServicesSection({ business, gallery, goSection, quickBand, services, servicesIntro }) {
+  const topServices = services.slice(0, 3)
+  const galleryItems = gallery.items.slice(0, 3)
+
   return (
-    <div className="ai-panel" aria-label="Remodel planner">
-      <div className="ai-panel-top">
-        <span>
-          <WandSparkles size={20} aria-hidden="true" />
-        </span>
+    <section className="simple-services" id="services" aria-label="Main services">
+      <div className="simple-services-head">
         <div>
-          <h3>Remodel planner</h3>
-          <p>Tap a few choices. Get a quote-ready plan.</p>
+          <p className="eyebrow">{servicesIntro.eyebrow}</p>
+          <h2>{servicesIntro.title}</h2>
         </div>
+        <p>{gallery.copy}</p>
       </div>
 
-      <div className="advisor-groups">
-        <fieldset>
-          <legend>Style</legend>
-          <div className="chip-row">
-            {advisorStyles.map((style) => (
-              <button
-                className={advisor.style === style ? 'choice-chip active' : 'choice-chip'}
-                key={style}
-                type="button"
-                aria-pressed={advisor.style === style}
-                onClick={() => updateAdvisor('style', style)}
-              >
-                {style}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>Scope</legend>
-          <div className="chip-row">
-            {advisorScopes.map((scope) => (
-              <button
-                className={advisor.scope === scope ? 'choice-chip active' : 'choice-chip'}
-                key={scope}
-                type="button"
-                aria-pressed={advisor.scope === scope}
-                onClick={() => updateAdvisor('scope', scope)}
-              >
-                {scope}
-              </button>
-            ))}
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>Priority</legend>
-          <div className="chip-row">
-            {advisorPriorities.map((priority) => (
-              <button
-                className={advisor.priority === priority ? 'choice-chip active' : 'choice-chip'}
-                key={priority}
-                type="button"
-                aria-pressed={advisor.priority === priority}
-                onClick={() => updateAdvisor('priority', priority)}
-              >
-                {priority}
-              </button>
-            ))}
-          </div>
-        </fieldset>
+      <div className="simple-service-grid">
+        {topServices.map((service, index) => {
+          const Icon = icons[index] || Hammer
+          const image = galleryItems[index]?.image || galleryItems[0]?.image
+          return (
+            <article className="simple-service-card" key={service.title}>
+              <div className="simple-service-photo" style={{ backgroundImage: cssUrl(image) }}></div>
+              <div>
+                <span className="service-icon">
+                  <Icon size={20} aria-hidden="true" />
+                </span>
+                <h3>{service.title.replace(/^#\d+\s*/, '')}</h3>
+                <p>{service.copy}</p>
+              </div>
+            </article>
+          )
+        })}
       </div>
 
-      <div className="ai-output">
-        <div className="score-ring" style={{ '--score': `${aiPlan.score}%` }}>
-          <strong>{aiPlan.score}</strong>
-          <span>fit score</span>
-        </div>
+      <div className="simple-proof-row">
+        {quickBand.map((item, index) => {
+          const Icon = quickBandIcons[index] || CheckCircle2
+          return (
+            <span key={item}>
+              <Icon size={17} aria-hidden="true" />
+              {item}
+            </span>
+          )
+        })}
+      </div>
+
+      <div className="simple-close">
         <div>
-          <h4>{aiPlan.headline}</h4>
-          <p>Job size: {aiPlan.budget}</p>
-          <ul>
-            {aiPlan.bullets.map((bullet) => (
-              <li key={bullet}>
-                <CheckCircle2 size={16} aria-hidden="true" />
-                {bullet}
-              </li>
-            ))}
-          </ul>
+          <strong>Serving New Castle County</strong>
+          <p>{business.serviceArea}</p>
         </div>
-      </div>
-
-      <button className="ai-action" type="button" onClick={addAiPlanToForm}>
-        Add this plan to my estimate
-        <ArrowRight size={18} aria-hidden="true" />
-      </button>
-    </div>
-  )
-}
-
-function StatsBand({ stats }) {
-  return (
-    <section className="stats-band" aria-label="Company highlights">
-      {stats.map((stat) => (
-        <div className="stat" key={stat.label}>
-          <strong>{stat.value}</strong>
-          <span>{stat.label}</span>
-        </div>
-      ))}
-    </section>
-  )
-}
-
-function Stars({ rating }) {
-  return (
-    <span className="stars" role="img" aria-label={`${rating} out of 5 stars`}>
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Star
-          key={index}
-          size={16}
-          aria-hidden="true"
-          fill={index < rating ? 'currentColor' : 'none'}
-        />
-      ))}
-    </span>
-  )
-}
-
-function ReviewsSection({ reviews, testimonials }) {
-  return (
-    <section className="reviews-section" id="reviews" aria-label="Customer reviews">
-      <div className="section-heading">
-        <p className="eyebrow">{reviews.eyebrow}</p>
-        <h2>{reviews.title}</h2>
-      </div>
-      <div className="reviews-grid">
-        {testimonials.map((item, index) => (
-          <article className="review-card" key={index}>
-            <Quote className="review-mark" size={26} aria-hidden="true" />
-            <Stars rating={item.rating} />
-            <p>{item.quote}</p>
-            <footer>
-              <strong>{item.name}</strong>
-              <span>{item.location}</span>
-            </footer>
-          </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function GuaranteesSection({ guaranteesIntro, guarantees }) {
-  return (
-    <section className="guarantees-section" aria-label="Our promise">
-      <div className="guarantees-copy">
-        <p className="eyebrow">
-          <Award size={16} aria-hidden="true" />
-          {guaranteesIntro.eyebrow}
-        </p>
-        <h2>{guaranteesIntro.title}</h2>
-        <p>{guaranteesIntro.copy}</p>
-      </div>
-      <ul className="guarantees-list">
-        {guarantees.map((item) => (
-          <li key={item}>
-            <CheckCircle2 size={18} aria-hidden="true" />
-            {item}
-          </li>
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-function FaqSection({ faqIntro, faqs }) {
-  return (
-    <section className="faq-section" id="faq" aria-label="Frequently asked questions">
-      <div className="section-heading">
-        <p className="eyebrow">
-          <HelpCircle size={16} aria-hidden="true" />
-          {faqIntro.eyebrow}
-        </p>
-        <h2>{faqIntro.title}</h2>
-      </div>
-      <div className="faq-list">
-        {faqs.map((item) => (
-          <details className="faq-item" key={item.question}>
-            <summary>
-              <span>{item.question}</span>
-              <ChevronDown className="faq-chevron" size={20} aria-hidden="true" />
-            </summary>
-            <p>{item.answer}</p>
-          </details>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ReferralSection({ referralSpeech }) {
-  return (
-    <section className="referral-section" aria-label="BNI referral speech">
-      <div className="referral-copy">
-        <p className="eyebrow">{referralSpeech.eyebrow}</p>
-        <h2>{referralSpeech.title}</h2>
-        <p>{referralSpeech.copy}</p>
-      </div>
-      <div className="referral-lists">
-        <article>
-          <h3>{referralSpeech.referralIntro}</h3>
-          <ul>
-            {referralSpeech.referralPartners.map((item) => (
-              <li key={item}>
-                <CheckCircle2 size={17} aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </article>
-        <article>
-          <h3>{referralSpeech.workIntro}</h3>
-          <ul>
-            {referralSpeech.targetWork.map((item) => (
-              <li key={item}>
-                <CheckCircle2 size={17} aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </article>
-      </div>
-    </section>
-  )
-}
-
-function sanitizeAdminHtml(html = '') {
-  return String(html)
-    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
-    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
-    .replace(/\s(href|src)\s*=\s*"javascript:[^"]*"/gi, '')
-    .replace(/\s(href|src)\s*=\s*'javascript:[^']*'/gi, '')
-}
-
-function SafeHtmlBlock({ html }) {
-  const cleanHtml = useMemo(() => sanitizeAdminHtml(html), [html])
-  if (!cleanHtml.trim()) return null
-  return <section className="custom-html-section" dangerouslySetInnerHTML={{ __html: cleanHtml }} />
-}
-
-function ServiceLocationsSection({ serviceLocations }) {
-  const places = serviceLocations?.places || []
-  if (!places.length) return null
-
-  return (
-    <section className="service-area-section" aria-label="New Castle County service locations">
-      <div className="service-area-copy">
-        <p className="eyebrow">
-          <MapPin size={16} aria-hidden="true" />
-          {serviceLocations.eyebrow}
-        </p>
-        <h2>{serviceLocations.title}</h2>
-        <p>{serviceLocations.copy}</p>
-      </div>
-      <div className="location-chip-grid">
-        {places.map((place) => (
-          <span key={place}>{place}</span>
-        ))}
+        <button className="primary-action button-link" type="button" onClick={() => goSection('estimate')}>
+          Start my request
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
       </div>
     </section>
   )
@@ -650,8 +345,6 @@ function ServiceLocationsSection({ serviceLocations }) {
 
 function HomePage({
   content,
-  advisor,
-  aiPlan,
   form,
   handleChange,
   handleSubmit,
@@ -659,52 +352,28 @@ function HomePage({
   submitting,
   submitted,
   onReset,
-  updateAdvisor,
-  addAiPlanToForm,
   goSection,
-  reveal,
-  setReveal,
-  selectedGroupId,
-  setSelectedGroupId,
   selectedNeeds,
   toggleNeed,
   draftSaving,
   lastSavedAt,
 }) {
   const {
-    aiPlanner,
     business,
-    compare,
-    cta,
     estimate,
-    faqIntro,
-    faqs,
     gallery,
-    guarantees,
-    guaranteesIntro,
     hero,
     heroCredibility,
     images,
     leadFunnel,
-    customHtml,
-    processSteps: contentProcessSteps,
-    proofPoints,
     quickBand,
-    referralSpeech,
-    reviews,
-    serviceLocations,
     services,
     servicesIntro,
-    stats,
-    testimonials,
-    work,
   } = content
-  const phoneHref = phoneHrefFor(business.phone)
-  const activeProcessSteps = contentProcessSteps?.length ? contentProcessSteps : processSteps
 
   return (
     <>
-      <section id="top" className="hero-section grounded-hero" style={{ '--hero-photo': cssUrl(images.hero) }}>
+      <section id="top" className="hero-section simple-home-hero" style={{ '--hero-photo': cssUrl(images.hero) }}>
         <div className="hero-inner">
           <p className="hero-eyebrow">
             <span className="eyebrow-rule" aria-hidden="true"></span>
@@ -741,10 +410,10 @@ function HomePage({
                 goSection('services')
               }}
             >
-              {hero.secondaryCta}
-            </a>
-          </div>
-          <div className="hero-tech-strip" aria-label="Why homeowners choose us">
+            {hero.secondaryCta}
+          </a>
+        </div>
+          <div className="hero-tech-strip" aria-label="Why homeowners start here">
             {heroCredibility.map((label, index) => {
               const Icon = heroCredibilityIcons[index] || ShieldCheck
               return (
@@ -755,22 +424,6 @@ function HomePage({
               )
             })}
           </div>
-        </div>
-      </section>
-
-      <section id="estimate" className="estimate-section" aria-label="Request an estimate">
-        <div className="estimate-copy">
-          <p className="eyebrow">{estimate.eyebrow}</p>
-          <h2>{estimate.title}</h2>
-          <p>{estimate.copy}</p>
-          <ul className="estimate-points">
-            {proofPoints.map((point) => (
-              <li key={point}>
-                <CheckCircle2 size={18} aria-hidden="true" />
-                {point}
-              </li>
-            ))}
-          </ul>
         </div>
 
         <LeadPanel
@@ -784,8 +437,6 @@ function HomePage({
           submitting={submitting}
           submitted={submitted}
           onReset={onReset}
-          selectedGroupId={selectedGroupId}
-          setSelectedGroupId={setSelectedGroupId}
           selectedNeeds={selectedNeeds}
           toggleNeed={toggleNeed}
           draftSaving={draftSaving}
@@ -793,174 +444,14 @@ function HomePage({
         />
       </section>
 
-      <section className="quick-band" aria-label="Service area and availability">
-        {quickBand.map((item, index) => {
-          const Icon = quickBandIcons[index] || CheckCircle2
-          return (
-            <span key={item}>
-              <Icon size={18} aria-hidden="true" />
-              {item}
-            </span>
-          )
-        })}
-      </section>
-
-      <StatsBand stats={stats} />
-
-      <SafeHtmlBlock html={customHtml?.beforeServices} />
-
-      <section className="section" id="services">
-        <div className="section-heading">
-          <p className="eyebrow">{servicesIntro.eyebrow}</p>
-          <h2>{servicesIntro.title}</h2>
-        </div>
-        <div className="service-grid">
-          {services.map((service, index) => {
-            const Icon = icons[index] || Paintbrush
-            return (
-              <article className={index < 3 ? 'service-card priority-service-card' : 'service-card'} key={service.title}>
-                {index < 3 ? <span className="priority-rank">{priorityServiceLabels[index]}</span> : null}
-                <span className="service-icon">
-                  <Icon size={22} aria-hidden="true" />
-                </span>
-                <h3>{service.title}</h3>
-                <p>{service.copy}</p>
-              </article>
-            )
-          })}
-        </div>
-      </section>
-
-      <ServiceLocationsSection serviceLocations={serviceLocations} />
-
-      <SafeHtmlBlock html={customHtml?.afterServices} />
-
-      <section className="gallery-section" aria-label="Bathroom remodeling inspiration">
-        <div className="gallery-copy">
-          <p className="eyebrow">{gallery.eyebrow}</p>
-          <h2>{gallery.title}</h2>
-          <p>{gallery.copy}</p>
-        </div>
-        <div className="bathroom-gallery">
-          {gallery.items.map((item, index) => (
-            <article
-              className={`bathroom-card bathroom-card-${index + 1}`}
-              key={item.title}
-              style={{ backgroundImage: cssUrl(item.image) }}
-            >
-              <div>
-                <span>0{index + 1}</span>
-                <h3>{item.title}</h3>
-                <p>{item.copy}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <ReferralSection referralSpeech={referralSpeech} />
-
-      <ReviewsSection reviews={reviews} testimonials={testimonials} />
-
-      <section className="ai-section" id="ai" style={{ '--ai-photo': cssUrl(images.aiBackground) }}>
-        <div className="ai-copy">
-          <p className="eyebrow">
-            <BrainCircuit size={16} aria-hidden="true" />
-            {aiPlanner.eyebrow}
-          </p>
-          <h2>{aiPlanner.title}</h2>
-          <p>{aiPlanner.copy}</p>
-          <div className="ai-metrics" aria-label="Planner features">
-            {aiPlanner.metrics.map((metric, index) => {
-              const Icon = aiMetricIcons[index] || Sparkles
-              return (
-                <span key={metric}>
-                  <Icon size={18} aria-hidden="true" />
-                  {metric}
-                </span>
-              )
-            })}
-          </div>
-        </div>
-
-        <AdvisorPanel
-          advisor={advisor}
-          aiPlan={aiPlan}
-          updateAdvisor={updateAdvisor}
-          addAiPlanToForm={addAiPlanToForm}
-        />
-      </section>
-
-      <section className="compare-section" aria-label="Interactive before and after bathroom slider">
-        <div className="compare-copy">
-          <p className="eyebrow">
-            <Camera size={16} aria-hidden="true" />
-            {compare.eyebrow}
-          </p>
-          <h2>{compare.title}</h2>
-          <p>{compare.copy}</p>
-        </div>
-        <div className="compare-wrap">
-          <div className="compare-stage" style={{ '--reveal': `${reveal}%` }}>
-            <div className="compare-image compare-before" style={{ backgroundImage: cssUrl(compare.beforeImage) }}></div>
-            <div className="compare-image compare-after" style={{ backgroundImage: cssUrl(compare.afterImage) }}></div>
-            <div className="compare-label label-before">Before</div>
-            <div className="compare-label label-after">After</div>
-            <div className="compare-handle" aria-hidden="true"></div>
-          </div>
-          <input
-            className="compare-range"
-            type="range"
-            min="8"
-            max="92"
-            value={reveal}
-            aria-label="Reveal bathroom remodel after image"
-            onChange={(event) => setReveal(event.target.value)}
-          />
-        </div>
-      </section>
-
-      <GuaranteesSection guaranteesIntro={guaranteesIntro} guarantees={guarantees} />
-
-      <section className="work-section" id="work" style={{ '--work-photo': cssUrl(images.workBackground) }}>
-        <div className="work-copy">
-          <p className="eyebrow">{work.eyebrow}</p>
-          <h2>{work.title}</h2>
-          <p>{work.copy}</p>
-        </div>
-        <div className="process-list">
-          {activeProcessSteps.map((step, index) => (
-            <div className="process-step" key={step.title}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <div>
-                <strong>{step.title}</strong>
-                <p>{step.copy}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <FaqSection faqIntro={faqIntro} faqs={faqs} />
-
-      <SafeHtmlBlock html={customHtml?.beforeFooter} />
-
-      <section className="cta-band" aria-label="Request your estimate">
-        <div>
-          <h2>{cta.title}</h2>
-          <p>{cta.copy}</p>
-        </div>
-        <div className="cta-band-actions">
-          <a className="primary-action" href="#estimate" onClick={() => goSection('estimate')}>
-            {cta.primaryCta}
-            <ArrowRight size={18} aria-hidden="true" />
-          </a>
-          <a className="secondary-action" href={phoneHref}>
-            <Phone size={18} aria-hidden="true" />
-            {business.phone}
-          </a>
-        </div>
-      </section>
+      <SimpleServicesSection
+        business={business}
+        gallery={gallery}
+        goSection={goSection}
+        quickBand={quickBand}
+        services={services}
+        servicesIntro={servicesIntro}
+      />
     </>
   )
 }
@@ -968,6 +459,7 @@ function HomePage({
 function SiteFooter({ business, services, goSection }) {
   const year = new Date().getFullYear()
   const phoneHref = phoneHrefFor(business.phone)
+  const topServices = services.slice(0, 3)
   const jump = (id) => (event) => {
     event.preventDefault()
     goSection(id)
@@ -985,26 +477,20 @@ function SiteFooter({ business, services, goSection }) {
 
         <nav className="footer-col" aria-label="Services">
           <h3>Services</h3>
-          {services.map((service) => (
+          {topServices.map((service) => (
             <a key={service.title} href="#services" onClick={jump('services')}>
-              {service.title}
+              {service.title.replace(/^#\d+\s*/, '')}
             </a>
           ))}
         </nav>
 
         <nav className="footer-col" aria-label="Company">
-          <h3>Company</h3>
-          <a href="#work" onClick={jump('work')}>
-            How it works
-          </a>
-          <a href="#reviews" onClick={jump('reviews')}>
-            Reviews
-          </a>
-          <a href="#faq" onClick={jump('faq')}>
-            FAQ
-          </a>
+          <h3>Start</h3>
           <a href="#estimate" onClick={jump('estimate')}>
             Free estimate
+          </a>
+          <a href={phoneHref} onClick={() => track('phone_click', { location: 'footer_quick' })}>
+            Call now
           </a>
         </nav>
 
@@ -1026,7 +512,7 @@ function SiteFooter({ business, services, goSection }) {
         <span>
           Copyright {year} {business.name}. {business.location}.
         </span>
-        <span>Construction, remodeling, repairs, and referrals</span>
+        <span>Home remodeling, concrete, roofing, siding, and windows</span>
       </div>
     </footer>
   )
@@ -1036,19 +522,13 @@ function App() {
   const [siteContent, setSiteContent] = useState(() => mergeSiteContent(defaultSiteContent, loadStoredContent()))
   const [routePath, setRoutePath] = useState(() => window.location.pathname)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [reveal, setReveal] = useState(58)
-  const [advisor, setAdvisor] = useState({
-    style: advisorStyles[0],
-    scope: advisorScopes[0],
-    priority: advisorPriorities[0],
-  })
   const [form, setForm] = useState({
     name: '',
     phone: '',
     email: '',
-    projectType: projectTypes[0],
-    budget: budgetRanges[0],
-    timeline: timelines[0],
+    projectType: 'Project',
+    budget: 'Not sure yet',
+    timeline: 'Not sure yet',
     message: '',
     company: '',
   })
@@ -1086,31 +566,6 @@ function App() {
     return () => window.removeEventListener('popstate', handleRoute)
   }, [])
 
-  const aiPlan = useMemo(() => {
-    const score =
-      78 +
-      advisorStyles.indexOf(advisor.style) * 3 +
-      advisorScopes.indexOf(advisor.scope) * 2 +
-      advisorPriorities.indexOf(advisor.priority)
-    const priorityLine = {
-      Quality: 'price the real scope and line up the right trades before work starts',
-      Speed: 'pre-select materials early and keep the footprint close to existing plumbing',
-      'Budget control': 'separate must-haves from nice-to-haves before demo starts',
-      'Resale value': 'prioritize timeless tile, storage, lighting, and durable waterproofing',
-    }[advisor.priority]
-
-    return {
-      score: Math.min(score, 96),
-      headline: `${advisor.style} ${advisor.scope.toLowerCase()} plan`,
-      budget: scopeBudgets[advisor.scope],
-      bullets: [
-        styleNotes[advisor.style],
-        priorityLine,
-        'photo-ready finish schedule for tile, vanity, mirror, glass, lighting, and hardware',
-      ],
-    }
-  }, [advisor])
-
   const mailtoLink = useMemo(() => {
     const subject = encodeURIComponent(`New project request from ${form.name || 'website lead'}`)
     const body = encodeURIComponent(
@@ -1119,8 +574,6 @@ function App() {
         `Phone: ${form.phone}`,
         `Email: ${form.email}`,
         `Project type: ${selectedNeeds.length ? selectedNeeds.join(', ') : 'Not selected yet'}`,
-        `Budget: ${form.budget}`,
-        `Timeline: ${form.timeline}`,
         '',
         'Project details:',
         form.message,
@@ -1150,6 +603,8 @@ function App() {
   }
 
   const toggleNeed = (need) => {
+    const matchingGroup = siteContent.leadFunnel.groups.find((group) => group.needs.includes(need))
+    if (matchingGroup) setSelectedGroupId(matchingGroup.id)
     setSelectedNeeds((current) =>
       current.includes(need) ? current.filter((item) => item !== need) : [...current, need],
     )
@@ -1162,8 +617,6 @@ function App() {
     const projectType = selectedNeeds.length ? selectedNeeds.join(', ') : activeGroup.label
     const summaryLines = [
       selectedNeeds.length ? `Selected needs: ${selectedNeeds.join(', ')}` : `Selected lane: ${activeGroup.label}`,
-      `Job size: ${form.budget}`,
-      `Timeline: ${form.timeline}`,
       form.message ? `Notes: ${form.message}` : '',
     ].filter(Boolean)
 
@@ -1290,34 +743,12 @@ function App() {
       name: '',
       phone: '',
       email: '',
-      projectType: projectTypes[0],
-      budget: budgetRanges[0],
-      timeline: timelines[0],
+      projectType: 'Project',
+      budget: 'Not sure yet',
+      timeline: 'Not sure yet',
       message: '',
       company: '',
     })
-  }
-
-  const updateAdvisor = (name, value) => {
-    setAdvisor((current) => ({ ...current, [name]: value }))
-  }
-
-  const addAiPlanToForm = () => {
-    setForm((current) => ({
-      ...current,
-      projectType: aiPlan.headline,
-      budget: aiPlan.budget,
-      message: [
-        `Design direction: ${aiPlan.headline}.`,
-        `Style notes: ${aiPlan.bullets[0]}.`,
-        `Priority: ${aiPlan.bullets[1]}.`,
-        'Please call me to walk through measurements, photos, and next steps.',
-      ].join('\n'),
-    }))
-    setStatus('Design direction added to the estimate form.')
-    window.setTimeout(() => {
-      document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 80)
   }
 
   if (routePath.startsWith('/admin')) {
@@ -1339,8 +770,6 @@ function App() {
 
       <HomePage
         content={siteContent}
-        advisor={advisor}
-        aiPlan={aiPlan}
         form={form}
         handleChange={handleChange}
         handleSubmit={handleSubmit}
@@ -1348,13 +777,7 @@ function App() {
         submitting={submitting}
         submitted={submitted}
         onReset={resetForm}
-        updateAdvisor={updateAdvisor}
-        addAiPlanToForm={addAiPlanToForm}
         goSection={goSection}
-        reveal={reveal}
-        setReveal={setReveal}
-        selectedGroupId={selectedGroupId}
-        setSelectedGroupId={setSelectedGroupId}
         selectedNeeds={selectedNeeds}
         toggleNeed={toggleNeed}
         draftSaving={draftSaving}
