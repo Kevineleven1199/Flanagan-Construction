@@ -7,6 +7,7 @@ import {
   Clock3,
   Hammer,
   Home,
+  MapPin,
   Mail,
   Menu,
   Phone,
@@ -46,6 +47,12 @@ const icons = [Bath, Hammer, Home]
 const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
 const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
 const splashServices = ['Kitchens & baths', 'Concrete work', 'Roofing & siding']
+const heroPathSteps = ['Start request', 'Scope the work', 'Get a call back']
+const heroProjectCards = [
+  { label: 'Kitchen & bath', detail: 'Tile, layout, plumbing, ventilation', icon: Bath },
+  { label: 'Concrete', detail: 'Driveways, sidewalks, pavers, patios', icon: Hammer },
+  { label: 'Roof, siding, windows', detail: 'Exterior repairs that protect the house', icon: Home },
+]
 
 function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -96,6 +103,11 @@ function SplashIntro({ business, heroImage, onDone }) {
   return (
     <div className="splash-intro" role="status" aria-live="polite">
       <div className="splash-photo" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
+      <div className="splash-blueprint" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
       <div className="splash-card">
         <span className="brand-mark splash-mark">
           <Hammer size={30} aria-hidden="true" />
@@ -114,6 +126,42 @@ function SplashIntro({ business, heroImage, onDone }) {
       <button className="splash-skip" type="button" onClick={onDone}>
         Skip
       </button>
+    </div>
+  )
+}
+
+function HeroMotionLayer() {
+  return (
+    <div className="hero-motion-layer" aria-hidden="true">
+      <div className="hero-spotlight"></div>
+      <div className="blueprint-grid"></div>
+      <div className="measure-rail measure-rail-one"></div>
+      <div className="measure-rail measure-rail-two"></div>
+      <div className="hero-path">
+        {heroPathSteps.map((step, index) => (
+          <span key={step} style={{ '--path-order': index }}>
+            {step}
+          </span>
+        ))}
+      </div>
+      <div className="floating-job-stack">
+        {heroProjectCards.map((card, index) => {
+          const Icon = card.icon
+          return (
+            <div className="floating-job-card" key={card.label} style={{ '--float-order': index }}>
+              <span>
+                <Icon size={16} />
+              </span>
+              <strong>{card.label}</strong>
+              <small>{card.detail}</small>
+            </div>
+          )
+        })}
+      </div>
+      <div className="county-location-tag">
+        <MapPin size={15} />
+        New Castle County
+      </div>
     </div>
   )
 }
@@ -197,7 +245,7 @@ function LeadPanel({
   if (submitted) {
     const firstName = form.name ? form.name.trim().split(' ')[0] : ''
     return (
-    <aside className="lead-panel lead-success" id="estimate" aria-label="Request received" data-reveal="lift">
+      <aside className="lead-panel lead-success" id="estimate" aria-label="Request received" data-reveal="lift">
         <div className="panel-heading">
           <span>
             <CheckCircle2 size={20} aria-hidden="true" />
@@ -445,6 +493,24 @@ function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
 function SimpleServicesSection({ business, gallery, goSection, quickBand, services, servicesIntro }) {
   const topServices = services.slice(0, 3)
   const galleryItems = gallery.items.slice(0, 3)
+  const handleCardTilt = (event) => {
+    if (prefersReducedMotion()) return
+    const card = event.currentTarget
+    const rect = card.getBoundingClientRect()
+    const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2
+    const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2
+    card.style.setProperty('--card-tilt-x', `${(-y * 5).toFixed(2)}deg`)
+    card.style.setProperty('--card-tilt-y', `${(x * 5).toFixed(2)}deg`)
+    card.style.setProperty('--card-glow-x', `${((x + 1) * 50).toFixed(1)}%`)
+    card.style.setProperty('--card-glow-y', `${((y + 1) * 50).toFixed(1)}%`)
+  }
+  const resetCardTilt = (event) => {
+    const card = event.currentTarget
+    card.style.removeProperty('--card-tilt-x')
+    card.style.removeProperty('--card-tilt-y')
+    card.style.removeProperty('--card-glow-x')
+    card.style.removeProperty('--card-glow-y')
+  }
 
   return (
     <section className="simple-services" id="services" aria-label="Main services">
@@ -461,7 +527,14 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
           const Icon = icons[index] || Hammer
           const image = galleryItems[index]?.image || galleryItems[0]?.image
           return (
-            <article className="simple-service-card" key={service.title} data-reveal="card" style={{ '--reveal-order': index }}>
+            <article
+              className="simple-service-card"
+              key={service.title}
+              data-reveal="card"
+              onPointerMove={handleCardTilt}
+              onPointerLeave={resetCardTilt}
+              style={{ '--reveal-order': index }}
+            >
               <div className="simple-service-photo" style={{ backgroundImage: cssUrl(image) }}></div>
               <div>
                 <span className="service-icon">
@@ -533,6 +606,7 @@ function HomePage({
   return (
     <>
       <section id="top" className="hero-section simple-home-hero" style={{ '--hero-photo': cssUrl(images.hero) }}>
+        <HeroMotionLayer />
         <div className="hero-inner">
           <p className="hero-eyebrow">
             <span className="eyebrow-rule" aria-hidden="true"></span>
@@ -752,6 +826,38 @@ function App() {
     const timeout = window.setTimeout(dismissSplash, 2700)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
+
+  useEffect(() => {
+    const root = document.documentElement
+    const updateScrollProgress = () => {
+      const maxScroll = root.scrollHeight - window.innerHeight
+      const progress = maxScroll > 0 ? window.scrollY / maxScroll : 0
+      root.style.setProperty('--scroll-progress', String(Math.min(1, Math.max(0, progress))))
+    }
+
+    updateScrollProgress()
+    window.addEventListener('scroll', updateScrollProgress, { passive: true })
+    window.addEventListener('resize', updateScrollProgress)
+    return () => {
+      window.removeEventListener('scroll', updateScrollProgress)
+      window.removeEventListener('resize', updateScrollProgress)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (prefersReducedMotion()) return undefined
+
+    const handlePointerMove = (event) => {
+      const root = document.documentElement
+      root.style.setProperty('--pointer-x', `${event.clientX}px`)
+      root.style.setProperty('--pointer-y', `${event.clientY}px`)
+      root.style.setProperty('--hero-drift-x', `${((event.clientX / window.innerWidth - 0.5) * 18).toFixed(2)}px`)
+      root.style.setProperty('--hero-drift-y', `${((event.clientY / window.innerHeight - 0.5) * 14).toFixed(2)}px`)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    return () => window.removeEventListener('pointermove', handlePointerMove)
+  }, [])
 
   useEffect(() => {
     const root = document.documentElement
@@ -997,6 +1103,7 @@ function App() {
 
   return (
     <main>
+      <div className="scroll-progress" aria-hidden="true"></div>
       {showSplash ? (
         <SplashIntro business={business} heroImage={siteContent.images.hero} onDone={dismissSplash} />
       ) : null}
