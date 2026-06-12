@@ -406,6 +406,10 @@
   gap: 12px;
 }
 
+.lead-address-field {
+  grid-column: 1 / -1;
+}
+
 .lead-detail-grid label,
 .admin-field {
   display: grid;

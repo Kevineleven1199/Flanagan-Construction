@@ -1,53 +1,53 @@
 export const defaultSiteContent = {
-  contentVersion: 7,
+  contentVersion: 9,
 
   business: {
     name: 'Flanagan Construction',
-    location: 'Newark, Delaware',
+    location: 'New Castle County, Delaware',
     phone: '(302) 565-5724',
     email: 'quotes@flanaganconstructionde.com',
     serviceArea: 'All of New Castle County, including Newark, Wilmington, Middletown, Bear, Pike Creek, Hockessin, and nearby Delaware communities',
   },
 
   hero: {
-    eyebrow: 'Friendly local remodeling help',
+    eyebrow: 'New Castle County contractor help',
     titlePrefix: 'What do you need fixed or built in',
-    highlight: 'Newark, DE',
+    highlight: 'New Castle County?',
     lede:
-      'Tell us the job, leave your phone and email, and we will follow up with a clear next step. Kitchens, baths, concrete, roofs, siding, and windows are our main work.',
+      'Tell us the job, address, phone, and email. We will follow up with a clear next step for kitchens, baths, concrete, roofing, siding, windows, decks, and repairs.',
     primaryCta: 'Start request',
     secondaryCta: 'Main work',
   },
 
   heroCredibility: [
     'Licensed & insured',
-    'Straight written estimates',
-    'Friendly follow-up',
+    'Clear scope before price',
+    'Permits, prep & communication',
   ],
 
   estimate: {
     eyebrow: 'Start here',
     title: 'Tap what you need. We will sort it out.',
     copy:
-      'Phone and email come first so your request is saved. Then pick one item or a few.',
+      'Phone and email come first so your request is saved. Add the job address, then pick one item or a few.',
     formTitle: 'Quick request',
-    formCopy: 'Phone and email first, then tap the work.',
+    formCopy: 'Phone, email, address, then tap the work.',
     formNote: 'No pressure. We will follow up like normal people.',
     successTitle: 'Request received',
     successCopy: 'We will review it and follow up with the next step.',
   },
 
   quickBand: [
-    'Kitchen and bath remodels',
-    'Driveways and sidewalks',
-    'Roofing, siding, windows',
+    'Licensed and insured',
+    'Clear scope before price',
+    'Cleanup and communication',
   ],
 
   leadFunnel: {
     title: 'What kind of help do you need?',
     copy:
       'Choose a lane, then select as many needs as you want. Every job is different, so this helps us line up the right crew and subcontractors.',
-    contactNudge: 'Phone and email save your started request automatically.',
+    contactNudge: 'Phone and email save your started request automatically. Address locks in the job location.',
     simpleNeeds: [
       'Kitchen',
       'Bathroom',
@@ -146,21 +146,23 @@ export const defaultSiteContent = {
 
   servicesIntro: {
     eyebrow: 'Main work',
-    title: 'A few things we do well.',
+    title: 'Main work, plain and simple.',
+    copy:
+      'The important stuff with contractors: license and insurance, clear scope, realistic timing, trade coordination, cleanup, and someone who calls you back.',
   },
 
   services: [
     {
       title: '#1 Kitchen & Bathroom Remodeling',
-      copy: 'Kitchens, bathrooms, tile, layout fixes, and repair work when old work needs to be made right.',
+      copy: 'Kitchens, baths, tile, layout fixes, ventilation, plumbing coordination, and repair work when old work needs to be made right.',
     },
     {
       title: '#2 Concrete Driveways & Sidewalks',
-      copy: 'Driveways, sidewalks, repairs, pavers, patios, retaining walls, and outdoor work.',
+      copy: 'Driveways, sidewalks, repairs, pavers, patios, retaining walls, drainage coordination, and outdoor work.',
     },
     {
       title: '#3 Roofing, Siding & Windows',
-      copy: 'Roofing, siding, windows, doors, gutters, and exterior repairs.',
+      copy: 'Roofing, siding, windows, doors, gutters, gutter guards, and exterior repairs that protect the house.',
     },
     {
       title: 'Decks, Porches & Fences',
@@ -177,10 +179,10 @@ export const defaultSiteContent = {
   ],
 
   proofPoints: [
-    'Kitchen and bath estimates made simple',
-    'Driveways and sidewalks explained clearly',
-    'Roofing, siding, and windows handled straight',
-    'Started requests are saved early',
+    'Licensed and insured',
+    'Scope written clearly',
+    'Permits and trade coordination',
+    'Started requests saved early',
   ],
 
   stats: [
@@ -194,25 +196,25 @@ export const defaultSiteContent = {
     eyebrow: 'Simple work lanes',
     title: 'Start with the job. We will handle the next conversation.',
     copy:
-      'Most people just need to know who to call, what it might take, and whether the job is worth pricing. Start there.',
+      'Important contractor basics: license and insurance, clear scope, realistic timing, trade coordination, cleanup, and someone who calls you back.',
     items: [
       {
         title: 'Kitchens & Baths',
         copy: 'Kitchen remodels, bathroom remodels, tile, doors, trim, paint, and repairs inside the home.',
         image:
-          'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=1200&q=84',
+          'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1200&q=82',
       },
       {
         title: 'Concrete',
         copy: 'Driveways, sidewalks, concrete repairs, pavers, patios, walls, and outdoor kitchens.',
         image:
-          'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1000&q=80',
+          'https://images.pexels.com/photos/33405139/pexels-photo-33405139.jpeg?auto=compress&cs=tinysrgb&w=1200',
       },
       {
         title: 'Roofing, Siding & Windows',
         copy: 'Roofing, siding, windows, doors, gutters, gutter guards, and exterior repairs.',
         image:
-          'https://images.unsplash.com/photo-1621750679714-6a0fb744f54e?auto=format&fit=crop&w=1000&q=82',
+          'https://images.pexels.com/photos/37677394/pexels-photo-37677394.jpeg?auto=compress&cs=tinysrgb&w=1200',
       },
     ],
   },
@@ -272,7 +274,7 @@ export const defaultSiteContent = {
       quote:
         'The estimate was clear, the crew kept us updated, and the jobsite was cleaned up at the end of the day.',
       name: 'Sample Customer',
-      location: 'Newark, DE',
+      location: 'New Castle County, DE',
       rating: 5,
     },
     {
@@ -434,7 +436,7 @@ export const defaultSiteContent = {
 
   images: {
     hero:
-      'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=2400&q=84',
+      'https://images.pexels.com/photos/6474482/pexels-photo-6474482.jpeg?auto=compress&cs=tinysrgb&w=2200',
     aiBackground:
       'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1800&q=82',
     workBackground:

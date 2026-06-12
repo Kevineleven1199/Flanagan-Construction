@@ -116,7 +116,7 @@
   text-align: left;
   color: #fff;
   background-color: var(--brand-blue-dark);
-  --hero-photo: url('https://images.unsplash.com/photo-1620626011761-996317b8d101?auto=format&fit=crop&w=2400&q=82');
+  --hero-photo: url('https://images.pexels.com/photos/6474482/pexels-photo-6474482.jpeg?auto=compress&cs=tinysrgb&w=2200');
   /* Friendly home-service photo with a navy scrim for readable copy. */
   background-image:
     linear-gradient(
@@ -216,7 +216,7 @@
 
 @media (max-width: 640px) {
   .hero-section {
-    --hero-photo: url('https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?auto=format&fit=crop&w=1200&q=78');
+    --hero-photo: url('https://images.pexels.com/photos/6474482/pexels-photo-6474482.jpeg?auto=compress&cs=tinysrgb&w=1200');
     min-height: 86svh;
     padding-top: 104px;
     text-align: left;
@@ -473,6 +473,25 @@ select:focus,
 textarea:focus {
   border-color: var(--brand-blue-mid);
   box-shadow: 0 0 0 4px rgba(18, 63, 109, 0.16);
+}
+
+.address-field {
+  position: relative;
+}
+
+.address-helper {
+  color: #687075;
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.pac-container {
+  z-index: 10000 !important;
+  border: 1px solid rgba(18, 63, 109, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgba(7, 24, 39, 0.22);
+  font-family: inherit;
 }
 
 .field-grid {
@@ -2120,7 +2139,7 @@ legend {
 
 .simple-home-hero .hero-inner h1 {
   max-width: 12ch;
-  font-size: clamp(2.25rem, 5vw, 4.65rem);
+  font-size: clamp(2.2rem, 4.25vw, 3.8rem);
 }
 
 .simple-home-hero .lead-panel {
@@ -2239,12 +2258,18 @@ legend {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 18px 50px rgba(28, 31, 33, 0.08);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .simple-service-photo {
   min-height: 160px;
   background-position: center;
   background-size: cover;
+  transition: transform 500ms ease;
+  transform-origin: center;
 }
 
 .simple-service-card > div:not(.simple-service-photo) {
@@ -2272,6 +2297,16 @@ legend {
   margin: 0;
   color: #5f676c;
   line-height: 1.55;
+}
+
+.simple-service-card:hover {
+  border-color: rgba(18, 63, 109, 0.28);
+  box-shadow: 0 24px 70px rgba(28, 31, 33, 0.13);
+  transform: translateY(-4px);
+}
+
+.simple-service-card:hover .simple-service-photo {
+  transform: scale(1.045);
 }
 
 .simple-proof-row {
@@ -2989,5 +3024,77 @@ legend {
   #estimate,
   #services {
     scroll-margin-top: 84px;
+  }
+}
+
+/* Motion layer for the short public site. */
+.simple-home-hero {
+  animation: hero-shift 18s ease-in-out infinite alternate;
+}
+
+.simple-home-hero .hero-inner {
+  animation: rise-in 620ms ease both;
+}
+
+.simple-home-hero .lead-panel {
+  animation: rise-in 720ms ease 120ms both;
+}
+
+.simple-service-card {
+  animation: card-rise 620ms ease both;
+}
+
+.simple-service-card:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.simple-service-card:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.simple-proof-row span,
+.simple-close {
+  animation: rise-in 520ms ease both;
+}
+
+.simple-proof-row span:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.simple-proof-row span:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hero-shift {
+  from {
+    background-position: center center;
+  }
+
+  to {
+    background-position: center 45%;
   }
 }
