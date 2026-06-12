@@ -70,6 +70,7 @@
 .panel-title-row button,
 .repeater-actions button,
 .lead-contact-actions a,
+.lead-contact-actions button,
 .admin-plain-link {
   display: inline-flex;
   min-height: 40px;
@@ -96,6 +97,7 @@
 .panel-title-row button,
 .repeater-actions button,
 .lead-contact-actions a,
+.lead-contact-actions button,
 .admin-plain-link {
   border: 1px solid rgba(28, 31, 33, 0.12);
   background: #fff;
@@ -112,6 +114,7 @@
 .panel-title-row button:hover,
 .repeater-actions button:hover,
 .lead-contact-actions a:hover,
+.lead-contact-actions button:hover,
 .admin-plain-link:hover {
   border-color: rgba(154, 103, 18, 0.4);
   background: #fff7e3;
@@ -226,6 +229,29 @@
   color: #1c1f21;
   font-size: 2rem;
   line-height: 1;
+}
+
+.smtp-status-card {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  border-color: rgba(18, 63, 109, 0.16);
+  background: linear-gradient(135deg, #fff, #eef5fb);
+}
+
+.smtp-status-card strong,
+.smtp-status-card span {
+  display: block;
+}
+
+.smtp-status-card span {
+  margin-top: 4px;
+  color: #59636a;
+}
+
+.smtp-status-card svg {
+  color: #123f6d;
 }
 
 .crm-layout {
@@ -423,6 +449,102 @@
   font-weight: 850;
 }
 
+.stage-playbook {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(18, 63, 109, 0.14);
+  border-radius: 8px;
+  background: #f7fbff;
+  padding: 14px;
+}
+
+.stage-playbook strong {
+  color: #1c1f21;
+}
+
+.stage-button-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stage-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(18, 63, 109, 0.16);
+  border-radius: 8px;
+  background: #fff;
+  color: #1c1f21;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.stage-button:hover,
+.stage-button.active {
+  border-color: rgba(242, 184, 75, 0.72);
+  background: #fff4cf;
+}
+
+.email-workbench {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(18, 63, 109, 0.16);
+  border-radius: 8px;
+  background: #071827;
+  color: #fff;
+  padding: 16px;
+}
+
+.email-workbench-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.email-workbench strong,
+.email-workbench span {
+  display: block;
+}
+
+.email-workbench span {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.88rem;
+}
+
+.email-workbench pre {
+  margin: 0;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.email-workbench .lead-contact-actions a,
+.email-workbench .lead-contact-actions button {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.smtp-note {
+  margin: 0;
+  color: #fff4cf;
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
 .admin-empty {
   display: grid;
   min-height: 220px;
@@ -467,6 +589,10 @@
   gap: 12px;
 }
 
+.admin-form-grid.one-col {
+  grid-template-columns: 1fr;
+}
+
 .repeater-list.two-col {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -482,6 +608,103 @@
   border-radius: 8px;
   background: #faf8f2;
   padding: 14px;
+}
+
+.builder-intro {
+  display: flex;
+  gap: 18px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.builder-intro h2 {
+  max-width: 760px;
+  margin: 0;
+  color: #1c1f21;
+  font-size: clamp(1.45rem, 2.2vw, 2rem);
+  line-height: 1.05;
+}
+
+.builder-intro span {
+  max-width: 360px;
+  color: #59636a;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.sortable-list {
+  display: grid;
+  gap: 8px;
+}
+
+.sortable-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(18, 63, 109, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  color: #1c1f21;
+  cursor: grab;
+  padding: 12px;
+}
+
+.sortable-card.dragging {
+  border-color: rgba(242, 184, 75, 0.9);
+  background: #fff4cf;
+}
+
+.sortable-card svg {
+  color: #123f6d;
+}
+
+.sortable-card span {
+  color: #687075;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.asset-drop-field {
+  display: grid;
+  gap: 8px;
+  color: #34383a;
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+
+.asset-drop-preview {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  overflow: hidden;
+  border: 1px dashed rgba(18, 63, 109, 0.28);
+  border-radius: 8px;
+  background-color: #eef5fb;
+  background-position: center;
+  background-size: cover;
+  color: #123f6d;
+  text-align: center;
+}
+
+.asset-drop-field.dragging .asset-drop-preview {
+  border-color: rgba(242, 184, 75, 0.94);
+  background-color: #fff4cf;
+}
+
+.asset-drop-field input {
+  min-height: 40px;
+  border: 1px solid #d8dddf;
+  border-radius: 8px;
+  padding: 0 11px;
 }
 
 .panel-title-row,
@@ -607,6 +830,13 @@
   font-size: 2rem;
 }
 
+.admin-auth-help {
+  margin: -6px 0 0;
+  color: #59636a;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
 .admin-auth-panel label {
   display: grid;
   gap: 8px;
@@ -648,6 +878,8 @@
   }
 
   .admin-metric-grid,
+  .stage-button-grid,
+  .asset-grid,
   .content-editor-grid,
   .lead-detail-grid,
   .admin-form-grid,
@@ -664,5 +896,11 @@
   .lead-row-meta {
     min-width: 0;
     text-align: left;
+  }
+
+  .builder-intro,
+  .email-workbench-head {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

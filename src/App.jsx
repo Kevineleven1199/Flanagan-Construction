@@ -608,6 +608,21 @@ function ReferralSection({ referralSpeech }) {
   )
 }
 
+function sanitizeAdminHtml(html = '') {
+  return String(html)
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+    .replace(/\s(href|src)\s*=\s*"javascript:[^"]*"/gi, '')
+    .replace(/\s(href|src)\s*=\s*'javascript:[^']*'/gi, '')
+}
+
+function SafeHtmlBlock({ html }) {
+  const cleanHtml = useMemo(() => sanitizeAdminHtml(html), [html])
+  if (!cleanHtml.trim()) return null
+  return <section className="custom-html-section" dangerouslySetInnerHTML={{ __html: cleanHtml }} />
+}
+
 function HomePage({
   content,
   advisor,
@@ -646,6 +661,7 @@ function HomePage({
     heroCredibility,
     images,
     leadFunnel,
+    customHtml,
     processSteps: contentProcessSteps,
     proofPoints,
     quickBand,
@@ -765,6 +781,8 @@ function HomePage({
 
       <StatsBand stats={stats} />
 
+      <SafeHtmlBlock html={customHtml?.beforeServices} />
+
       <section className="section" id="services">
         <div className="section-heading">
           <p className="eyebrow">{servicesIntro.eyebrow}</p>
@@ -786,6 +804,8 @@ function HomePage({
           })}
         </div>
       </section>
+
+      <SafeHtmlBlock html={customHtml?.afterServices} />
 
       <section className="gallery-section" aria-label="Bathroom remodeling inspiration">
         <div className="gallery-copy">
@@ -894,6 +914,8 @@ function HomePage({
       </section>
 
       <FaqSection faqIntro={faqIntro} faqs={faqs} />
+
+      <SafeHtmlBlock html={customHtml?.beforeFooter} />
 
       <section className="cta-band" aria-label="Request your estimate">
         <div>

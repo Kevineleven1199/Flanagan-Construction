@@ -1,5 +1,5 @@
 export const defaultSiteContent = {
-  contentVersion: 3,
+  contentVersion: 4,
 
   business: {
     name: 'Flanagan Construction',
@@ -358,6 +358,23 @@ export const defaultSiteContent = {
     title: 'Have a job, a referral, or a subcontractor introduction?',
     copy: 'Start the request and we will follow up. Pick one need or the whole list.',
     primaryCta: 'Start my request',
+  },
+
+  customHtml: {
+    beforeServices: '',
+    afterServices: '',
+    beforeFooter: '',
+  },
+
+  aiUpgrade: {
+    brandVoice:
+      'Plain-spoken, salt-of-the-earth, professional, local, helpful, and never luxury or expensive sounding.',
+    contentRules:
+      'Prioritize kitchen and bathroom remodeling, concrete driveways and sidewalks, then roofing, siding, and windows. Keep forms easy and non-intimidating.',
+    leadScoringNotes:
+      'Hot leads include kitchens, bathrooms, concrete driveways, concrete sidewalks, roofing, siding, windows, ready timelines, and clear phone/email contact.',
+    emailAutomationNotes:
+      'Use Nick Flanagan as the sender. Match emails to lead stages: contact, estimate scheduled, estimate sent, follow-up, payment link, deposit paid, scheduled, complete, and receipt sent.',
   },
 
   images: {
