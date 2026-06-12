@@ -45,6 +45,11 @@ const icons = [Bath, Hammer, Home]
 
 const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
 const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
+const splashServices = ['Kitchens & baths', 'Concrete work', 'Roofing & siding']
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+}
 
 function googleMapsApiKey() {
   return import.meta.env.VITE_GOOGLE_MAPS_API_KEY || window.__GOOGLE_MAPS_API_KEY__ || ''
@@ -85,6 +90,32 @@ function addressComponent(place, type, useShortName = false) {
   const component = place?.address_components?.find((item) => item.types?.includes(type))
   if (!component) return ''
   return useShortName ? component.short_name || component.long_name || '' : component.long_name || component.short_name || ''
+}
+
+function SplashIntro({ business, heroImage, onDone }) {
+  return (
+    <div className="splash-intro" role="status" aria-live="polite">
+      <div className="splash-photo" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
+      <div className="splash-card">
+        <span className="brand-mark splash-mark">
+          <Hammer size={30} aria-hidden="true" />
+        </span>
+        <p>New Castle County</p>
+        <h2>{business.name}</h2>
+        <div className="splash-service-track" aria-label="Main work">
+          {splashServices.map((service) => (
+            <span key={service}>{service}</span>
+          ))}
+        </div>
+        <div className="splash-progress" aria-hidden="true">
+          <span></span>
+        </div>
+      </div>
+      <button className="splash-skip" type="button" onClick={onDone}>
+        Skip
+      </button>
+    </div>
+  )
 }
 
 function LeadPanel({
@@ -166,7 +197,7 @@ function LeadPanel({
   if (submitted) {
     const firstName = form.name ? form.name.trim().split(' ')[0] : ''
     return (
-      <aside className="lead-panel lead-success" id="estimate" aria-label="Request received">
+    <aside className="lead-panel lead-success" id="estimate" aria-label="Request received" data-reveal="lift">
         <div className="panel-heading">
           <span>
             <CheckCircle2 size={20} aria-hidden="true" />
@@ -204,7 +235,7 @@ function LeadPanel({
   }
 
   return (
-    <aside className="lead-panel" id="estimate" aria-label="Request an estimate">
+    <aside className="lead-panel" id="estimate" aria-label="Request an estimate" data-reveal="lift">
       <div className="panel-heading">
         <span>
           <Sparkles size={18} aria-hidden="true" />
@@ -417,7 +448,7 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
 
   return (
     <section className="simple-services" id="services" aria-label="Main services">
-      <div className="simple-services-head">
+      <div className="simple-services-head" data-reveal="lift">
         <div>
           <p className="eyebrow">{servicesIntro.eyebrow}</p>
           <h2>{servicesIntro.title}</h2>
@@ -430,7 +461,7 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
           const Icon = icons[index] || Hammer
           const image = galleryItems[index]?.image || galleryItems[0]?.image
           return (
-            <article className="simple-service-card" key={service.title}>
+            <article className="simple-service-card" key={service.title} data-reveal="card" style={{ '--reveal-order': index }}>
               <div className="simple-service-photo" style={{ backgroundImage: cssUrl(image) }}></div>
               <div>
                 <span className="service-icon">
@@ -444,7 +475,7 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
         })}
       </div>
 
-      <div className="simple-proof-row">
+      <div className="simple-proof-row" data-reveal="lift">
         {quickBand.map((item, index) => {
           const Icon = quickBandIcons[index] || CheckCircle2
           return (
@@ -456,7 +487,7 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
         })}
       </div>
 
-      <div className="simple-close">
+      <div className="simple-close" data-reveal="lift">
         <div>
           <strong>Serving New Castle County</strong>
           <p>{business.serviceArea}</p>
@@ -651,6 +682,17 @@ function App() {
   const [siteContent, setSiteContent] = useState(() => mergeSiteContent(defaultSiteContent, loadStoredContent()))
   const [routePath, setRoutePath] = useState(() => window.location.pathname)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showSplash, setShowSplash] = useState(() => {
+    if (window.location.pathname.startsWith('/admin')) return false
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('splash')) return true
+      if (prefersReducedMotion()) return false
+      return !window.sessionStorage.getItem('flanagan-splash-seen')
+    } catch {
+      return !prefersReducedMotion()
+    }
+  })
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -679,6 +721,15 @@ function App() {
   const business = siteContent.business
   const phoneHref = phoneHrefFor(business.phone)
 
+  const dismissSplash = useCallback(() => {
+    try {
+      window.sessionStorage.setItem('flanagan-splash-seen', 'true')
+    } catch {
+      // Session storage is optional; animation can still dismiss normally.
+    }
+    setShowSplash(false)
+  }, [])
+
   useEffect(() => {
     let ignore = false
     fetchPublishedContent()
@@ -695,6 +746,39 @@ function App() {
       ignore = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!showSplash) return undefined
+    const timeout = window.setTimeout(dismissSplash, 2700)
+    return () => window.clearTimeout(timeout)
+  }, [dismissSplash, showSplash])
+
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.add('motion-ready')
+
+    const revealItems = [...document.querySelectorAll('[data-reveal]')]
+    if (!revealItems.length) return undefined
+
+    if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
+      revealItems.forEach((item) => item.classList.add('is-visible'))
+      return undefined
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          entry.target.classList.add('is-visible')
+          observer.unobserve(entry.target)
+        })
+      },
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.14 },
+    )
+
+    revealItems.forEach((item) => observer.observe(item))
+    return () => observer.disconnect()
+  }, [routePath, siteContent.contentVersion, showSplash])
 
   useEffect(() => {
     const handleRoute = () => setRoutePath(window.location.pathname)
@@ -913,6 +997,9 @@ function App() {
 
   return (
     <main>
+      {showSplash ? (
+        <SplashIntro business={business} heroImage={siteContent.images.hero} onDone={dismissSplash} />
+      ) : null}
       <a className="skip-link" href="#top">
         Skip to content
       </a>
