@@ -2,7 +2,7 @@ import { defaultSiteContent } from './content'
 
 export const CONTENT_STORAGE_KEY = 'flanagan-site-content'
 export const LEADS_STORAGE_KEY = 'flanagan-leads'
-export const ADMIN_SESSION_KEY = 'flanagan-admin-passcode'
+export const ADMIN_SESSION_KEY = 'flanagan-admin-auth'
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
@@ -102,6 +102,14 @@ export function normalizeLead(lead = {}, index = 0) {
     leadKind: lead.leadKind || 'Final request',
     status: lead.status || 'New',
     priority: lead.priority || 'Warm',
+    estimateAmount: lead.estimateAmount || '',
+    paymentLink: lead.paymentLink || '',
+    followUpAt: lead.followUpAt || '',
+    lastContactedAt: lead.lastContactedAt || '',
+    emailStage: lead.emailStage || '',
+    emailSubject: lead.emailSubject || '',
+    emailBody: lead.emailBody || '',
+    closeProbability: lead.closeProbability || '',
     nextStep: lead.nextStep || '',
     notes: lead.notes || '',
     receivedAt,

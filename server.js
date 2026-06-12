@@ -13,7 +13,7 @@ import http from 'node:http'
 import zlib from 'node:zlib'
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { appendFile, readFile, writeFile } from 'node:fs/promises'
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, createHmac, pbkdf2Sync, randomUUID, timingSafeEqual } from 'node:crypto'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildWebhookPayload } from './lead-delivery.js'
@@ -24,9 +24,47 @@ const port = Number(process.env.PORT) || 8080
 const host = '0.0.0.0'
 const leadWebhookUrl = process.env.LEAD_WEBHOOK_URL || ''
 const adminPassword = process.env.ADMIN_PASSWORD || ''
+const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || adminPassword || randomUUID()
 const siteContentPath = join(root, 'site-content.json')
 const leadLogPath = join(root, 'leads.log')
 const leadCrmPath = join(root, 'lead-crm.json')
+
+const builtInSuperAdmins = [
+  {
+    email: 'nickflanagan73@gmail.com',
+    name: 'Nick Flanagan',
+    role: 'super_admin',
+    passwordHash: 'pbkdf2$210000$vj0QBhsedwkF_atZg2kl9A$ECjKWLfRvKLCFAx6RHzfLOLxJapEw0Htp4fvcLfqz6A',
+  },
+  {
+    email: 'kevin@ndabox.com',
+    name: 'Kevin',
+    role: 'super_admin',
+    passwordHash: 'pbkdf2$210000$bsztpyNnLo2Y3AI-Bwujeg$POiqeDoyM0SzQh_71jUpOhbh6Bxs2FVbgrkMmJncvjA',
+  },
+]
+
+function loadAdminUsers() {
+  if (!process.env.ADMIN_USERS_JSON) return builtInSuperAdmins
+
+  try {
+    const users = JSON.parse(process.env.ADMIN_USERS_JSON)
+    if (!Array.isArray(users)) return builtInSuperAdmins
+    return users
+      .filter((user) => user?.email && user?.passwordHash)
+      .map((user) => ({
+        email: String(user.email).toLowerCase().trim(),
+        name: String(user.name || user.email).trim(),
+        role: String(user.role || 'super_admin').trim(),
+        passwordHash: String(user.passwordHash),
+      }))
+  } catch (error) {
+    console.error('[admin] ADMIN_USERS_JSON is invalid:', error?.message)
+    return builtInSuperAdmins
+  }
+}
+
+const adminUsers = loadAdminUsers()
 
 // The canonical domain baked into index.html / robots / sitemap at build time.
 // At request time it is rewritten to the actual serving origin (see withOrigin)
@@ -123,6 +161,74 @@ function sendJson(res, status, payload, gzip = false) {
   send(res, status, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(payload), gzip)
 }
 
+function base64UrlEncode(value) {
+  const buffer = Buffer.isBuffer(value) ? value : Buffer.from(String(value))
+  return buffer.toString('base64url')
+}
+
+function base64UrlJson(value) {
+  return base64UrlEncode(JSON.stringify(value))
+}
+
+function timingSafeStringEquals(a, b) {
+  const left = Buffer.from(String(a))
+  const right = Buffer.from(String(b))
+  return left.length === right.length && timingSafeEqual(left, right)
+}
+
+function publicAdminUser(user) {
+  if (!user) return null
+  return {
+    email: user.email,
+    name: user.name || user.email,
+    role: user.role || 'super_admin',
+  }
+}
+
+function verifyPassword(password, storedHash) {
+  const [scheme, iterationsText, salt, expectedHash] = String(storedHash || '').split('$')
+  if (scheme !== 'pbkdf2') return false
+  const iterations = Number(iterationsText)
+  if (!Number.isFinite(iterations) || !salt || !expectedHash) return false
+
+  const actual = pbkdf2Sync(String(password), salt, iterations, 32, 'sha256').toString('base64url')
+  return timingSafeStringEquals(actual, expectedHash)
+}
+
+function signAdminToken(user) {
+  const issuedAt = Math.floor(Date.now() / 1000)
+  const expiresAt = issuedAt + 12 * 60 * 60
+  const payload = base64UrlJson({
+    email: user.email,
+    role: user.role || 'super_admin',
+    iat: issuedAt,
+    exp: expiresAt,
+  })
+  const signature = createHmac('sha256', adminSessionSecret).update(payload).digest('base64url')
+  return {
+    token: `admin.${payload}.${signature}`,
+    expiresAt: new Date(expiresAt * 1000).toISOString(),
+  }
+}
+
+function verifyAdminToken(token) {
+  const parts = String(token || '').split('.')
+  if (parts.length !== 3 || parts[0] !== 'admin') return null
+
+  const [, payload, signature] = parts
+  const expectedSignature = createHmac('sha256', adminSessionSecret).update(payload).digest('base64url')
+  if (!timingSafeStringEquals(signature, expectedSignature)) return null
+
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+    if (!data.email || !data.exp || data.exp < Math.floor(Date.now() / 1000)) return null
+    const user = adminUsers.find((adminUser) => adminUser.email === String(data.email).toLowerCase())
+    return user ? publicAdminUser(user) : null
+  } catch {
+    return null
+  }
+}
+
 function readJsonBody(req, limit = 400000) {
   return new Promise((resolveBody, rejectBody) => {
     let body = ''
@@ -145,13 +251,13 @@ function readJsonBody(req, limit = 400000) {
 }
 
 function requireAdmin(req, res, gzipOk) {
-  if (!adminPassword) {
+  if (!adminPassword && !adminUsers.length) {
     sendJson(
       res,
       503,
       {
         ok: false,
-        error: 'Set ADMIN_PASSWORD on the server before using production admin.',
+        error: 'Set ADMIN_PASSWORD or ADMIN_USERS_JSON on the server before using production admin.',
       },
       gzipOk,
     )
@@ -160,12 +266,79 @@ function requireAdmin(req, res, gzipOk) {
 
   const header = String(req.headers.authorization || '')
   const token = header.replace(/^Bearer\s+/i, '').trim()
-  if (token !== adminPassword) {
-    sendJson(res, 401, { ok: false, error: 'Admin passcode required.' }, gzipOk)
+
+  const user = verifyAdminToken(token)
+  if (user) return user
+
+  if (adminPassword && token === adminPassword) {
+    return { email: 'shared-admin', name: 'Shared admin', role: 'super_admin' }
+  }
+
+  sendJson(res, 401, { ok: false, error: 'Admin login required.' }, gzipOk)
+  return false
+}
+
+async function handleAdminLogin(req, res, gzipOk) {
+  if (req.method !== 'POST') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'POST' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    return
+  }
+
+  try {
+    const data = await readJsonBody(req, 100000)
+    const email = String(data.email || '').toLowerCase().trim()
+    const password = String(data.password || '')
+    const user = adminUsers.find((adminUser) => adminUser.email === email)
+
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+      sendJson(res, 401, { ok: false, error: 'Email or password is incorrect.' }, gzipOk)
+      return
+    }
+
+    const session = signAdminToken(user)
+    sendJson(
+      res,
+      200,
+      {
+        ok: true,
+        token: session.token,
+        expiresAt: session.expiresAt,
+        user: publicAdminUser(user),
+      },
+      gzipOk,
+    )
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: error.message || 'Login failed.' }, gzipOk)
+  }
+}
+
+function emailSettingsStatus() {
+  const settings = {
+    provider: process.env.SMTP_PROVIDER || 'gmail',
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || '587',
+    secure: process.env.SMTP_SECURE || 'false',
+    user: process.env.SMTP_USER || 'nickflanagan73@gmail.com',
+    from: process.env.SMTP_FROM || `Nick Flanagan <${process.env.SMTP_USER || 'nickflanagan73@gmail.com'}>`,
+    replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_USER || 'nickflanagan73@gmail.com',
+  }
+  const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_SECRET_KEY', 'SMTP_FROM']
+  return {
+    ...settings,
+    configured: required.every((key) => Boolean(process.env[key])),
+    missing: required.filter((key) => !process.env[key]),
+  }
+}
+
+async function handleAdminEmailSettings(req, res, gzipOk) {
+  if (!requireAdmin(req, res, gzipOk)) return
+
+  if (req.method !== 'GET') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
     return false
   }
 
-  return true
+  sendJson(res, 200, { ok: true, emailSettings: emailSettingsStatus() }, gzipOk)
 }
 
 async function readJsonFile(filePath, fallback) {
@@ -204,6 +377,14 @@ function normalizeLeadRecord(lead, index = 0, updates = {}) {
     receivedAt,
     status: updates.status || lead.status || 'New',
     priority: updates.priority || lead.priority || 'Warm',
+    estimateAmount: updates.estimateAmount || lead.estimateAmount || '',
+    paymentLink: updates.paymentLink || lead.paymentLink || '',
+    followUpAt: updates.followUpAt || lead.followUpAt || '',
+    lastContactedAt: updates.lastContactedAt || lead.lastContactedAt || '',
+    emailStage: updates.emailStage || lead.emailStage || '',
+    emailSubject: updates.emailSubject || lead.emailSubject || '',
+    emailBody: updates.emailBody || lead.emailBody || '',
+    closeProbability: updates.closeProbability || lead.closeProbability || '',
     nextStep: updates.nextStep || lead.nextStep || '',
     notes: updates.notes || lead.notes || '',
     updatedAt: updates.updatedAt || lead.updatedAt || '',
@@ -251,7 +432,7 @@ async function handleAdminContent(req, res, gzipOk) {
 
   if (req.method === 'PUT') {
     try {
-      const data = await readJsonBody(req)
+      const data = await readJsonBody(req, 4_000_000)
       await writeJsonFile(siteContentPath, data.content || data)
       sendJson(res, 200, { ok: true }, gzipOk)
     } catch (error) {
@@ -281,6 +462,14 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
         ...(crm[id] || {}),
         status: data.status,
         priority: data.priority,
+        estimateAmount: data.estimateAmount,
+        paymentLink: data.paymentLink,
+        followUpAt: data.followUpAt,
+        lastContactedAt: data.lastContactedAt,
+        emailStage: data.emailStage,
+        emailSubject: data.emailSubject,
+        emailBody: data.emailBody,
+        closeProbability: data.closeProbability,
         nextStep: data.nextStep,
         notes: data.notes,
         updatedAt: data.updatedAt || new Date().toISOString(),
@@ -551,6 +740,16 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/site-content') {
     await handleSiteContent(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/admin/login') {
+    await handleAdminLogin(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/admin/email-settings') {
+    await handleAdminEmailSettings(req, res, gzipOk)
     return
   }
 

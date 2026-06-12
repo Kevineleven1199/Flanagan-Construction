@@ -64,17 +64,39 @@ the visitor's email app via `mailto:`.
 
 ## Admin dashboard
 
-Visit `/admin` to manage leads and edit site content. In production, set
-`ADMIN_PASSWORD` on the server; the dashboard uses that passcode to unlock:
+Visit `/admin` to manage leads and edit site content. The dashboard supports
+named super-admin email/password login. Two default super admins are configured
+by hashed credentials in the server:
+
+- `nickflanagan73@gmail.com`
+- `kevin@ndabox.com`
+
+For production rotation, set `ADMIN_USERS_JSON` with replacement password
+hashes and `ADMIN_SESSION_SECRET` for stable signed sessions. `ADMIN_PASSWORD`
+still works as a legacy bearer token fallback for emergency scripts.
 
 - CRM pipeline: search leads, update status/priority, add next steps and notes,
+  track estimate/payment/follow-up fields, prepare stage-based email drafts,
   call/email a lead, see selected funnel needs, and export CSV.
 - Site editor: update business info, hero/CTA copy, service text, gallery
-  photos, before/after photos, reviews, FAQs, and process copy.
+  photos, before/after photos, reviews, FAQs, process copy, optional HTML
+  blocks, and drag/drop asset swaps.
 
 Saved content is written to `site-content.json`, while lead status/notes are
 written to `lead-crm.json`. During local Vite development, the dashboard falls
 back to browser storage if the Node API is not running.
+
+### Outbound email prep
+
+The CRM is ready for Nick's Gmail SMTP settings. Add these Railway variables
+when you are ready to move from mailto drafts to server-sent email:
+
+- `SMTP_HOST=smtp.gmail.com`
+- `SMTP_PORT=587`
+- `SMTP_SECURE=false`
+- `SMTP_USER=nickflanagan73@gmail.com`
+- `SMTP_SECRET_KEY=<Gmail app password>`
+- `SMTP_FROM=Nick Flanagan <nickflanagan73@gmail.com>`
 
 ### Get leads delivered to you (60 seconds, no code)
 

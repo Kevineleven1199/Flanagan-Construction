@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
   CheckCircle2,
+  Clipboard,
   Download,
   Edit3,
   Eye,
   FileText,
+  GripVertical,
   Home,
   Image,
   Lock,
@@ -16,10 +18,13 @@ import {
   RefreshCw,
   Save,
   Search,
+  Send,
+  Settings,
   ShieldCheck,
   Sparkles,
   Trash2,
   Users,
+  WandSparkles,
 } from 'lucide-react'
 import { defaultSiteContent } from './content'
 import {
@@ -35,35 +40,112 @@ import {
 } from './siteContent'
 import './AdminDashboard.css'
 
-const statusOptions = ['Started', 'New', 'Contacted', 'Estimate Scheduled', 'Proposal Sent', 'Won', 'Lost']
+const statusOptions = [
+  'Started',
+  'New',
+  'Contacted',
+  'Estimate Scheduled',
+  'Estimate Sent',
+  'Follow Up',
+  'Payment Link Sent',
+  'Deposit Paid',
+  'Scheduled',
+  'In Progress',
+  'Complete',
+  'Receipt Sent',
+  'Won',
+  'Lost',
+]
 const priorityOptions = ['Hot', 'Warm', 'Normal', 'Low']
+const stagePlaybook = [
+  { status: 'Contacted', nextStep: 'Confirm scope, address, and best estimate time.' },
+  { status: 'Estimate Scheduled', nextStep: 'Send appointment confirmation and add it to the calendar.' },
+  { status: 'Estimate Sent', nextStep: 'Send written estimate and schedule a follow-up call.' },
+  { status: 'Follow Up', nextStep: 'Follow up on estimate questions and decision timing.' },
+  { status: 'Payment Link Sent', nextStep: 'Send payment link for deposit or invoice.' },
+  { status: 'Deposit Paid', nextStep: 'Confirm deposit, schedule work, and prep materials.' },
+  { status: 'Scheduled', nextStep: 'Confirm start date, access, and subcontractor needs.' },
+  { status: 'Complete', nextStep: 'Send completion note, receipt, and review request.' },
+]
+const emailTemplates = {
+  Contacted: {
+    subject: 'Thanks for reaching out to Flanagan Construction',
+    body:
+      'Hi {name},\n\nThanks for reaching out to Flanagan Construction. I saw your request for {projectType}. I wanted to confirm the best details before we set up the next step.\n\nSelected needs: {selectedNeeds}\n\nWhat is the best time to talk?\n\nThanks,\nNick Flanagan',
+  },
+  'Estimate Scheduled': {
+    subject: 'Your Flanagan Construction estimate appointment',
+    body:
+      'Hi {name},\n\nYou are on our list for an estimate for {projectType}. Please reply with the project address, best access instructions, and anything you want us to look closely at.\n\nThanks,\nNick Flanagan',
+  },
+  'Estimate Sent': {
+    subject: 'Your Flanagan Construction estimate',
+    body:
+      'Hi {name},\n\nI am sending over the estimate for {projectType}. Estimated amount: {estimateAmount}.\n\nPlease reply with any questions. If everything looks good, I can send the next step and payment link.\n\nThanks,\nNick Flanagan',
+  },
+  'Follow Up': {
+    subject: 'Checking in on your Flanagan Construction estimate',
+    body:
+      'Hi {name},\n\nI wanted to check in on the estimate for {projectType}. I am happy to talk through scope, timing, or any questions before you decide.\n\nThanks,\nNick Flanagan',
+  },
+  'Payment Link Sent': {
+    subject: 'Payment link for your Flanagan Construction project',
+    body:
+      'Hi {name},\n\nHere is the payment link for your project: {paymentLink}\n\nOnce payment is complete, we will confirm scheduling and next steps.\n\nThanks,\nNick Flanagan',
+  },
+  'Deposit Paid': {
+    subject: 'Deposit received - Flanagan Construction',
+    body:
+      'Hi {name},\n\nWe received the deposit for {projectType}. Thank you. We will confirm scheduling, materials, and any subcontractor coordination needed before work begins.\n\nThanks,\nNick Flanagan',
+  },
+  Scheduled: {
+    subject: 'Your project is scheduled',
+    body:
+      'Hi {name},\n\nYour Flanagan Construction project is scheduled. We will keep communication clear as we get closer and will confirm access, materials, and any trade coordination.\n\nThanks,\nNick Flanagan',
+  },
+  Complete: {
+    subject: 'Project complete - Flanagan Construction',
+    body:
+      'Hi {name},\n\nThank you for trusting Flanagan Construction with your project. We appreciate the work and hope everything is looking good.\n\nIf anything needs attention, please reply here.\n\nThanks,\nNick Flanagan',
+  },
+  'Receipt Sent': {
+    subject: 'Receipt for your Flanagan Construction project',
+    body:
+      'Hi {name},\n\nAttached or linked is your receipt for {projectType}. Thank you again for working with us.\n\nThanks,\nNick Flanagan',
+  },
+}
 const contentTabs = [
   { id: 'overview', label: 'Homepage', icon: Home },
   { id: 'services', label: 'Services', icon: FileText },
   { id: 'photos', label: 'Photos', icon: Image },
   { id: 'reviews', label: 'Reviews & FAQ', icon: Sparkles },
+  { id: 'builder', label: 'Builder', icon: GripVertical },
+  { id: 'ai', label: 'AI-ready', icon: WandSparkles },
 ]
 
-function readSessionPasscode() {
+function readSessionAuth() {
   try {
-    return window.sessionStorage.getItem(ADMIN_SESSION_KEY) || ''
+    const stored = window.sessionStorage.getItem(ADMIN_SESSION_KEY)
+    if (!stored) return { token: '', user: null, expiresAt: '' }
+    if (stored.startsWith('{')) return JSON.parse(stored)
+    return { token: stored, user: null, expiresAt: '' }
   } catch {
-    return ''
+    return { token: '', user: null, expiresAt: '' }
   }
 }
 
-function writeSessionPasscode(passcode) {
+function writeSessionAuth(auth) {
   try {
-    if (passcode) window.sessionStorage.setItem(ADMIN_SESSION_KEY, passcode)
+    if (auth?.token) window.sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(auth))
     else window.sessionStorage.removeItem(ADMIN_SESSION_KEY)
   } catch {
     // Storage can be unavailable in private browsing.
   }
 }
 
-async function adminRequest(path, { method = 'GET', passcode = '', body } = {}) {
+async function adminRequest(path, { method = 'GET', token = '', body } = {}) {
   const headers = { Accept: 'application/json' }
-  if (passcode) headers.Authorization = `Bearer ${passcode}`
+  if (token) headers.Authorization = `Bearer ${token}`
   if (body) headers['Content-Type'] = 'application/json'
 
   const response = await fetch(path, {
@@ -95,6 +177,58 @@ function formatDate(value) {
   }).format(date)
 }
 
+function formatMoney(value) {
+  if (!value) return 'Not entered yet'
+  const number = Number(String(value).replace(/[^0-9.]/g, ''))
+  if (!Number.isFinite(number) || number <= 0) return String(value)
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(number)
+}
+
+function fillTemplate(template, lead) {
+  const selectedNeeds = lead.selectedNeeds?.length ? lead.selectedNeeds.join(', ') : 'Not listed yet'
+  return String(template || '')
+    .replaceAll('{name}', lead.name || 'there')
+    .replaceAll('{projectType}', lead.projectType || 'your project')
+    .replaceAll('{selectedNeeds}', selectedNeeds)
+    .replaceAll('{estimateAmount}', formatMoney(lead.estimateAmount))
+    .replaceAll('{paymentLink}', lead.paymentLink || '[paste payment link]')
+}
+
+function emailDraftFor(lead, stage = lead?.status) {
+  const template = emailTemplates[stage] || emailTemplates.Contacted
+  return {
+    stage,
+    subject: fillTemplate(template.subject, lead),
+    body: fillTemplate(template.body, lead),
+  }
+}
+
+function mailtoFor(lead, draft) {
+  const params = new URLSearchParams({
+    subject: draft.subject,
+    body: draft.body,
+  })
+  return `mailto:${lead.email || ''}?${params.toString()}`
+}
+
+function toDateTimeInputValue(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return offsetDate.toISOString().slice(0, 16)
+}
+
+function fromDateTimeInputValue(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString()
+}
+
 function Field({ label, value, onChange, textarea = false, type = 'text', rows = 3 }) {
   const Control = textarea ? 'textarea' : 'input'
   return (
@@ -110,21 +244,33 @@ function Field({ label, value, onChange, textarea = false, type = 'text', rows =
   )
 }
 
-function AdminLogin({ passcode, setPasscode, loading, message, onSubmit, goHome }) {
+function AdminLogin({ email, setEmail, password, setPassword, loading, message, onSubmit, goHome }) {
   return (
     <main className="admin-auth">
       <form className="admin-auth-panel" onSubmit={onSubmit}>
         <span className="admin-auth-icon">
           <Lock size={24} aria-hidden="true" />
         </span>
-        <h1>Flanagan Admin</h1>
+          <h1>Flanagan Admin</h1>
+        <p className="admin-auth-help">Sign in as Nick or Kevin. Passwords can be rotated later with ADMIN_USERS_JSON.</p>
         <label>
-          Admin passcode
+          Super admin email
+          <input
+            type="email"
+            value={email}
+            autoComplete="username"
+            placeholder="nickflanagan73@gmail.com"
+            onChange={(event) => setEmail(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Password
           <input
             type="password"
-            value={passcode}
+            value={password}
             autoComplete="current-password"
-            onChange={(event) => setPasscode(event.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             required
           />
         </label>
@@ -207,9 +353,12 @@ function LeadList({ leads, selectedLeadId, setSelectedLeadId }) {
   )
 }
 
-function LeadDetail({ lead, updateLead }) {
+function LeadDetail({ lead, updateLead, emailSettings }) {
   const [notes, setNotes] = useState(lead?.notes || '')
   const [nextStep, setNextStep] = useState(lead?.nextStep || '')
+  const [estimateAmount, setEstimateAmount] = useState(lead?.estimateAmount || '')
+  const [paymentLink, setPaymentLink] = useState(lead?.paymentLink || '')
+  const [followUpAt, setFollowUpAt] = useState(toDateTimeInputValue(lead?.followUpAt))
 
   if (!lead) {
     return (
@@ -227,7 +376,53 @@ function LeadDetail({ lead, updateLead }) {
     updateLead(lead.id, {
       notes,
       nextStep,
+      estimateAmount,
+      paymentLink,
+      followUpAt: fromDateTimeInputValue(followUpAt),
     })
+  }
+
+  const workingLead = {
+    ...lead,
+    notes,
+    nextStep,
+    estimateAmount,
+    paymentLink,
+    followUpAt: fromDateTimeInputValue(followUpAt),
+  }
+  const currentEmailDraft = emailDraftFor(workingLead)
+
+  const applyStage = (status) => {
+    const play = stagePlaybook.find((item) => item.status === status)
+    const draft = emailDraftFor(workingLead, status)
+    if (play?.nextStep) setNextStep(play.nextStep)
+    updateLead(lead.id, {
+      status,
+      nextStep: play?.nextStep || nextStep,
+      estimateAmount,
+      paymentLink,
+      followUpAt: fromDateTimeInputValue(followUpAt),
+      emailStage: status,
+      emailSubject: draft.subject,
+      emailBody: draft.body,
+      lastContactedAt: new Date().toISOString(),
+    })
+  }
+
+  const copyEmailDraft = async () => {
+    try {
+      await navigator.clipboard.writeText(`Subject: ${currentEmailDraft.subject}\n\n${currentEmailDraft.body}`)
+      updateLead(lead.id, {
+        emailStage: currentEmailDraft.stage,
+        emailSubject: currentEmailDraft.subject,
+        emailBody: currentEmailDraft.body,
+        lastContactedAt: new Date().toISOString(),
+      })
+    } catch {
+      updateLead(lead.id, {
+        notes: `${notes}\n\nEmail draft:\nSubject: ${currentEmailDraft.subject}\n\n${currentEmailDraft.body}`.trim(),
+      })
+    }
   }
 
   return (
@@ -246,7 +441,12 @@ function LeadDetail({ lead, updateLead }) {
             </a>
           ) : null}
           {lead.email ? (
-            <a href={`mailto:${lead.email}`}>
+            <a href={mailtoFor(workingLead, currentEmailDraft)} onClick={() => updateLead(lead.id, {
+              emailStage: currentEmailDraft.stage,
+              emailSubject: currentEmailDraft.subject,
+              emailBody: currentEmailDraft.body,
+              lastContactedAt: new Date().toISOString(),
+            })}>
               <Mail size={16} aria-hidden="true" />
               Email
             </a>
@@ -289,6 +489,26 @@ function LeadDetail({ lead, updateLead }) {
         </label>
       </div>
 
+      <div className="stage-playbook">
+        <div>
+          <p className="admin-eyebrow">Stage shortcuts</p>
+          <strong>Move the lead and prep the next follow-up.</strong>
+        </div>
+        <div className="stage-button-grid">
+          {stagePlaybook.map((stage) => (
+            <button
+              className={lead.status === stage.status ? 'stage-button active' : 'stage-button'}
+              key={stage.status}
+              type="button"
+              onClick={() => applyStage(stage.status)}
+            >
+              <CheckCircle2 size={15} aria-hidden="true" />
+              <span>{stage.status}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {lead.selectedNeeds?.length ? (
         <div className="lead-selected-needs">
           <strong>Selected needs</strong>
@@ -304,6 +524,41 @@ function LeadDetail({ lead, updateLead }) {
         <span>Project message</span>
         <textarea value={lead.message} readOnly rows="5" />
       </label>
+
+      <div className="lead-detail-grid">
+        <label>
+          Estimate amount
+          <input
+            value={estimateAmount}
+            inputMode="decimal"
+            placeholder="$"
+            onBlur={saveNotes}
+            onChange={(event) => setEstimateAmount(event.target.value)}
+          />
+        </label>
+        <label>
+          Payment link
+          <input
+            value={paymentLink}
+            placeholder="https://..."
+            onBlur={saveNotes}
+            onChange={(event) => setPaymentLink(event.target.value)}
+          />
+        </label>
+        <label>
+          Follow-up date
+          <input
+            type="datetime-local"
+            value={followUpAt}
+            onBlur={saveNotes}
+            onChange={(event) => setFollowUpAt(event.target.value)}
+          />
+        </label>
+        <label>
+          Last contacted
+          <input value={lead.lastContactedAt ? formatDate(lead.lastContactedAt) : 'Not logged yet'} readOnly />
+        </label>
+      </div>
 
       <label className="admin-field">
         <span>Next step</span>
@@ -323,6 +578,42 @@ function LeadDetail({ lead, updateLead }) {
           onChange={(event) => setNotes(event.target.value)}
         />
       </label>
+
+      <div className="email-workbench">
+        <div className="email-workbench-head">
+          <div>
+            <p className="admin-eyebrow">Email follow-up</p>
+            <strong>{currentEmailDraft.subject}</strong>
+            <span>
+              SMTP sender: {emailSettings?.from || 'Nick Flanagan <nickflanagan73@gmail.com>'}
+              {emailSettings?.configured ? ' ready' : ' needs Railway settings'}
+            </span>
+          </div>
+          <div className="lead-contact-actions">
+            <button type="button" onClick={copyEmailDraft}>
+              <Clipboard size={16} aria-hidden="true" />
+              Copy
+            </button>
+            {lead.email ? (
+              <a href={mailtoFor(workingLead, currentEmailDraft)} onClick={() => updateLead(lead.id, {
+                emailStage: currentEmailDraft.stage,
+                emailSubject: currentEmailDraft.subject,
+                emailBody: currentEmailDraft.body,
+                lastContactedAt: new Date().toISOString(),
+              })}>
+                <Send size={16} aria-hidden="true" />
+                Open email
+              </a>
+            ) : null}
+          </div>
+        </div>
+        <pre>{currentEmailDraft.body}</pre>
+        {!emailSettings?.configured ? (
+          <p className="smtp-note">
+            Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_SECRET_KEY, and SMTP_FROM in Railway to enable future one-click sending.
+          </p>
+        ) : null}
+      </div>
     </section>
   )
 }
@@ -620,8 +911,228 @@ function ReviewsEditor({ draft, updateSection, updateArrayItem, addArrayItem, re
   )
 }
 
+function AssetDropField({ label, value, onChange }) {
+  const [dragging, setDragging] = useState(false)
+
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith('image/')) return
+    if (file.size > 900000) {
+      window.alert('Please use an image under 900KB for direct drag/drop, or paste a hosted image URL.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => onChange(String(reader.result || ''))
+    reader.readAsDataURL(file)
+  }
+
+  const handleDrop = (event) => {
+    event.preventDefault()
+    setDragging(false)
+    const file = event.dataTransfer.files?.[0]
+    const text = event.dataTransfer.getData('text/uri-list') || event.dataTransfer.getData('text/plain')
+    if (file) handleFile(file)
+    else if (text) onChange(text.trim())
+  }
+
+  return (
+    <label
+      className={dragging ? 'asset-drop-field dragging' : 'asset-drop-field'}
+      onDragEnter={() => setDragging(true)}
+      onDragLeave={() => setDragging(false)}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={handleDrop}
+    >
+      <span>{label}</span>
+      <div className="asset-drop-preview" style={{ backgroundImage: cssUrl(value) }}>
+        <Image size={20} aria-hidden="true" />
+        <strong>Drop image or URL</strong>
+      </div>
+      <input value={value || ''} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  )
+}
+
+function SortableCards({ title, items, onMove, renderLabel }) {
+  const [dragIndex, setDragIndex] = useState(null)
+
+  return (
+    <section className="admin-panel">
+      <p className="admin-eyebrow">{title}</p>
+      <div className="sortable-list">
+        {items.map((item, index) => (
+          <article
+            className={dragIndex === index ? 'sortable-card dragging' : 'sortable-card'}
+            draggable
+            key={`${renderLabel(item)}-${index}`}
+            onDragStart={() => setDragIndex(index)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => {
+              if (dragIndex !== null && dragIndex !== index) onMove(dragIndex, index)
+              setDragIndex(null)
+            }}
+            onDragEnd={() => setDragIndex(null)}
+          >
+            <GripVertical size={17} aria-hidden="true" />
+            <strong>{renderLabel(item)}</strong>
+            <span>Position {index + 1}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function BuilderEditor({ draft, updateSection, updateNestedArrayItem, moveArrayItem, moveNestedArrayItem, updateCustomHtml }) {
+  return (
+    <div className="content-editor-grid">
+      <section className="admin-panel full-span-panel">
+        <div className="builder-intro">
+          <div>
+            <p className="admin-eyebrow">Squarespace-style builder</p>
+            <h2>Hot-swap photos, reorder cards, and edit HTML blocks without code.</h2>
+          </div>
+          <span>Drag cards to reorder. Drop a hosted image URL or a small image file on any asset.</span>
+        </div>
+      </section>
+
+      <SortableCards
+        title="Drag services"
+        items={draft.services}
+        onMove={(from, to) => moveArrayItem('services', from, to)}
+        renderLabel={(service) => service.title}
+      />
+
+      <SortableCards
+        title="Drag gallery cards"
+        items={draft.gallery.items}
+        onMove={(from, to) => moveNestedArrayItem('gallery', 'items', from, to)}
+        renderLabel={(item) => item.title}
+      />
+
+      <section className="admin-panel full-span-panel">
+        <p className="admin-eyebrow">Asset hot-swap</p>
+        <div className="asset-grid">
+          <AssetDropField label="Hero image" value={draft.images.hero} onChange={(value) => updateSection('images', 'hero', value)} />
+          <AssetDropField label="Planner image" value={draft.images.aiBackground} onChange={(value) => updateSection('images', 'aiBackground', value)} />
+          <AssetDropField label="Process image" value={draft.images.workBackground} onChange={(value) => updateSection('images', 'workBackground', value)} />
+          <AssetDropField label="Before image" value={draft.compare.beforeImage} onChange={(value) => updateSection('compare', 'beforeImage', value)} />
+          <AssetDropField label="After image" value={draft.compare.afterImage} onChange={(value) => updateSection('compare', 'afterImage', value)} />
+          {draft.gallery.items.map((item, index) => (
+            <AssetDropField
+              key={`${item.title}-${index}`}
+              label={`Gallery ${index + 1}`}
+              value={item.image}
+              onChange={(value) => updateNestedArrayItem('gallery', 'items', index, 'image', value)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <p className="admin-eyebrow">Optional HTML blocks</p>
+        <div className="admin-form-grid">
+          <Field
+            label="HTML before services"
+            value={draft.customHtml?.beforeServices || ''}
+            textarea
+            rows={5}
+            onChange={(value) => updateCustomHtml('beforeServices', value)}
+          />
+          <Field
+            label="HTML after services"
+            value={draft.customHtml?.afterServices || ''}
+            textarea
+            rows={5}
+            onChange={(value) => updateCustomHtml('afterServices', value)}
+          />
+          <Field
+            label="HTML before footer"
+            value={draft.customHtml?.beforeFooter || ''}
+            textarea
+            rows={5}
+            onChange={(value) => updateCustomHtml('beforeFooter', value)}
+          />
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function AiReadyEditor({ draft, updateSection }) {
+  return (
+    <div className="content-editor-grid">
+      <section className="admin-panel full-span-panel">
+        <div className="builder-intro">
+          <div>
+            <p className="admin-eyebrow">AI-ready upgrades</p>
+            <h2>Keep the dashboard ready for future AI writing, lead scoring, and email automation.</h2>
+          </div>
+          <span>These settings are saved now so a future AI feature has clean instructions and guardrails.</span>
+        </div>
+      </section>
+
+      <section className="admin-panel">
+        <p className="admin-eyebrow">AI writing brief</p>
+        <div className="admin-form-grid one-col">
+          <Field
+            label="Brand voice"
+            value={draft.aiUpgrade?.brandVoice || ''}
+            textarea
+            rows={4}
+            onChange={(value) => updateSection('aiUpgrade', 'brandVoice', value)}
+          />
+          <Field
+            label="Content rules"
+            value={draft.aiUpgrade?.contentRules || ''}
+            textarea
+            rows={5}
+            onChange={(value) => updateSection('aiUpgrade', 'contentRules', value)}
+          />
+        </div>
+      </section>
+
+      <section className="admin-panel">
+        <p className="admin-eyebrow">CRM automation prep</p>
+        <div className="admin-form-grid one-col">
+          <Field
+            label="Lead scoring notes"
+            value={draft.aiUpgrade?.leadScoringNotes || ''}
+            textarea
+            rows={4}
+            onChange={(value) => updateSection('aiUpgrade', 'leadScoringNotes', value)}
+          />
+          <Field
+            label="Email automation notes"
+            value={draft.aiUpgrade?.emailAutomationNotes || ''}
+            textarea
+            rows={5}
+            onChange={(value) => updateSection('aiUpgrade', 'emailAutomationNotes', value)}
+          />
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function exportCsv(leads) {
-  const headers = ['Name', 'Phone', 'Email', 'Project', 'Budget', 'Timeline', 'Status', 'Priority', 'Next Step', 'Notes', 'Received']
+  const headers = [
+    'Name',
+    'Phone',
+    'Email',
+    'Project',
+    'Budget',
+    'Timeline',
+    'Status',
+    'Priority',
+    'Estimate Amount',
+    'Payment Link',
+    'Follow Up',
+    'Last Contacted',
+    'Next Step',
+    'Notes',
+    'Received',
+  ]
   const rows = leads.map((lead) => [
     lead.name,
     lead.phone,
@@ -631,6 +1142,10 @@ function exportCsv(leads) {
     lead.timeline,
     lead.status,
     lead.priority,
+    lead.estimateAmount,
+    lead.paymentLink,
+    lead.followUpAt,
+    lead.lastContactedAt,
     lead.nextStep,
     lead.notes,
     lead.receivedAt,
@@ -650,47 +1165,54 @@ function exportCsv(leads) {
 function AdminDashboard({ content, setContent, goHome }) {
   const [activeView, setActiveView] = useState('leads')
   const [activeContentTab, setActiveContentTab] = useState('overview')
-  const [passcode, setPasscode] = useState(readSessionPasscode)
+  const [auth, setAuth] = useState(readSessionAuth)
+  const [email, setEmail] = useState(() => readSessionAuth().user?.email || '')
+  const [password, setPassword] = useState('')
   const [mode, setMode] = useState('checking')
   const [unlocked, setUnlocked] = useState(false)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [leads, setLeads] = useState([])
+  const [emailSettings, setEmailSettings] = useState(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selectedLeadId, setSelectedLeadId] = useState('')
   const [draft, setDraft] = useState(() => cloneSiteContent(content))
   const [savingContent, setSavingContent] = useState(false)
 
-  const loadAdminData = async (code = passcode) => {
+  const loadAdminData = async (token = auth.token, sessionUser = auth.user) => {
     setLoading(true)
     setMessage('')
 
     try {
-      const [leadPayload, contentPayload] = await Promise.all([
-        adminRequest('/api/admin/leads', { passcode: code }),
-        adminRequest('/api/admin/content', { passcode: code }),
+      const [leadPayload, contentPayload, emailPayload] = await Promise.all([
+        adminRequest('/api/admin/leads', { token }),
+        adminRequest('/api/admin/content', { token }),
+        adminRequest('/api/admin/email-settings', { token }),
       ])
       const nextLeads = (leadPayload.leads || []).map(normalizeLead)
       const nextContent = mergeSiteContent(defaultSiteContent, contentPayload.content || {})
       setLeads(nextLeads)
       setDraft(nextContent)
       setContent(nextContent)
+      setEmailSettings(emailPayload.emailSettings || null)
       saveStoredContent(nextContent)
       setMode('server')
       setUnlocked(true)
-      setMessage('Connected to production admin.')
-      writeSessionPasscode(code)
+      setMessage(`Connected as ${sessionUser?.email || 'super admin'}.`)
+      const nextSession = { token, user: sessionUser || auth.user, expiresAt: auth.expiresAt || '' }
+      setAuth((current) => ({ ...current, ...nextSession }))
+      writeSessionAuth(nextSession)
     } catch (error) {
       if (error.status === 401) {
         setMode('locked')
         setUnlocked(false)
-        setMessage('Enter the admin passcode.')
+        setMessage('Enter your super admin email and password.')
       } else if (error.status === 503) {
         setMode('setup')
         setUnlocked(true)
         setLeads(loadStoredLeads())
-        setMessage(error.message || 'Set ADMIN_PASSWORD on the server to save production changes.')
+        setMessage(error.message || 'Admin setup needs ADMIN_PASSWORD or ADMIN_USERS_JSON.')
       } else {
         setMode('local')
         setUnlocked(true)
@@ -704,7 +1226,7 @@ function AdminDashboard({ content, setContent, goHome }) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadAdminData(passcode)
+    loadAdminData(auth.token, auth.user)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -743,7 +1265,7 @@ function AdminDashboard({ content, setContent, goHome }) {
     try {
       await adminRequest(`/api/admin/leads/${encodeURIComponent(id)}`, {
         method: 'PATCH',
-        passcode,
+        token: auth.token,
         body: normalizedPatch,
       })
     } catch (error) {
@@ -803,6 +1325,33 @@ function AdminDashboard({ content, setContent, goHome }) {
     }))
   }
 
+  const moveArrayItem = (arrayName, fromIndex, toIndex) => {
+    setDraft((current) => {
+      const nextItems = [...current[arrayName]]
+      const [moved] = nextItems.splice(fromIndex, 1)
+      nextItems.splice(toIndex, 0, moved)
+      return {
+        ...current,
+        [arrayName]: nextItems,
+      }
+    })
+  }
+
+  const moveNestedArrayItem = (section, arrayName, fromIndex, toIndex) => {
+    setDraft((current) => {
+      const nextItems = [...current[section][arrayName]]
+      const [moved] = nextItems.splice(fromIndex, 1)
+      nextItems.splice(toIndex, 0, moved)
+      return {
+        ...current,
+        [section]: {
+          ...current[section],
+          [arrayName]: nextItems,
+        },
+      }
+    })
+  }
+
   const saveContent = async () => {
     const nextContent = mergeSiteContent(defaultSiteContent, draft)
     setSavingContent(true)
@@ -812,7 +1361,7 @@ function AdminDashboard({ content, setContent, goHome }) {
       if (mode === 'server') {
         await adminRequest('/api/admin/content', {
           method: 'PUT',
-          passcode,
+          token: auth.token,
           body: { content: nextContent },
         })
       }
@@ -836,7 +1385,7 @@ function AdminDashboard({ content, setContent, goHome }) {
       try {
         await adminRequest('/api/admin/content', {
           method: 'PUT',
-          passcode,
+          token: auth.token,
           body: { content: nextContent },
         })
         setMessage('Site content reset.')
@@ -848,14 +1397,37 @@ function AdminDashboard({ content, setContent, goHome }) {
     }
   }
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault()
-    loadAdminData(passcode)
+    setLoading(true)
+    setMessage('')
+
+    try {
+      const payload = await adminRequest('/api/admin/login', {
+        method: 'POST',
+        body: { email, password },
+      })
+      const nextAuth = {
+        token: payload.token,
+        user: payload.user,
+        expiresAt: payload.expiresAt,
+      }
+      setAuth(nextAuth)
+      writeSessionAuth(nextAuth)
+      setPassword('')
+      await loadAdminData(payload.token, payload.user)
+    } catch (error) {
+      setMode('locked')
+      setUnlocked(false)
+      setMessage(error.message || 'Login failed.')
+      setLoading(false)
+    }
   }
 
   const signOut = () => {
-    writeSessionPasscode('')
-    setPasscode('')
+    writeSessionAuth(null)
+    setAuth({ token: '', user: null, expiresAt: '' })
+    setPassword('')
     setUnlocked(false)
     setMode('locked')
     setMessage('Signed out.')
@@ -864,8 +1436,10 @@ function AdminDashboard({ content, setContent, goHome }) {
   if (!unlocked) {
     return (
       <AdminLogin
-        passcode={passcode}
-        setPasscode={setPasscode}
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
         loading={loading}
         message={message}
         onSubmit={handleLogin}
@@ -883,7 +1457,13 @@ function AdminDashboard({ content, setContent, goHome }) {
           </span>
           <div>
             <strong>Flanagan Admin</strong>
-            <small>{mode === 'server' ? 'Production' : mode === 'setup' ? 'Setup needed' : 'Local'}</small>
+            <small>
+              {mode === 'server'
+                ? auth.user?.email || 'Production'
+                : mode === 'setup'
+                  ? 'Setup needed'
+                  : 'Local'}
+            </small>
           </div>
         </div>
 
@@ -899,7 +1479,7 @@ function AdminDashboard({ content, setContent, goHome }) {
         </nav>
 
         <div className="admin-topbar-actions">
-          <button type="button" onClick={() => loadAdminData(passcode)}>
+          <button type="button" onClick={() => loadAdminData(auth.token, auth.user)}>
             <RefreshCw size={17} aria-hidden="true" />
             Refresh
           </button>
@@ -938,6 +1518,19 @@ function AdminDashboard({ content, setContent, goHome }) {
 
           <PipelineStats leads={leads} />
 
+          <section className="admin-panel smtp-status-card">
+            <div>
+              <p className="admin-eyebrow">Outbound email</p>
+              <strong>{emailSettings?.from || 'Nick Flanagan <nickflanagan73@gmail.com>'}</strong>
+              <span>
+                {emailSettings?.configured
+                  ? 'SMTP is configured for future one-click sending.'
+                  : `Ready for setup. Missing: ${(emailSettings?.missing || ['SMTP_SECRET_KEY']).join(', ')}`}
+              </span>
+            </div>
+            <Settings size={22} aria-hidden="true" />
+          </section>
+
           <div className="crm-layout">
             <section className="admin-panel lead-list-panel">
               <div className="lead-tools">
@@ -963,7 +1556,12 @@ function AdminDashboard({ content, setContent, goHome }) {
               />
             </section>
 
-            <LeadDetail key={activeSelectedLeadId || 'empty-lead'} lead={selectedLead} updateLead={updateLead} />
+            <LeadDetail
+              key={activeSelectedLeadId || 'empty-lead'}
+              lead={selectedLead}
+              updateLead={updateLead}
+              emailSettings={emailSettings}
+            />
           </div>
         </section>
       ) : (
@@ -1021,6 +1619,19 @@ function AdminDashboard({ content, setContent, goHome }) {
                   addArrayItem={addArrayItem}
                   removeArrayItem={removeArrayItem}
                 />
+              ) : null}
+              {activeContentTab === 'builder' ? (
+                <BuilderEditor
+                  draft={draft}
+                  updateSection={updateSection}
+                  updateNestedArrayItem={updateNestedArrayItem}
+                  moveArrayItem={moveArrayItem}
+                  moveNestedArrayItem={moveNestedArrayItem}
+                  updateCustomHtml={(field, value) => updateSection('customHtml', field, value)}
+                />
+              ) : null}
+              {activeContentTab === 'ai' ? (
+                <AiReadyEditor draft={draft} updateSection={updateSection} />
               ) : null}
             </div>
             <ContentPreview draft={draft} />
