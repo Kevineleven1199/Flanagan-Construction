@@ -1062,3 +1062,361 @@
     flex-direction: column;
   }
 }
+
+/* Phone-first admin polish for office use on iPhone. */
+@media (max-width: 640px) {
+  .admin-shell {
+    min-height: 100svh;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .admin-topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: max(9px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .admin-brand {
+    min-width: 0;
+  }
+
+  .admin-brand > span {
+    width: 38px;
+    height: 38px;
+  }
+
+  .admin-brand strong {
+    font-size: 1rem;
+  }
+
+  .admin-brand small {
+    font-size: 0.72rem;
+  }
+
+  .admin-topbar-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .admin-topbar-actions button {
+    width: 40px;
+    min-height: 40px;
+    flex: 0 0 40px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .admin-topbar-actions button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .admin-main-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    width: 100%;
+  }
+
+  .admin-main-tabs button {
+    min-height: 44px;
+    padding: 0 8px;
+    font-size: 0.88rem;
+  }
+
+  .admin-banner {
+    align-items: flex-start;
+    margin: 10px 12px 0;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .admin-page {
+    gap: 12px;
+    padding: 14px 12px 18px;
+  }
+
+  .admin-page-head {
+    gap: 10px;
+  }
+
+  .admin-page-head h1 {
+    font-size: 1.55rem;
+    line-height: 1.04;
+  }
+
+  .admin-eyebrow {
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+  }
+
+  .admin-page-actions,
+  .lead-contact-actions,
+  .panel-title-row,
+  .repeater-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-page-actions button,
+  .admin-page-actions a,
+  .admin-secondary-button,
+  .admin-primary-button,
+  .admin-primary-link,
+  .lead-contact-actions a,
+  .lead-contact-actions button,
+  .panel-title-row button,
+  .repeater-actions button,
+  .admin-plain-link {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .admin-panel {
+    padding: 14px;
+    box-shadow: 0 12px 32px rgba(28, 31, 33, 0.055);
+  }
+
+  .admin-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-metric-grid article {
+    padding: 12px;
+  }
+
+  .admin-metric-grid strong {
+    font-size: 1.6rem;
+  }
+
+  .crm-layout,
+  .content-layout,
+  .integration-grid {
+    gap: 12px;
+  }
+
+  .lead-tools {
+    gap: 8px;
+    grid-template-columns: 1fr;
+  }
+
+  .lead-tools input,
+  .lead-tools select,
+  .lead-detail-grid input,
+  .lead-detail-grid select,
+  .lead-detail-grid textarea,
+  .admin-field input,
+  .admin-field select,
+  .admin-field textarea,
+  .asset-drop-field input,
+  .admin-auth-panel input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .admin-lead-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .lead-row {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .lead-row-main strong,
+  .lead-row-meta span {
+    font-size: 0.96rem;
+  }
+
+  .lead-priority {
+    justify-self: flex-start;
+  }
+
+  .lead-detail-head h2,
+  .builder-intro h2 {
+    font-size: 1.35rem;
+    line-height: 1.08;
+  }
+
+  .lead-detail-grid,
+  .admin-form-grid,
+  .content-editor-grid,
+  .asset-grid,
+  .repeater-list.two-col,
+  .repeater-list.three-col {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-button-grid,
+  .quote-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stage-button {
+    min-height: 46px;
+    padding: 9px 8px;
+    font-size: 0.75rem;
+    line-height: 1.1;
+  }
+
+  .quote-metric-grid article {
+    padding: 11px;
+  }
+
+  .quote-metric-grid strong {
+    font-size: 1.05rem;
+  }
+
+  .email-workbench-head,
+  .quote-workbench-head,
+  .builder-intro {
+    gap: 10px;
+  }
+
+  .email-workbench pre {
+    max-height: 220px;
+    overflow: auto;
+    font-size: 0.86rem;
+    white-space: pre-wrap;
+  }
+
+  .content-tab-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .content-tab {
+    min-height: 44px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .asset-drop-preview {
+    min-height: 118px;
+  }
+
+  .repeater-item {
+    padding: 12px;
+  }
+
+  .sortable-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .sortable-card button {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .preview-panel {
+    display: none;
+  }
+
+  .finance-table-wrap {
+    overflow: visible;
+  }
+
+  .finance-table {
+    min-width: 0;
+  }
+
+  .finance-table thead {
+    display: none;
+  }
+
+  .finance-table,
+  .finance-table tbody,
+  .finance-table tr,
+  .finance-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .finance-table tr {
+    border: 1px solid rgba(18, 63, 109, 0.12);
+    border-radius: 8px;
+    background: #fff;
+    padding: 8px 10px;
+  }
+
+  .finance-table tr + tr {
+    margin-top: 10px;
+  }
+
+  .finance-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid rgba(28, 31, 33, 0.08);
+    padding: 8px 0;
+    text-align: right;
+  }
+
+  .finance-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .finance-table td::before {
+    content: attr(data-label);
+    color: #667078;
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .finance-table td:first-child {
+    align-items: flex-start;
+    display: grid;
+    gap: 3px;
+    justify-content: stretch;
+    text-align: left;
+  }
+
+  .finance-table td:first-child::before {
+    margin-bottom: 2px;
+  }
+
+  .admin-auth {
+    min-height: 100svh;
+    padding: max(18px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+  }
+
+  .admin-auth-panel {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 380px) {
+  .admin-main-tabs button {
+    gap: 5px;
+    font-size: 0.8rem;
+  }
+
+  .admin-brand strong {
+    font-size: 0.94rem;
+  }
+
+  .admin-metric-grid,
+  .stage-button-grid,
+  .quote-metric-grid {
+    grid-template-columns: 1fr;
+  }
+}

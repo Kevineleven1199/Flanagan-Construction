@@ -2832,3 +2832,162 @@ legend {
     grid-template-columns: 1fr;
   }
 }
+
+/* iPhone polish: bigger taps, safe-area spacing, and less cramped funnel screens. */
+@media (max-width: 640px) {
+  html {
+    scroll-padding-top: 84px;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+
+  .site-header {
+    inset: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) auto
+      max(10px, env(safe-area-inset-left));
+    width: auto;
+    min-height: 58px;
+    padding: 8px;
+  }
+
+  .brand {
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .brand strong {
+    font-size: 0.98rem;
+    line-height: 1.05;
+  }
+
+  .brand small {
+    display: none;
+  }
+
+  .menu-button,
+  .nav a,
+  .nav-cta,
+  .submit-button,
+  .secondary-action {
+    min-height: 46px;
+  }
+
+  .nav.open {
+    left: 0;
+    right: 0;
+  }
+
+  .simple-home-hero {
+    min-height: auto;
+    gap: 16px;
+    padding: 88px max(18px, env(safe-area-inset-right)) 24px max(18px, env(safe-area-inset-left));
+  }
+
+  .simple-home-hero .hero-inner h1 {
+    max-width: 11ch;
+    font-size: 2.05rem;
+    line-height: 0.98;
+  }
+
+  .simple-home-hero .hero-inner .hero-lede {
+    display: none;
+  }
+
+  .simple-home-hero .lead-panel {
+    border-radius: 8px;
+    padding: 13px;
+    box-shadow: 0 18px 48px rgba(7, 24, 39, 0.22);
+  }
+
+  .simple-home-hero .panel-heading h2 {
+    font-size: 1.12rem;
+  }
+
+  .simple-home-hero .field-grid {
+    gap: 8px;
+  }
+
+  .simple-home-hero input,
+  .simple-home-hero select,
+  .simple-home-hero textarea {
+    min-height: 44px;
+    padding: 9px 10px;
+  }
+
+  .simple-home-hero textarea {
+    min-height: 70px;
+  }
+
+  .simple-home-hero .need-chip-grid {
+    gap: 8px;
+  }
+
+  .simple-home-hero .need-chip {
+    min-height: 44px;
+    padding: 0 10px;
+    line-height: 1.1;
+  }
+
+  .simple-services {
+    padding: 32px max(16px, env(safe-area-inset-right)) 26px max(16px, env(safe-area-inset-left));
+  }
+
+  .simple-services-head h2 {
+    max-width: 11ch;
+    font-size: 1.75rem;
+  }
+
+  .simple-services-head > p {
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .simple-service-grid {
+    gap: 10px;
+  }
+
+  .simple-service-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+    min-height: 104px;
+  }
+
+  .simple-service-card > div:not(.simple-service-photo) {
+    gap: 6px;
+    padding: 12px;
+  }
+
+  .simple-service-card p {
+    font-size: 0.86rem;
+    line-height: 1.35;
+  }
+
+  .mobile-cta {
+    gap: 8px;
+    padding: 10px max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .mobile-cta a,
+  .mobile-cta button {
+    min-height: 52px;
+    font-size: 0.95rem;
+  }
+
+  .site-footer {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  #estimate,
+  #services {
+    scroll-margin-top: 84px;
+  }
+}

@@ -1616,17 +1616,17 @@ function FinancialDashboard({ leads, emailSettings }) {
             <tbody>
               {rows.length ? rows.map(({ lead, financials }) => (
                 <tr key={lead.id}>
-                  <td>
+                  <td data-label="Lead">
                     <strong>{lead.name}</strong>
                     <span>{lead.projectType}</span>
                   </td>
-                  <td>{lead.status}</td>
-                  <td>{formatCurrency(financials.customerPrice)}</td>
-                  <td>{formatCurrency(financials.revenueReceived)}</td>
-                  <td>{formatCurrency(financials.expenseTotal)}</td>
-                  <td>{formatCurrency(financials.grossProfit)}</td>
-                  <td>{Math.round(financials.margin)}%</td>
-                  <td>{lead.joistInvoiceNumber || 'Not entered'}</td>
+                  <td data-label="Status">{lead.status}</td>
+                  <td data-label="Customer price">{formatCurrency(financials.customerPrice)}</td>
+                  <td data-label="Received">{formatCurrency(financials.revenueReceived)}</td>
+                  <td data-label="Cost">{formatCurrency(financials.expenseTotal)}</td>
+                  <td data-label="Profit">{formatCurrency(financials.grossProfit)}</td>
+                  <td data-label="Margin">{Math.round(financials.margin)}%</td>
+                  <td data-label="Joist invoice">{lead.joistInvoiceNumber || 'Not entered'}</td>
                 </tr>
               )) : (
                 <tr>
