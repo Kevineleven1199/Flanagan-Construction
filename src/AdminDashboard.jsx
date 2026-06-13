@@ -127,6 +127,7 @@ const contentTabs = [
   { id: 'builder', label: 'Builder', icon: GripVertical },
   { id: 'ai', label: 'AI-ready', icon: WandSparkles },
 ]
+const smtpSenderFallback = 'SMTP sender not configured'
 
 function readSessionAuth() {
   try {
@@ -293,7 +294,18 @@ function Field({ label, value, onChange, textarea = false, type = 'text', rows =
   )
 }
 
-function AdminLogin({ email, setEmail, password, setPassword, loading, message, onSubmit, goHome }) {
+function AdminLogin({
+  email,
+  setEmail,
+  password,
+  setPassword,
+  loginTrap,
+  setLoginTrap,
+  loading,
+  message,
+  onSubmit,
+  goHome,
+}) {
   return (
     <main className="admin-auth">
       <form className="admin-auth-panel" onSubmit={onSubmit}>
@@ -301,14 +313,36 @@ function AdminLogin({ email, setEmail, password, setPassword, loading, message, 
           <Lock size={24} aria-hidden="true" />
         </span>
           <h1>Flanagan Admin</h1>
-        <p className="admin-auth-help">Sign in as Nick or Kevin. Passwords can be rotated later with ADMIN_USERS_JSON.</p>
+        <p className="admin-auth-help">Use your assigned super-admin email and password.</p>
+        <div className="admin-hp-field" aria-hidden="true">
+          <label>
+            Website
+            <input
+              name="website"
+              value={loginTrap.website}
+              onChange={(event) => setLoginTrap((current) => ({ ...current, website: event.target.value }))}
+              tabIndex="-1"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            Confirm email
+            <input
+              name="confirmEmail"
+              value={loginTrap.confirmEmail}
+              onChange={(event) => setLoginTrap((current) => ({ ...current, confirmEmail: event.target.value }))}
+              tabIndex="-1"
+              autoComplete="off"
+            />
+          </label>
+        </div>
         <label>
           Super admin email
           <input
             type="email"
             value={email}
             autoComplete="username"
-            placeholder="nickflanagan73@gmail.com"
+            placeholder="Super admin email"
             onChange={(event) => setEmail(event.target.value)}
             required
           />
@@ -851,7 +885,7 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
             <p className="admin-eyebrow">Email follow-up</p>
             <strong>{currentEmailDraft.subject}</strong>
             <span>
-              SMTP sender: {emailSettings?.from || 'Nick Flanagan <nickflanagan73@gmail.com>'}
+              SMTP sender: {emailSettings?.from || smtpSenderFallback}
               {emailSettings?.configured ? ' ready' : ' needs Railway settings'}
             </span>
           </div>
@@ -1590,7 +1624,7 @@ function FinancialDashboard({ leads, emailSettings }) {
           <Mail size={22} aria-hidden="true" />
           <div>
             <p className="admin-eyebrow">Outbound email</p>
-            <strong>{emailSettings?.from || 'Nick Flanagan <nickflanagan73@gmail.com>'}</strong>
+            <strong>{emailSettings?.from || smtpSenderFallback}</strong>
             <span>{emailSettings?.configured ? 'SMTP is ready for future one-click sending.' : 'Use mailto drafts now; add Gmail SMTP settings in Railway when ready.'}</span>
           </div>
         </section>
@@ -1702,8 +1736,9 @@ function AdminDashboard({ content, setContent, goHome }) {
   const [activeView, setActiveView] = useState('leads')
   const [activeContentTab, setActiveContentTab] = useState('overview')
   const [auth, setAuth] = useState(readSessionAuth)
-  const [email, setEmail] = useState(() => readSessionAuth().user?.email || '')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [loginTrap, setLoginTrap] = useState({ website: '', confirmEmail: '' })
   const [mode, setMode] = useState('checking')
   const [unlocked, setUnlocked] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -1743,6 +1778,8 @@ function AdminDashboard({ content, setContent, goHome }) {
       if (error.status === 401) {
         setMode('locked')
         setUnlocked(false)
+        setEmail('')
+        setPassword('')
         setMessage('Enter your super admin email and password.')
       } else if (error.status === 503) {
         setMode('setup')
@@ -1941,7 +1978,7 @@ function AdminDashboard({ content, setContent, goHome }) {
     try {
       const payload = await adminRequest('/api/admin/login', {
         method: 'POST',
-        body: { email, password },
+        body: { email, password, ...loginTrap },
       })
       const nextAuth = {
         token: payload.token,
@@ -1951,6 +1988,7 @@ function AdminDashboard({ content, setContent, goHome }) {
       setAuth(nextAuth)
       writeSessionAuth(nextAuth)
       setPassword('')
+      setLoginTrap({ website: '', confirmEmail: '' })
       await loadAdminData(payload.token, payload.user)
     } catch (error) {
       setMode('locked')
@@ -1963,7 +2001,9 @@ function AdminDashboard({ content, setContent, goHome }) {
   const signOut = () => {
     writeSessionAuth(null)
     setAuth({ token: '', user: null, expiresAt: '' })
+    setEmail('')
     setPassword('')
+    setLoginTrap({ website: '', confirmEmail: '' })
     setUnlocked(false)
     setMode('locked')
     setMessage('Signed out.')
@@ -1976,6 +2016,8 @@ function AdminDashboard({ content, setContent, goHome }) {
         setEmail={setEmail}
         password={password}
         setPassword={setPassword}
+        loginTrap={loginTrap}
+        setLoginTrap={setLoginTrap}
         loading={loading}
         message={message}
         onSubmit={handleLogin}
@@ -2061,7 +2103,7 @@ function AdminDashboard({ content, setContent, goHome }) {
           <section className="admin-panel smtp-status-card">
             <div>
               <p className="admin-eyebrow">Outbound email</p>
-              <strong>{emailSettings?.from || 'Nick Flanagan <nickflanagan73@gmail.com>'}</strong>
+              <strong>{emailSettings?.from || smtpSenderFallback}</strong>
               <span>
                 {emailSettings?.configured
                   ? 'SMTP is configured for future one-click sending.'

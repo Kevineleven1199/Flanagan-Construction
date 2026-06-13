@@ -104,6 +104,8 @@ const securityHeaders = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
   'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'X-Permitted-Cross-Domain-Policies': 'none',
   'X-DNS-Prefetch-Control': 'on',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Content-Security-Policy': [
@@ -289,9 +291,27 @@ async function handleAdminLogin(req, res, gzipOk) {
     const data = await readJsonBody(req, 100000)
     const email = String(data.email || '').toLowerCase().trim()
     const password = String(data.password || '')
+    const ip = clientIp(req)
+
+    const tooManyIpAttempts = isBucketRateLimited(adminLoginRateHits, `admin-login-ip:${ip}`, 36, 15 * 60 * 1000)
+    const tooManyEmailAttempts = isBucketRateLimited(adminLoginRateHits, `admin-login:${ip}:${hashForLog(email)}`, 12, 15 * 60 * 1000)
+    if (tooManyIpAttempts || tooManyEmailAttempts) {
+      securityLog('admin_login_rate_limited', req, { emailHash: hashForLog(email) })
+      sendJson(res, 429, { ok: false, error: 'Too many login attempts. Please try again later.' }, gzipOk)
+      return
+    }
+
+    const trapFields = filledTrapFields(data, adminTrapFields)
+    if (trapFields.length) {
+      securityLog('admin_login_honeypot', req, { emailHash: hashForLog(email), fields: trapFields })
+      sendJson(res, 401, { ok: false, error: 'Email or password is incorrect.' }, gzipOk)
+      return
+    }
+
     const user = adminUsers.find((adminUser) => adminUser.email === email)
 
     if (!user || !verifyPassword(password, user.passwordHash)) {
+      securityLog('admin_login_failed', req, { emailHash: hashForLog(email) })
       sendJson(res, 401, { ok: false, error: 'Email or password is incorrect.' }, gzipOk)
       return
     }
@@ -314,14 +334,15 @@ async function handleAdminLogin(req, res, gzipOk) {
 }
 
 function emailSettingsStatus() {
+  const smtpUser = process.env.SMTP_USER || ''
   const settings = {
     provider: process.env.SMTP_PROVIDER || 'gmail',
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: process.env.SMTP_PORT || '587',
     secure: process.env.SMTP_SECURE || 'false',
-    user: process.env.SMTP_USER || 'nickflanagan73@gmail.com',
-    from: process.env.SMTP_FROM || `Nick Flanagan <${process.env.SMTP_USER || 'nickflanagan73@gmail.com'}>`,
-    replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_USER || 'nickflanagan73@gmail.com',
+    user: smtpUser,
+    from: process.env.SMTP_FROM || (smtpUser ? `Flanagan Construction <${smtpUser}>` : ''),
+    replyTo: process.env.SMTP_REPLY_TO || smtpUser,
   }
   const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM']
   return {
@@ -599,19 +620,38 @@ function clientIp(req) {
 const rateWindowMs = 10 * 60 * 1000
 const rateMax = 6
 const rateHits = new Map()
+const adminLoginRateHits = new Map()
+const leadTrapFields = ['company', 'website', 'fax']
+const adminTrapFields = ['website', 'confirmEmail', 'company', 'fax', 'nickname']
 
-function isRateLimited(ip) {
+function isBucketRateLimited(bucket, key, maxHits, windowMs) {
   const now = Date.now()
-  const recent = (rateHits.get(ip) || []).filter((t) => now - t < rateWindowMs)
+  const recent = (bucket.get(key) || []).filter((t) => now - t < windowMs)
   recent.push(now)
-  rateHits.set(ip, recent)
+  bucket.set(key, recent)
   // Keep the map from growing unbounded on a long-running process.
-  if (rateHits.size > 5000) {
-    for (const [key, hits] of rateHits) {
-      if (!hits.some((t) => now - t < rateWindowMs)) rateHits.delete(key)
+  if (bucket.size > 5000) {
+    for (const [bucketKey, hits] of bucket) {
+      if (!hits.some((t) => now - t < windowMs)) bucket.delete(bucketKey)
     }
   }
-  return recent.length > rateMax
+  return recent.length > maxHits
+}
+
+function isRateLimited(ip) {
+  return isBucketRateLimited(rateHits, ip, rateMax, rateWindowMs)
+}
+
+function filledTrapFields(data, fields) {
+  return fields.filter((field) => String(data?.[field] || '').trim())
+}
+
+function hashForLog(value) {
+  return createHash('sha256').update(String(value || '')).digest('hex').slice(0, 16)
+}
+
+function securityLog(event, req, details = {}) {
+  console.warn('[SECURITY]', JSON.stringify({ event, ipHash: hashForLog(clientIp(req)), ...details }))
 }
 
 async function handleLead(req, res, gzipOk) {
@@ -640,8 +680,10 @@ async function handleLead(req, res, gzipOk) {
       return
     }
 
-    // Honeypot: real visitors never fill the hidden "company" field; bots do.
-    if (data.company) {
+    // Honeypots: real visitors never fill these hidden fields; bots often do.
+    const trapFields = filledTrapFields(data, leadTrapFields)
+    if (trapFields.length) {
+      securityLog('lead_honeypot', req, { fields: trapFields })
       sendJson(res, 200, { ok: true }, gzipOk)
       return
     }
@@ -724,7 +766,9 @@ async function handleLeadDraft(req, res, gzipOk) {
     return
   }
 
-  if (data.company) {
+  const trapFields = filledTrapFields(data, leadTrapFields)
+  if (trapFields.length) {
+    securityLog('lead_draft_honeypot', req, { fields: trapFields })
     sendJson(res, 200, { ok: true }, gzipOk)
     return
   }

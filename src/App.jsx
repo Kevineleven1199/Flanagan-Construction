@@ -42,6 +42,11 @@ function track(event, data = {}) {
 }
 
 const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
+const leadHoneypotFields = ['company', 'website', 'fax']
+
+function hasLeadHoneypot(form) {
+  return leadHoneypotFields.some((field) => String(form?.[field] || '').trim())
+}
 
 const icons = [Bath, Hammer, Home]
 
@@ -317,6 +322,26 @@ function LeadPanel({
             <input
               name="company"
               value={form.company}
+              onChange={handleChange}
+              tabIndex="-1"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            Website
+            <input
+              name="website"
+              value={form.website}
+              onChange={handleChange}
+              tabIndex="-1"
+              autoComplete="off"
+            />
+          </label>
+          <label>
+            Fax
+            <input
+              name="fax"
+              value={form.fax}
               onChange={handleChange}
               tabIndex="-1"
               autoComplete="off"
@@ -814,6 +839,8 @@ function App() {
     timeline: 'Not sure yet',
     message: '',
     company: '',
+    website: '',
+    fax: '',
   })
   const [selectedGroupId, setSelectedGroupId] = useState(defaultSiteContent.leadFunnel.groups[0].id)
   const [selectedNeeds, setSelectedNeeds] = useState([])
@@ -1063,7 +1090,7 @@ function App() {
   useEffect(() => {
     const hasPhone = form.phone.replace(/\D/g, '').length >= 7
     const hasEmail = /\S+@\S+\.\S+/.test(form.email)
-    if (submitted || form.company || (!hasPhone && !hasEmail)) return
+    if (submitted || hasLeadHoneypot(form) || (!hasPhone && !hasEmail)) return
 
     const timeout = window.setTimeout(async () => {
       setDraftSaving(true)
@@ -1108,6 +1135,8 @@ function App() {
     form.timeline,
     form.message,
     form.company,
+    form.website,
+    form.fax,
     selectedGroupId,
     selectedNeeds,
     submitted,
@@ -1118,6 +1147,13 @@ function App() {
     if (submitting) return
     setSubmitting(true)
     setStatus('Sending your request...')
+
+    if (hasLeadHoneypot(form)) {
+      setSubmitted(true)
+      setStatus('Request received. We will reach out within one business day.')
+      setSubmitting(false)
+      return
+    }
 
     // Keep a local backup so a lead is never lost to a flaky network.
     const finalLead = {
@@ -1171,6 +1207,8 @@ function App() {
       timeline: 'Not sure yet',
       message: '',
       company: '',
+      website: '',
+      fax: '',
     })
   }
 
