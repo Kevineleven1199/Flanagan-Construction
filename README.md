@@ -69,11 +69,9 @@ the visitor's email app via `mailto:`.
 
 Visit `/admin` to manage leads and edit site content. From the public site,
 press `g` then `a` to jump straight to the admin login. The dashboard supports
-named super-admin email/password login. Two default super admins are configured
-by hashed credentials in the server:
-
-- `nickflanagan73@gmail.com`
-- `kevin@ndabox.com`
+named super-admin email/password login. The initial super-admin accounts are
+configured by hashed credentials in the server and should be rotated with
+environment variables before handing access to more people.
 
 For production rotation, set `ADMIN_USERS_JSON` with replacement password
 hashes and `ADMIN_SESSION_SECRET` for stable signed sessions. `ADMIN_PASSWORD`
@@ -96,15 +94,15 @@ back to browser storage if the Node API is not running.
 
 ### Outbound email prep
 
-The CRM is ready for Nick's Gmail SMTP settings. Add these Railway variables
-when you are ready to move from mailto drafts to server-sent email:
+The CRM is ready for Gmail SMTP settings. Add these Railway variables when you
+are ready to move from mailto drafts to server-sent email:
 
 - `SMTP_HOST=smtp.gmail.com`
 - `SMTP_PORT=587`
 - `SMTP_SECURE=false`
-- `SMTP_USER=nickflanagan73@gmail.com`
+- `SMTP_USER=<outbound mailbox>`
 - `SMTP_SECRET_KEY=<Gmail app password>`
-- `SMTP_FROM=Nick Flanagan <nickflanagan73@gmail.com>`
+- `SMTP_FROM=Flanagan Construction <outbound mailbox>`
 
 ### Joist and Square transition
 

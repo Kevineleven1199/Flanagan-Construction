@@ -8,7 +8,7 @@ This site should bridge the business from Joist-first operations to a fuller in-
 - Use the website CRM for lead capture, started-but-unfinished requests, follow-up stage, notes, internal quote math, Joist estimate numbers, Joist invoice numbers, and payment links.
 - Paste Joist references back into each lead after creating the estimate or invoice in Joist.
 - Use the admin Money tab to export CPA-ready revenue/expense CSVs or open an email draft summary.
-- Later, after Google Workspace is set up, move outbound website emails from `nickflanagan73@gmail.com` to `info@yourdomain.com`.
+- Later, after Google Workspace is set up, move outbound website emails from the current mailbox to `info@yourdomain.com`.
 
 ## Joist Compatibility Notes
 
@@ -85,7 +85,7 @@ Recommended monthly habit:
 
 Current:
 
-- Mail drafts use Nick's Gmail address.
+- Mail drafts use the current business mailbox.
 - Joist still sends official estimate/invoice emails.
 
 Railway SMTP variables prepared:
@@ -93,9 +93,9 @@ Railway SMTP variables prepared:
 - `SMTP_HOST=smtp.gmail.com`
 - `SMTP_PORT=587`
 - `SMTP_SECURE=false`
-- `SMTP_USER=nickflanagan73@gmail.com`
+- `SMTP_USER=<outbound mailbox>`
 - `SMTP_SECRET_KEY=<Gmail app password>`
-- `SMTP_FROM=Nick Flanagan <nickflanagan73@gmail.com>`
+- `SMTP_FROM=Flanagan Construction <outbound mailbox>`
 
 Future:
 
