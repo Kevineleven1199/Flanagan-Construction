@@ -1,19 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
-  Bath,
   CheckCircle2,
-  ClipboardCheck,
-  Clock3,
-  Hammer,
-  Home,
   MapPin,
   Mail,
   Menu,
-  PaintRoller,
   Phone,
   ShieldCheck,
-  Sparkles,
   X,
 } from 'lucide-react'
 import AdminDashboard from './AdminDashboard'
@@ -48,18 +41,55 @@ function hasLeadHoneypot(form) {
   return leadHoneypotFields.some((field) => String(form?.[field] || '').trim())
 }
 
-const icons = [Bath, Hammer, Home]
-
-const heroCredibilityIcons = [ShieldCheck, ClipboardCheck, Clock3]
-const quickBandIcons = [Clock3, ShieldCheck, ClipboardCheck]
 const splashServices = ['Kitchens & baths', 'Concrete work', 'Roofing & siding']
 const heroPathSteps = ['Start request', 'Scope the work', 'Get a call back']
-const SPLASH_SESSION_KEY = 'flanagan-paint-splash-seen-v1'
-const heroProjectCards = [
-  { label: 'Kitchen & bath', detail: 'Tile, layout, plumbing, ventilation', icon: Bath },
-  { label: 'Concrete', detail: 'Driveways, sidewalks, pavers, patios', icon: Hammer },
-  { label: 'Roof, siding, windows', detail: 'Exterior repairs that protect the house', icon: Home },
+const SPLASH_SESSION_KEY = 'flanagan-paint-splash-seen-v2'
+const projectVisuals = [
+  {
+    match: /kitchen|bath|tile|interior|paint|plumb|door|trim|window/i,
+    image: 'https://images.unsplash.com/photo-1556912173-3bb406ef7e77?auto=format&fit=crop&w=900&q=84',
+  },
+  {
+    match: /concrete|driveway|sidewalk|blacktop|paver|hardscape|patio|retaining|outdoor/i,
+    image: 'https://images.pexels.com/photos/221027/pexels-photo-221027.jpeg?auto=compress&cs=tinysrgb&w=900',
+  },
+  {
+    match: /roof|siding|gutter|garage|exterior/i,
+    image: 'https://images.pexels.com/photos/209274/pexels-photo-209274.jpeg?auto=compress&cs=tinysrgb&w=900',
+  },
+  {
+    match: /deck|porch|fence|addition|foundation|build/i,
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=84',
+  },
 ]
+const brandVisual = 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=500&q=84'
+const proofVisuals = [
+  'https://images.unsplash.com/photo-1581092160607-ee22731c00f6?auto=format&fit=crop&w=500&q=82',
+  'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=500&q=82',
+  'https://images.unsplash.com/photo-1523413363574-c30aa1c2a516?auto=format&fit=crop&w=500&q=82',
+]
+const heroProjectCards = [
+  {
+    label: 'Kitchen & bath',
+    detail: 'Tile, layout, plumbing, ventilation',
+    image: projectVisuals[0].image,
+  },
+  {
+    label: 'Concrete',
+    detail: 'Driveways, sidewalks, pavers, patios',
+    image: projectVisuals[1].image,
+  },
+  {
+    label: 'Roof, siding, windows',
+    detail: 'Exterior repairs that protect the house',
+    image: projectVisuals[2].image,
+  },
+]
+
+function visualForText(text, fallback = projectVisuals[0].image) {
+  const visual = projectVisuals.find((item) => item.match.test(String(text || '')))
+  return visual?.image || fallback
+}
 
 function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -116,23 +146,49 @@ function SplashIntro({ business, heroImage, onDone }) {
   return (
     <div className="splash-intro paint-splash" role="status" aria-live="polite">
       <div className="splash-site-preview" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
+      <div className="splash-site-shell" aria-hidden="true">
+        <div className="splash-browser-bar">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div className="splash-mini-page">
+          <div className="splash-mini-copy">
+            <span></span>
+            <strong></strong>
+            <p></p>
+          </div>
+          <div className="splash-mini-form">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
       <div className="paint-wash paint-wash-one" aria-hidden="true"></div>
       <div className="paint-wash paint-wash-two" aria-hidden="true"></div>
       <div className="paint-wash paint-wash-three" aria-hidden="true"></div>
+      <div className="paint-splatters" aria-hidden="true">
+        <span style={{ '--splat-left': '14%', '--splat-top': '18%', '--splat-delay': '420ms' }}></span>
+        <span style={{ '--splat-left': '74%', '--splat-top': '24%', '--splat-delay': '820ms' }}></span>
+        <span style={{ '--splat-left': '62%', '--splat-top': '72%', '--splat-delay': '1120ms' }}></span>
+      </div>
       <div className="paint-drips" aria-hidden="true">
         <span style={{ '--drip-left': '18%', '--drip-delay': '0ms', '--drip-height': '86px' }}></span>
         <span style={{ '--drip-left': '43%', '--drip-delay': '220ms', '--drip-height': '58px' }}></span>
         <span style={{ '--drip-left': '69%', '--drip-delay': '380ms', '--drip-height': '74px' }}></span>
       </div>
-      <div className="paint-roller-track" aria-hidden="true">
-        <span className="paint-roller">
-          <PaintRoller size={38} />
-        </span>
+      <div className="paint-roller-track paint-roller-track-one" aria-hidden="true">
+        <span className="css-paint-roller"></span>
+      </div>
+      <div className="paint-roller-track paint-roller-track-two" aria-hidden="true">
+        <span className="css-paint-roller roller-blue"></span>
+      </div>
+      <div className="paint-roller-track paint-roller-track-three" aria-hidden="true">
+        <span className="css-paint-roller"></span>
       </div>
       <div className="splash-card paint-splash-card">
-        <span className="brand-mark splash-mark">
-          <PaintRoller size={30} aria-hidden="true" />
-        </span>
+        <span className="brand-mark splash-mark photo-mark" style={{ backgroundImage: cssUrl(brandVisual) }}></span>
         <p>Painting in the next project</p>
         <h2>{business.name}</h2>
         <div className="splash-service-track" aria-label="Main work">
@@ -151,11 +207,25 @@ function SplashIntro({ business, heroImage, onDone }) {
   )
 }
 
+function PaintCursor() {
+  return (
+    <div className="paint-cursor" aria-hidden="true">
+      <span className="paint-cursor-trail"></span>
+      <span className="paint-cursor-roller"></span>
+    </div>
+  )
+}
+
 function HeroMotionLayer() {
   return (
     <div className="hero-motion-layer" aria-hidden="true">
       <div className="hero-spotlight"></div>
       <div className="blueprint-grid"></div>
+      <div className="hero-paint-bursts">
+        <span style={{ '--burst-x': '24%', '--burst-y': '33%', '--burst-delay': '0ms' }}></span>
+        <span style={{ '--burst-x': '57%', '--burst-y': '16%', '--burst-delay': '420ms' }}></span>
+        <span style={{ '--burst-x': '82%', '--burst-y': '64%', '--burst-delay': '760ms' }}></span>
+      </div>
       <div className="measure-rail measure-rail-one"></div>
       <div className="measure-rail measure-rail-two"></div>
       <div className="hero-path">
@@ -167,12 +237,9 @@ function HeroMotionLayer() {
       </div>
       <div className="floating-job-stack">
         {heroProjectCards.map((card, index) => {
-          const Icon = card.icon
           return (
             <div className="floating-job-card" key={card.label} style={{ '--float-order': index }}>
-              <span>
-                <Icon size={16} />
-              </span>
+              <span className="job-card-photo" style={{ backgroundImage: cssUrl(card.image) }}></span>
               <strong>{card.label}</strong>
               <small>{card.detail}</small>
             </div>
@@ -306,9 +373,7 @@ function LeadPanel({
   return (
     <aside className="lead-panel" id="estimate" aria-label="Request an estimate" data-reveal="lift">
       <div className="panel-heading">
-        <span>
-          <Sparkles size={18} aria-hidden="true" />
-        </span>
+        <span className="panel-photo-mark" style={{ backgroundImage: cssUrl(projectVisuals[0].image) }}></span>
         <div>
           <h2>{estimateContent.formTitle}</h2>
           <p>{estimateContent.formCopy}</p>
@@ -416,6 +481,7 @@ function LeadPanel({
           <div className="need-chip-grid">
             {simpleNeeds.map((need) => {
               const selected = selectedNeeds.includes(need)
+              const needVisual = visualForText(need)
               return (
                 <button
                   className={selected ? 'need-chip active' : 'need-chip'}
@@ -424,7 +490,7 @@ function LeadPanel({
                   aria-pressed={selected}
                   onClick={() => toggleNeed(need)}
                 >
-                  {selected ? <CheckCircle2 size={16} aria-hidden="true" /> : <span aria-hidden="true">+</span>}
+                  <span className="need-chip-photo" style={{ backgroundImage: cssUrl(needVisual) }} aria-hidden="true"></span>
                   {need}
                 </button>
               )
@@ -483,9 +549,7 @@ function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
           goHome()
         }}
       >
-        <span className="brand-mark">
-          <Hammer size={20} aria-hidden="true" />
-        </span>
+        <span className="brand-mark photo-mark" style={{ backgroundImage: cssUrl(brandVisual) }}></span>
         <span>
           <strong>{business.name}</strong>
           <small>{business.location}</small>
@@ -565,7 +629,6 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
 
       <div className="simple-service-grid">
         {topServices.map((service, index) => {
-          const Icon = icons[index] || Hammer
           const image = galleryItems[index]?.image || galleryItems[0]?.image
           return (
             <article
@@ -578,9 +641,7 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
             >
               <div className="simple-service-photo" style={{ backgroundImage: cssUrl(image) }}></div>
               <div>
-                <span className="service-icon">
-                  <Icon size={20} aria-hidden="true" />
-                </span>
+                <span className="service-photo-badge" style={{ backgroundImage: cssUrl(image) }}></span>
                 <h3>{service.title.replace(/^#\d+\s*/, '')}</h3>
                 <p>{service.copy}</p>
               </div>
@@ -591,10 +652,9 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
 
       <div className="simple-proof-row" data-reveal="lift">
         {quickBand.map((item, index) => {
-          const Icon = quickBandIcons[index] || CheckCircle2
           return (
             <span key={item}>
-              <Icon size={17} aria-hidden="true" />
+              <i style={{ backgroundImage: cssUrl(proofVisuals[index] || brandVisual) }} aria-hidden="true"></i>
               {item}
             </span>
           )
@@ -670,7 +730,7 @@ function HomePage({
             <span className="eyebrow-rule" aria-hidden="true"></span>
           </p>
           <h1>
-            {hero.titlePrefix}{' '}
+            <span className="hero-title-piece hero-title-one">{hero.titlePrefix}</span>{' '}
             <span className="hl">
               {hero.highlight}
               <svg className="swoosh" viewBox="0 0 320 26" preserveAspectRatio="none" aria-hidden="true">
@@ -704,10 +764,9 @@ function HomePage({
         </div>
           <div className="hero-tech-strip" aria-label="Why homeowners start here">
             {heroCredibility.map((label, index) => {
-              const Icon = heroCredibilityIcons[index] || ShieldCheck
               return (
                 <span key={label}>
-                  <Icon size={16} aria-hidden="true" />
+                  <i style={{ backgroundImage: cssUrl(proofVisuals[index] || brandVisual) }} aria-hidden="true"></i>
                   {label}
                 </span>
               )
@@ -758,9 +817,7 @@ function SiteFooter({ business, services, goSection }) {
     <footer className="site-footer">
       <div className="footer-grid">
         <div className="footer-brand">
-          <span className="brand-mark">
-            <Hammer size={20} aria-hidden="true" />
-          </span>
+          <span className="brand-mark photo-mark" style={{ backgroundImage: cssUrl(brandVisual) }}></span>
           <strong>{business.name}</strong>
           <p>{business.serviceArea}</p>
         </div>
@@ -894,7 +951,7 @@ function App() {
 
   useEffect(() => {
     if (!showSplash) return undefined
-    const timeout = window.setTimeout(dismissSplash, 3650)
+    const timeout = window.setTimeout(dismissSplash, 5400)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
 
@@ -916,7 +973,13 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (routePath.startsWith('/admin')) {
+      document.body.classList.remove('paint-cursor-active')
+      return undefined
+    }
     if (prefersReducedMotion()) return undefined
+    if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return undefined
+    document.body.classList.add('paint-cursor-active')
 
     const handlePointerMove = (event) => {
       const root = document.documentElement
@@ -927,8 +990,11 @@ function App() {
     }
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
-    return () => window.removeEventListener('pointermove', handlePointerMove)
-  }, [])
+    return () => {
+      document.body.classList.remove('paint-cursor-active')
+      window.removeEventListener('pointermove', handlePointerMove)
+    }
+  }, [routePath])
 
   useEffect(() => {
     const root = document.documentElement
@@ -1219,6 +1285,7 @@ function App() {
   return (
     <main>
       <div className="scroll-progress" aria-hidden="true"></div>
+      <PaintCursor />
       {showSplash ? (
         <SplashIntro business={business} heroImage={siteContent.images.hero} onDone={dismissSplash} />
       ) : null}
