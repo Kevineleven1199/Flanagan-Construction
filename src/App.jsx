@@ -144,49 +144,17 @@ function addressComponent(place, type, useShortName = false) {
 function SplashIntro({ business, heroImage, onDone }) {
   return (
     <div className="splash-intro paint-splash" role="status" aria-live="polite">
-      <div className="splash-flash" aria-hidden="true"></div>
+      <div className="splash-raw-wall" aria-hidden="true"></div>
       <div className="splash-site-preview" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
-      <div className="splash-site-shell" aria-hidden="true">
-        <div className="splash-browser-bar">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <div className="splash-mini-page">
-          <div className="splash-mini-copy">
-            <span></span>
-            <strong></strong>
-            <p></p>
-          </div>
-          <div className="splash-mini-form">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </div>
+      <div className="splash-paint-curtain" aria-hidden="true">
+        <span className="splash-stroke splash-stroke-one"></span>
+        <span className="splash-stroke splash-stroke-two"></span>
+        <span className="splash-stroke splash-stroke-three"></span>
       </div>
-      <div className="paint-wash paint-wash-one" aria-hidden="true"></div>
-      <div className="paint-wash paint-wash-two" aria-hidden="true"></div>
-      <div className="paint-wash paint-wash-three" aria-hidden="true"></div>
-      <div className="paint-splatters" aria-hidden="true">
-        <span style={{ '--splat-left': '14%', '--splat-top': '18%', '--splat-delay': '420ms' }}></span>
-        <span style={{ '--splat-left': '74%', '--splat-top': '24%', '--splat-delay': '820ms' }}></span>
-        <span style={{ '--splat-left': '62%', '--splat-top': '72%', '--splat-delay': '1120ms' }}></span>
+      <div className="splash-roller-sweep" aria-hidden="true">
+        <span className="css-paint-roller splash-roller"></span>
       </div>
-      <div className="paint-drips" aria-hidden="true">
-        <span style={{ '--drip-left': '18%', '--drip-delay': '0ms', '--drip-height': '86px' }}></span>
-        <span style={{ '--drip-left': '43%', '--drip-delay': '220ms', '--drip-height': '58px' }}></span>
-        <span style={{ '--drip-left': '69%', '--drip-delay': '380ms', '--drip-height': '74px' }}></span>
-      </div>
-      <div className="paint-roller-track paint-roller-track-one" aria-hidden="true">
-        <span className="css-paint-roller"></span>
-      </div>
-      <div className="paint-roller-track paint-roller-track-two" aria-hidden="true">
-        <span className="css-paint-roller roller-blue"></span>
-      </div>
-      <div className="paint-roller-track paint-roller-track-three" aria-hidden="true">
-        <span className="css-paint-roller"></span>
-      </div>
+      <div className="splash-flash" aria-hidden="true"></div>
       <div className="splash-card paint-splash-card">
         <span className="brand-mark splash-mark photo-mark" style={{ backgroundImage: cssUrl(brandVisual) }}></span>
         <p>Welcome to</p>
@@ -968,7 +936,7 @@ function App() {
 
   useEffect(() => {
     if (!showSplash) return undefined
-    const timeout = window.setTimeout(dismissSplash, prefersReducedMotion() ? 1100 : 5400)
+    const timeout = window.setTimeout(dismissSplash, 4400)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
 
@@ -994,7 +962,6 @@ function App() {
       document.body.classList.remove('paint-cursor-active')
       return undefined
     }
-    if (prefersReducedMotion()) return undefined
     if (!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) return undefined
     document.body.classList.add('paint-cursor-active')
 
@@ -1302,7 +1269,7 @@ function App() {
   return (
     <main className={showSplash ? 'site-loading' : 'site-ready'}>
       <div className="scroll-progress" aria-hidden="true"></div>
-      <PaintCursor />
+      {!showSplash ? <PaintCursor /> : null}
       {showSplash ? (
         <SplashIntro business={business} heroImage={siteContent.images.hero} onDone={dismissSplash} />
       ) : null}
