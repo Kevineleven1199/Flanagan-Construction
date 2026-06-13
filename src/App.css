@@ -12,6 +12,7 @@
   --hero-drift-x: 0px;
   --hero-drift-y: 0px;
   --scroll-progress: 0;
+  --paint-roller-cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'%3E%3Cpath d='M9 8l14 14' stroke='%23071827' stroke-width='4' stroke-linecap='round'/%2F%3E%3Cpath d='M24 22c4 0 7 3 7 7v8' fill='none' stroke='%23071827' stroke-width='4' stroke-linecap='round'/%2F%3E%3Crect x='5' y='4' width='24' height='12' rx='4' fill='%23f2b84b' stroke='%23071827' stroke-width='3'%2F%3E%3Cpath d='M9 8h16' stroke='%23fff4cf' stroke-width='3' stroke-linecap='round' opacity='.75'%2F%3E%3Ccircle cx='31' cy='38' r='5' fill='%23f2b84b' stroke='%23071827' stroke-width='3'%2F%3E%3C%2Fsvg%3E") 7 7, auto;
 }
 
 .scroll-progress {
@@ -3455,13 +3456,18 @@ legend {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+  html {
     scroll-behavior: auto !important;
+  }
+
+  .hero-paint-bursts span,
+  .blueprint-grid,
+  .measure-rail,
+  .hero-path span,
+  .floating-job-card,
+  .county-location-tag,
+  .paint-cursor-trail {
+    animation-duration: 9s !important;
   }
 }
 
@@ -4118,15 +4124,15 @@ body.paint-cursor-active .paint-cursor {
 }
 
 body.paint-cursor-active {
-  cursor: none;
+  cursor: var(--paint-roller-cursor) !important;
 }
 
 body.paint-cursor-active :where(a, button, .simple-service-card, .need-chip, .brand) {
-  cursor: none;
+  cursor: var(--paint-roller-cursor) !important;
 }
 
 body.paint-cursor-active :where(input, textarea, select) {
-  cursor: auto;
+  cursor: text !important;
 }
 
 .paint-cursor-trail {
@@ -4360,6 +4366,237 @@ body.paint-cursor-active :where(input, textarea, select) {
 
 .paint-splash .splash-progress span {
   animation: splash-progress 3.4s ease 760ms forwards;
+}
+
+/* Clean paint-on intro: one wall, one roller pass, then the real site reveal. */
+.paint-splash {
+  background: #071827;
+  animation: splash-clean-exit 520ms ease 3.62s forwards;
+}
+
+.splash-raw-wall {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(120deg, rgba(7, 24, 39, 0.96), rgba(18, 63, 109, 0.86)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 2px, transparent 2px 46px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 2px, transparent 2px 46px);
+}
+
+.paint-splash .splash-site-preview {
+  z-index: 1;
+  opacity: 1;
+  filter: saturate(0.95) contrast(1.08);
+  transform: none;
+  clip-path: inset(0 100% 0 0);
+  animation: splash-site-painted-on 2.2s cubic-bezier(0.48, 0, 0.12, 1) 180ms forwards;
+}
+
+.splash-paint-curtain {
+  position: absolute;
+  inset: -7%;
+  z-index: 2;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(242, 184, 75, 0.96), rgba(255, 244, 207, 0.9) 42%, rgba(242, 184, 75, 0.88)),
+    repeating-linear-gradient(90deg, rgba(7, 24, 39, 0.12) 0 7px, transparent 7px 18px);
+  box-shadow: inset 0 -22px 70px rgba(7, 24, 39, 0.24);
+  clip-path: inset(0 100% 0 0);
+  opacity: 0;
+  transform: skewX(-7deg);
+  transform-origin: left center;
+  animation: splash-paint-layer 2.45s cubic-bezier(0.48, 0, 0.12, 1) 80ms forwards;
+}
+
+.splash-stroke {
+  position: absolute;
+  left: -18%;
+  width: 136%;
+  border-radius: 999px;
+  background: rgba(255, 244, 207, 0.45);
+  filter: blur(0.3px);
+  transform: translateX(-120%) rotate(-2deg);
+  animation: splash-stroke-pass 1.4s cubic-bezier(0.62, 0, 0.16, 1) both;
+}
+
+.splash-stroke-one {
+  top: 12%;
+  height: 19vh;
+  animation-delay: 160ms;
+}
+
+.splash-stroke-two {
+  top: 39%;
+  height: 22vh;
+  background: rgba(18, 63, 109, 0.28);
+  animation-delay: 320ms;
+}
+
+.splash-stroke-three {
+  top: 65%;
+  height: 21vh;
+  animation-delay: 480ms;
+}
+
+.splash-roller-sweep {
+  position: absolute;
+  left: -170px;
+  top: 48%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transform: translateY(-50%) rotate(-5deg);
+  animation: splash-roller-pass 2.38s cubic-bezier(0.48, 0, 0.12, 1) 90ms forwards;
+}
+
+.splash-roller-sweep .css-paint-roller {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 112px;
+  height: 82px;
+  animation: splash-roller-bounce 460ms ease-in-out infinite;
+}
+
+.splash-roller-sweep .css-paint-roller::before {
+  width: 72px;
+  height: 38px;
+  border-width: 4px;
+  border-radius: 12px;
+  background:
+    repeating-linear-gradient(90deg, #f2b84b 0 11px, #fff4cf 11px 17px);
+}
+
+.splash-roller-sweep .css-paint-roller::after {
+  left: 54px;
+  top: 31px;
+  width: 48px;
+  height: 38px;
+  border-right-width: 6px;
+  border-bottom-width: 6px;
+}
+
+.paint-splash .splash-flash {
+  z-index: 7;
+  background:
+    radial-gradient(circle at 58% 48%, rgba(255, 255, 255, 0.92), rgba(255, 244, 207, 0.36) 30%, transparent 60%);
+  animation: splash-clean-flash 3.62s ease forwards;
+}
+
+.paint-splash-card {
+  z-index: 8;
+  animation:
+    splash-card-in 620ms cubic-bezier(0.2, 0.9, 0.2, 1) 820ms both,
+    splash-card-out 420ms ease 3.18s forwards;
+}
+
+.paint-splash .splash-progress span {
+  animation: splash-progress 2.35s ease 560ms forwards;
+}
+
+.paint-splash .splash-skip {
+  z-index: 10;
+}
+
+@keyframes splash-site-painted-on {
+  0% {
+    clip-path: inset(0 100% 0 0);
+    transform: scale(1.025);
+  }
+
+  76%,
+  100% {
+    clip-path: inset(0 0 0 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes splash-paint-layer {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  74% {
+    opacity: 0.96;
+    clip-path: inset(0 0 0 0);
+  }
+
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes splash-stroke-pass {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%) rotate(-2deg);
+  }
+
+  22%,
+  82% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(112%) rotate(-2deg);
+  }
+}
+
+@keyframes splash-roller-pass {
+  0% {
+    transform: translate(-12vw, -50%) rotate(-7deg);
+  }
+
+  72% {
+    transform: translate(calc(100vw + 80px), -50%) rotate(4deg);
+  }
+
+  100% {
+    transform: translate(calc(100vw + 240px), -50%) rotate(8deg);
+  }
+}
+
+@keyframes splash-roller-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-4px) rotate(2deg);
+  }
+}
+
+@keyframes splash-clean-flash {
+  0%,
+  70% {
+    opacity: 0;
+  }
+
+  82% {
+    opacity: 0.48;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes splash-clean-exit {
+  to {
+    opacity: 0;
+    transform: scale(1.01);
+    visibility: hidden;
+  }
 }
 
 @keyframes nav-drop {
