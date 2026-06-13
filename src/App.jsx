@@ -43,7 +43,6 @@ function hasLeadHoneypot(form) {
 
 const splashServices = ['Kitchens & baths', 'Concrete work', 'Roofing & siding']
 const heroPathSteps = ['Start request', 'Scope the work', 'Get a call back']
-const SPLASH_SESSION_KEY = 'flanagan-paint-splash-seen-v2'
 const projectVisuals = [
   {
     match: /kitchen|bath|tile|interior|paint|plumb|door|trim|window/i,
@@ -145,6 +144,7 @@ function addressComponent(place, type, useShortName = false) {
 function SplashIntro({ business, heroImage, onDone }) {
   return (
     <div className="splash-intro paint-splash" role="status" aria-live="polite">
+      <div className="splash-flash" aria-hidden="true"></div>
       <div className="splash-site-preview" style={{ '--splash-photo': cssUrl(heroImage) }} aria-hidden="true"></div>
       <div className="splash-site-shell" aria-hidden="true">
         <div className="splash-browser-bar">
@@ -189,8 +189,9 @@ function SplashIntro({ business, heroImage, onDone }) {
       </div>
       <div className="splash-card paint-splash-card">
         <span className="brand-mark splash-mark photo-mark" style={{ backgroundImage: cssUrl(brandVisual) }}></span>
-        <p>Painting in the next project</p>
+        <p>Welcome to</p>
         <h2>{business.name}</h2>
+        <strong className="splash-greeting">New Castle County contractor help</strong>
         <div className="splash-service-track" aria-label="Main work">
           {splashServices.map((service) => (
             <span key={service}>{service}</span>
@@ -230,7 +231,14 @@ function HeroMotionLayer() {
       <div className="measure-rail measure-rail-two"></div>
       <div className="hero-path">
         {heroPathSteps.map((step, index) => (
-          <span key={step} style={{ '--path-order': index }}>
+          <span
+            key={step}
+            style={{
+              '--path-order': index,
+              '--path-rise-delay': `${1050 + index * 120}ms`,
+              '--path-loop-delay': `${1900 + index * 360}ms`,
+            }}
+          >
             {step}
           </span>
         ))}
@@ -238,7 +246,15 @@ function HeroMotionLayer() {
       <div className="floating-job-stack">
         {heroProjectCards.map((card, index) => {
           return (
-            <div className="floating-job-card" key={card.label} style={{ '--float-order': index }}>
+            <div
+              className="floating-job-card"
+              key={card.label}
+              style={{
+                '--float-order': index,
+                '--float-rise-delay': `${280 + index * 120}ms`,
+                '--float-loop-delay': `${1300 - index * 1100}ms`,
+              }}
+            >
               <span className="job-card-photo" style={{ backgroundImage: cssUrl(card.image) }}></span>
               <strong>{card.label}</strong>
               <small>{card.detail}</small>
@@ -479,7 +495,7 @@ function LeadPanel({
         <fieldset className="funnel-needs">
           <legend>What do you want help with?</legend>
           <div className="need-chip-grid">
-            {simpleNeeds.map((need) => {
+            {simpleNeeds.map((need, index) => {
               const selected = selectedNeeds.includes(need)
               const needVisual = visualForText(need)
               return (
@@ -487,6 +503,7 @@ function LeadPanel({
                   className={selected ? 'need-chip active' : 'need-chip'}
                   key={need}
                   type="button"
+                  style={{ '--need-order': index, '--need-delay': `${index * 52}ms` }}
                   aria-pressed={selected}
                   onClick={() => toggleNeed(need)}
                 >
@@ -873,11 +890,11 @@ function App() {
     if (window.location.pathname.startsWith('/admin')) return false
     try {
       const params = new URLSearchParams(window.location.search)
+      if (params.has('nosplash')) return false
       if (params.has('splash')) return true
-      if (prefersReducedMotion()) return false
-      return !window.sessionStorage.getItem(SPLASH_SESSION_KEY)
+      return true
     } catch {
-      return !prefersReducedMotion()
+      return true
     }
   })
   const [form, setForm] = useState({
@@ -912,12 +929,12 @@ function App() {
   const phoneHref = phoneHrefFor(business.phone)
 
   const dismissSplash = useCallback(() => {
-    try {
-      window.sessionStorage.setItem(SPLASH_SESSION_KEY, 'true')
-    } catch {
-      // Session storage is optional; animation can still dismiss normally.
-    }
     setShowSplash(false)
+  }, [])
+
+  const replaySplash = useCallback(() => {
+    setShowSplash(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
   const goAdminLogin = useCallback(() => {
@@ -951,7 +968,7 @@ function App() {
 
   useEffect(() => {
     if (!showSplash) return undefined
-    const timeout = window.setTimeout(dismissSplash, 5400)
+    const timeout = window.setTimeout(dismissSplash, prefersReducedMotion() ? 1100 : 5400)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
 
@@ -1283,7 +1300,7 @@ function App() {
   }
 
   return (
-    <main>
+    <main className={showSplash ? 'site-loading' : 'site-ready'}>
       <div className="scroll-progress" aria-hidden="true"></div>
       <PaintCursor />
       {showSplash ? (
@@ -1318,6 +1335,12 @@ function App() {
       />
 
       <SiteFooter business={business} services={siteContent.services} goSection={goSection} />
+
+      {!showSplash ? (
+        <button className="splash-replay-button" type="button" onClick={replaySplash}>
+          Paint intro
+        </button>
+      ) : null}
 
       <div className="mobile-cta" aria-label="Quick contact">
         <a
