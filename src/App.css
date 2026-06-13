@@ -26,6 +26,30 @@
   pointer-events: none;
 }
 
+main {
+  min-height: 100vh;
+}
+
+.site-loading {
+  overflow: hidden;
+}
+
+.site-loading .site-header,
+.site-loading .hero-eyebrow,
+.site-loading .hero-inner h1,
+.site-loading .hero-title-piece,
+.site-loading .hero-inner .hl,
+.site-loading .hero-lede,
+.site-loading .hero-actions,
+.site-loading .hero-tech-strip,
+.site-loading .lead-panel,
+.site-loading .floating-job-card,
+.site-loading .hero-path span,
+.site-loading .county-location-tag {
+  opacity: 0;
+  animation: none !important;
+}
+
 .splash-intro {
   position: fixed;
   inset: 0;
@@ -151,6 +175,21 @@
   line-height: 0.95;
 }
 
+.splash-greeting {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(242, 184, 75, 0.34);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .splash-service-track {
   display: flex;
   flex-wrap: wrap;
@@ -209,6 +248,46 @@
   padding: 10px 14px;
   font: inherit;
   font-weight: 850;
+}
+
+.splash-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.96), rgba(255, 244, 207, 0.52) 28%, transparent 62%),
+    linear-gradient(90deg, rgba(242, 184, 75, 0.7), transparent 44%, rgba(18, 63, 109, 0.55));
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: splash-flash 4.92s ease forwards;
+}
+
+.splash-replay-button {
+  position: fixed;
+  left: max(18px, env(safe-area-inset-left));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 28;
+  border: 1px solid rgba(242, 184, 75, 0.36);
+  border-radius: 999px;
+  background: rgba(7, 24, 39, 0.88);
+  color: #fff;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  padding: 11px 15px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  backdrop-filter: blur(14px);
+  animation: replay-pulse 2.8s ease-in-out infinite;
+}
+
+.splash-replay-button:hover {
+  background: var(--brand-yellow);
+  color: var(--brand-black);
+  transform: translateY(-2px);
 }
 
 .paint-splash {
@@ -574,7 +653,7 @@
   font-size: 0.78rem;
   font-weight: 900;
   animation: path-step 3.6s ease-in-out infinite;
-  animation-delay: calc(var(--path-order) * 360ms);
+  animation-delay: var(--path-loop-delay, 0ms);
   backdrop-filter: blur(14px);
 }
 
@@ -612,7 +691,7 @@
   padding: 12px;
   backdrop-filter: blur(16px);
   animation: job-card-float 5.6s ease-in-out infinite;
-  animation-delay: calc(var(--float-order) * -1.1s);
+  animation-delay: var(--float-loop-delay, 0ms);
 }
 
 .floating-job-card:nth-child(2) {
@@ -3474,6 +3553,12 @@ legend {
 }
 
 @media (max-width: 720px) {
+  .splash-replay-button {
+    bottom: calc(82px + env(safe-area-inset-bottom));
+    padding: 9px 12px;
+    font-size: 0.72rem;
+  }
+
   .mobile-cta {
     position: fixed;
     left: 0;
@@ -3698,6 +3783,10 @@ legend {
 }
 
 .simple-home-hero .hero-inner {
+  animation: none;
+}
+
+.site-ready .simple-home-hero .hero-inner {
   animation: rise-in 620ms ease both;
 }
 
@@ -3888,43 +3977,104 @@ legend {
   font-weight: 950;
 }
 
-.hero-inner h1,
-.hero-eyebrow,
-.hero-lede,
-.hero-actions,
-.hero-tech-strip,
-.lead-panel {
+.need-chip.active .need-chip-photo::after {
+  display: block;
+  color: transparent;
+  content: '';
+  font-size: 0;
+}
+
+.need-chip.active .need-chip-photo::before {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  z-index: 1;
+  width: 5px;
+  height: 9px;
+  border-right: 2px solid #071827;
+  border-bottom: 2px solid #071827;
+  content: '';
+  transform: rotate(42deg);
+}
+
+.site-ready .site-header {
+  animation: nav-drop 760ms cubic-bezier(0.18, 1, 0.28, 1) both;
+}
+
+.site-ready .hero-inner h1,
+.site-ready .hero-eyebrow,
+.site-ready .hero-lede,
+.site-ready .hero-actions,
+.site-ready .hero-tech-strip,
+.site-ready .lead-panel {
   animation: hero-pop-on 860ms cubic-bezier(0.2, 1.18, 0.28, 1) both;
 }
 
-.hero-inner h1 {
-  animation-delay: 140ms;
+.site-ready .hero-eyebrow {
+  animation-delay: 80ms;
 }
 
-.hero-title-piece,
-.hero-inner .hl {
+.site-ready .hero-inner h1 {
+  animation-delay: 220ms;
+}
+
+.site-ready .hero-title-piece,
+.site-ready .hero-inner .hl {
   display: inline-block;
   animation: text-slap-in 980ms cubic-bezier(0.16, 1.24, 0.32, 1) both;
 }
 
-.hero-inner .hl {
-  animation-delay: 220ms;
+.site-ready .hero-title-piece {
+  animation-delay: 260ms;
 }
 
-.hero-lede {
-  animation-delay: 340ms;
+.site-ready .hero-inner .hl {
+  animation-delay: 420ms;
 }
 
-.hero-actions {
-  animation-delay: 470ms;
+.site-ready .hero-lede {
+  animation-delay: 620ms;
 }
 
-.hero-tech-strip {
-  animation-delay: 580ms;
+.site-ready .hero-actions {
+  animation-delay: 760ms;
 }
 
-.lead-panel {
-  animation-delay: 680ms;
+.site-ready .hero-tech-strip {
+  animation-delay: 900ms;
+}
+
+.site-ready .lead-panel {
+  animation-delay: 1040ms;
+}
+
+.site-ready .floating-job-card {
+  animation:
+    card-rise 720ms cubic-bezier(0.18, 1.16, 0.28, 1) both,
+    job-card-float 5.6s ease-in-out infinite;
+  animation-delay:
+    var(--float-rise-delay, 280ms),
+    var(--float-loop-delay, 1.3s);
+}
+
+.site-ready .hero-path span {
+  animation:
+    card-rise 620ms cubic-bezier(0.18, 1.16, 0.28, 1) both,
+    path-step 3.6s ease-in-out infinite;
+  animation-delay:
+    var(--path-rise-delay, 1.05s),
+    var(--path-loop-delay, 1.9s);
+}
+
+.site-ready .county-location-tag {
+  animation:
+    card-rise 680ms cubic-bezier(0.18, 1.16, 0.28, 1) 1.18s both,
+    location-glow 3.8s ease-in-out 1.9s infinite;
+}
+
+.site-ready .need-chip {
+  animation: chip-pop 520ms cubic-bezier(0.18, 1.16, 0.28, 1) both;
+  animation-delay: calc(1.18s + var(--need-delay, 0ms));
 }
 
 .hero-paint-bursts {
@@ -4210,6 +4360,56 @@ body.paint-cursor-active :where(input, textarea, select) {
 
 .paint-splash .splash-progress span {
   animation: splash-progress 3.4s ease 760ms forwards;
+}
+
+@keyframes nav-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-22px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes splash-flash {
+  0% {
+    opacity: 0;
+  }
+
+  6% {
+    opacity: 0.95;
+  }
+
+  18%,
+  68% {
+    opacity: 0;
+  }
+
+  78% {
+    opacity: 0.42;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes replay-pulse {
+  0%,
+  100% {
+    border-color: rgba(242, 184, 75, 0.34);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+  }
+
+  50% {
+    border-color: rgba(242, 184, 75, 0.86);
+    box-shadow:
+      0 18px 42px rgba(0, 0, 0, 0.28),
+      0 0 0 5px rgba(242, 184, 75, 0.1);
+  }
 }
 
 @keyframes hero-pop-on {
