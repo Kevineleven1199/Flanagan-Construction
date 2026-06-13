@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  Bot,
   Calculator,
   CheckCircle2,
+  Clock3,
   Clipboard,
   DollarSign,
   Download,
@@ -12,11 +14,14 @@ import {
   FileText,
   FileSpreadsheet,
   GripVertical,
+  Hammer,
   Home,
   Image,
   Lock,
   LogOut,
   Mail,
+  MapPin,
+  MessageSquareText,
   Phone,
   Plus,
   RefreshCw,
@@ -27,6 +32,8 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Target,
+  TrendingUp,
   Trash2,
   Users,
   WandSparkles,
@@ -127,7 +134,73 @@ const contentTabs = [
   { id: 'builder', label: 'Builder', icon: GripVertical },
   { id: 'ai', label: 'AI-ready', icon: WandSparkles },
 ]
-const smtpSenderFallback = 'SMTP sender not configured'
+const estimateProfiles = {
+  kitchenBath: {
+    label: 'Kitchen and bath remodel',
+    base: [8500, 28000],
+    labor: 0.36,
+    materials: 0.34,
+    subs: 0.18,
+    other: 0.12,
+    markup: 30,
+    deposit: 35,
+    timeline: '2-6 weeks after scope and material choices',
+    tradeNeeds: ['Plumbing coordination', 'Electrical check', 'Tile/layout review', 'Ventilation check'],
+    scope: ['Measure room and document fixtures', 'Check plumbing/venting before price is final', 'Confirm tile, vanity, shower, cabinet, and paint choices'],
+  },
+  concrete: {
+    label: 'Concrete driveway or sidewalk',
+    base: [4200, 16000],
+    labor: 0.28,
+    materials: 0.38,
+    subs: 0.22,
+    other: 0.12,
+    markup: 26,
+    deposit: 30,
+    timeline: '1-3 weeks depending on weather, prep, and concrete schedule',
+    tradeNeeds: ['Concrete crew', 'Possible excavation/hauling', 'Permit or utility mark-out if needed'],
+    scope: ['Measure square footage', 'Check base, drainage, demo, and haul-away', 'Confirm broom finish, thickness, and edges'],
+  },
+  exterior: {
+    label: 'Roofing, siding, windows, doors, gutters',
+    base: [3500, 22000],
+    labor: 0.31,
+    materials: 0.42,
+    subs: 0.16,
+    other: 0.11,
+    markup: 28,
+    deposit: 33,
+    timeline: '1-4 weeks depending on materials and weather',
+    tradeNeeds: ['Roof/siding crew', 'Window/door supplier', 'Gutter coordination if needed'],
+    scope: ['Inspect leak points and exterior damage', 'Confirm materials, color, and measurements', 'Check flashing, trim, gutters, and access'],
+  },
+  deckAddition: {
+    label: 'Deck, porch, addition, or build-out',
+    base: [12000, 65000],
+    labor: 0.34,
+    materials: 0.33,
+    subs: 0.22,
+    other: 0.11,
+    markup: 32,
+    deposit: 35,
+    timeline: '3-10 weeks depending on permit, foundation, and trade schedule',
+    tradeNeeds: ['Foundation/framing crew', 'Electrical/HVAC as needed', 'Permit and inspection planning'],
+    scope: ['Confirm drawings or rough dimensions', 'Check foundation, access, and tie-in points', 'Plan subcontractors before committing price'],
+  },
+  general: {
+    label: 'General repair or remodel',
+    base: [1800, 9500],
+    labor: 0.42,
+    materials: 0.28,
+    subs: 0.16,
+    other: 0.14,
+    markup: 28,
+    deposit: 30,
+    timeline: 'A few days to 3 weeks depending on scope',
+    tradeNeeds: ['Right trade by scope', 'Material pickup and site protection', 'Office follow-up'],
+    scope: ['Clarify exact room or exterior area', 'Collect photos if available', 'Confirm access, timing, and repair expectations'],
+  },
+}
 
 function readSessionAuth() {
   try {
@@ -279,6 +352,171 @@ function fromDateTimeInputValue(value) {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString()
 }
 
+function adminFirstName(user) {
+  const name = String(user?.name || '').trim()
+  if (name) return name.split(/\s+/)[0]
+  const email = String(user?.email || '').toLowerCase()
+  if (email.includes('nick')) return 'Nick'
+  if (email.includes('kevin')) return 'Kevin'
+  return 'there'
+}
+
+function greetingFor(user) {
+  const hour = new Date().getHours()
+  const dayPart = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening'
+  return `Good ${dayPart.toLowerCase()}, ${adminFirstName(user)}.`
+}
+
+function smtpStatusLabel(emailSettings) {
+  if (!emailSettings) return 'Checking outbound email'
+  return emailSettings.configured ? 'Outbound email ready' : 'SMTP setup needed'
+}
+
+function visibleLeadStatus(lead) {
+  if (!lead) return ''
+  if (lead.leadKind === 'Started funnel' || lead.status === 'Started') return 'Started form'
+  return lead.status || 'New'
+}
+
+function serviceProfileFor(lead = {}) {
+  const text = [
+    lead.projectType,
+    lead.funnelGroup,
+    lead.message,
+    ...(lead.selectedNeeds || []),
+  ].join(' ').toLowerCase()
+
+  if (/kitchen|bath|vanit|shower|tile|plumb|interior/.test(text)) return estimateProfiles.kitchenBath
+  if (/concrete|driveway|sidewalk|blacktop|paver|hardscape|retaining|patio|outdoor kitchen/.test(text)) {
+    return estimateProfiles.concrete
+  }
+  if (/roof|siding|window|door|gutter|garage/.test(text)) return estimateProfiles.exterior
+  if (/deck|porch|addition|foundation|whole house|build|fence|screen/.test(text)) return estimateProfiles.deckAddition
+  return estimateProfiles.general
+}
+
+function complexityForLead(lead = {}) {
+  const text = [lead.projectType, lead.message, ...(lead.selectedNeeds || [])].join(' ').toLowerCase()
+  let score = 1
+  if ((lead.selectedNeeds || []).length >= 3) score += 0.14
+  if (/commercial|foundation|addition|whole house|custom|structural/.test(text)) score += 0.28
+  if (/fix|repair|leak|trash|bad|cheap|failed|wrong|urgent/.test(text)) score += 0.16
+  if (/roof|concrete|driveway|kitchen|bath/.test(text)) score += 0.06
+  return Math.min(1.62, score)
+}
+
+function roundedDollars(value) {
+  if (!Number.isFinite(value) || value <= 0) return 0
+  if (value < 5000) return Math.round(value / 100) * 100
+  return Math.round(value / 500) * 500
+}
+
+function aiEstimateForLead(lead = {}) {
+  const profile = serviceProfileFor(lead)
+  const complexity = complexityForLead(lead)
+  const low = roundedDollars(profile.base[0] * complexity)
+  const high = roundedDollars(profile.base[1] * complexity)
+  const midpoint = roundedDollars((low + high) / 2)
+  const laborCost = roundedDollars(midpoint * profile.labor)
+  const materialCost = roundedDollars(midpoint * profile.materials)
+  const subCost = roundedDollars(midpoint * profile.subs)
+  const otherCost = roundedDollars(midpoint * profile.other)
+  const totalCost = laborCost + materialCost + subCost + otherCost
+  const suggestedPrice = roundedDollars(totalCost * (1 + profile.markup / 100))
+  const depositTarget = roundedDollars(suggestedPrice * (profile.deposit / 100))
+  const confidence = lead.address && lead.phone && (lead.selectedNeeds?.length || lead.message) ? 'Good first pass' : 'Needs more detail'
+  const text = [lead.projectType, lead.message, ...(lead.selectedNeeds || [])].join(' ').toLowerCase()
+  const redFlags = [
+    !lead.address ? 'Get the project address before scheduling.' : '',
+    !lead.message && !lead.selectedNeeds?.length ? 'Ask for photos or a simple scope note.' : '',
+    /cheap|bad|trash|fix|leak|failed|wrong/.test(text) ? 'Possible repair-after-bad-work job. Inspect hidden conditions before promising price.' : '',
+    /plumb|bath|kitchen|addition|foundation|commercial/.test(text) ? 'May need permits, trade coordination, or inspection timing.' : '',
+  ].filter(Boolean)
+
+  return {
+    profile,
+    confidence,
+    low,
+    high,
+    midpoint,
+    laborCost,
+    materialCost,
+    subCost,
+    otherCost,
+    totalCost,
+    suggestedPrice,
+    depositTarget,
+    markupPercent: profile.markup,
+    depositPercent: profile.deposit,
+    timeline: profile.timeline,
+    tradeNeeds: profile.tradeNeeds,
+    scope: profile.scope,
+    redFlags,
+    nextStep: `Call ${lead.name || 'the customer'} to verify scope, address, photos, and timing before locking price.`,
+    customerSummary:
+      `Based on the request, this looks like ${profile.label.toLowerCase()}. A planning range is ${formatCurrency(low)}-${formatCurrency(high)} before an on-site look. Final price depends on measurements, access, materials, and hidden conditions.`,
+  }
+}
+
+function estimateClipboardText(lead, estimate) {
+  return [
+    `AI estimate draft for ${lead.name || 'website lead'}`,
+    `Project: ${estimate.profile.label}`,
+    `Planning range: ${formatCurrency(estimate.low)}-${formatCurrency(estimate.high)}`,
+    `Suggested working price: ${formatCurrency(estimate.suggestedPrice)}`,
+    `Deposit target: ${formatCurrency(estimate.depositTarget)} (${estimate.depositPercent}%)`,
+    `Timeline: ${estimate.timeline}`,
+    '',
+    'Internal cost buckets:',
+    `Labor: ${formatCurrency(estimate.laborCost)}`,
+    `Materials: ${formatCurrency(estimate.materialCost)}`,
+    `Subcontractors: ${formatCurrency(estimate.subCost)}`,
+    `Other: ${formatCurrency(estimate.otherCost)}`,
+    '',
+    'Scope checklist:',
+    ...estimate.scope.map((item) => `- ${item}`),
+    '',
+    'Trade needs:',
+    ...estimate.tradeNeeds.map((item) => `- ${item}`),
+    '',
+    'Watch-outs:',
+    ...(estimate.redFlags.length ? estimate.redFlags : ['- Verify measurements and material choices before final estimate.']),
+    '',
+    'Customer summary:',
+    estimate.customerSummary,
+  ].join('\n')
+}
+
+function leadSortScore(lead) {
+  const statusScore = {
+    Started: 95,
+    New: 90,
+    Contacted: 72,
+    'Estimate Scheduled': 66,
+    'Estimate Sent': 84,
+    'Follow Up': 80,
+    'Payment Link Sent': 74,
+    'Deposit Paid': 44,
+    Scheduled: 34,
+    'In Progress': 25,
+    Complete: 10,
+    Won: 6,
+    Lost: 0,
+  }[lead.status] ?? 50
+  const priorityScore = { Hot: 18, Warm: 10, Normal: 4, Low: 0 }[lead.priority] ?? 6
+  const ageHours = Math.max(0, (Date.now() - new Date(lead.receivedAt || Date.now()).getTime()) / 36e5)
+  return statusScore + priorityScore + Math.min(14, ageHours / 6)
+}
+
+function workdayStats(leads) {
+  const openLeads = leads.filter((lead) => !['Won', 'Lost', 'Complete'].includes(lead.status))
+  const followUps = leads.filter((lead) => ['Started', 'New', 'Follow Up', 'Estimate Sent'].includes(lead.status))
+  const estimateQueue = leads.filter((lead) => ['New', 'Contacted', 'Estimate Scheduled'].includes(lead.status))
+  const hotLeads = leads.filter((lead) => lead.priority === 'Hot')
+  const totalPipeline = leads.reduce((sum, lead) => sum + moneyValue(lead.quoteCustomerPrice || lead.estimateAmount), 0)
+  return { openLeads, followUps, estimateQueue, hotLeads, totalPipeline }
+}
+
 function Field({ label, value, onChange, textarea = false, type = 'text', rows = 3 }) {
   const Control = textarea ? 'textarea' : 'input'
   return (
@@ -399,6 +637,285 @@ function PipelineStats({ leads }) {
   )
 }
 
+function AiEstimatePanel({ lead, updateLead, onApplyEstimate, compact = false }) {
+  if (!lead) {
+    return (
+      <section className="admin-panel ai-estimate-panel">
+        <div className="admin-empty compact-empty">
+          <Bot size={24} aria-hidden="true" />
+          <strong>No lead selected</strong>
+          <span>Pick a request and the assistant will draft scope, cost buckets, and follow-up.</span>
+        </div>
+      </section>
+    )
+  }
+
+  const estimate = aiEstimateForLead(lead)
+  const applyEstimate = () => {
+    const patch = {
+      priority: lead.priority === 'Low' ? 'Warm' : lead.priority,
+      quoteLaborCost: String(estimate.laborCost),
+      quoteMaterialCost: String(estimate.materialCost),
+      quoteSubCost: String(estimate.subCost),
+      quoteOtherCost: String(estimate.otherCost),
+      quoteMarkupPercent: String(estimate.markupPercent),
+      quoteCustomerPrice: String(estimate.suggestedPrice),
+      quoteDepositPercent: String(estimate.depositPercent),
+      estimateAmount: String(estimate.suggestedPrice),
+      nextStep: estimate.nextStep,
+      notes: [
+        lead.notes,
+        '',
+        'AI estimate draft:',
+        estimate.customerSummary,
+        `Planning range: ${formatCurrency(estimate.low)}-${formatCurrency(estimate.high)}`,
+        `Likely trades: ${estimate.tradeNeeds.join(', ')}`,
+      ].filter(Boolean).join('\n'),
+    }
+    updateLead(lead.id, patch)
+    onApplyEstimate?.(patch, estimate)
+  }
+
+  const copyEstimate = async () => {
+    const text = estimateClipboardText(lead, estimate)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      updateLead(lead.id, {
+        notes: [lead.notes, '', text].filter(Boolean).join('\n'),
+      })
+    }
+  }
+
+  return (
+    <section className={compact ? 'admin-panel ai-estimate-panel compact-ai' : 'admin-panel ai-estimate-panel'}>
+      <div className="ai-estimate-head">
+        <span>
+          <Bot size={22} aria-hidden="true" />
+        </span>
+        <div>
+          <p className="admin-eyebrow">Nick's AI estimate</p>
+          <h3>{estimate.profile.label}</h3>
+          <small>{estimate.confidence}</small>
+        </div>
+      </div>
+
+      <div className="ai-range-card">
+        <span>Planning range</span>
+        <strong>{formatCurrency(estimate.low)}-{formatCurrency(estimate.high)}</strong>
+        <small>Working price: {formatCurrency(estimate.suggestedPrice)} / deposit {formatCurrency(estimate.depositTarget)}</small>
+      </div>
+
+      <div className="ai-cost-grid">
+        <article>
+          <span>Labor</span>
+          <strong>{formatCurrency(estimate.laborCost)}</strong>
+        </article>
+        <article>
+          <span>Materials</span>
+          <strong>{formatCurrency(estimate.materialCost)}</strong>
+        </article>
+        <article>
+          <span>Subs</span>
+          <strong>{formatCurrency(estimate.subCost)}</strong>
+        </article>
+        <article>
+          <span>Other</span>
+          <strong>{formatCurrency(estimate.otherCost)}</strong>
+        </article>
+      </div>
+
+      <div className="ai-assistant-grid">
+        <div>
+          <strong>Ask before pricing</strong>
+          <ul>
+            {estimate.scope.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <strong>Trades likely needed</strong>
+          <ul>
+            {estimate.tradeNeeds.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {estimate.redFlags.length ? (
+        <div className="ai-red-flags">
+          <strong>Watch-outs</strong>
+          {estimate.redFlags.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+      ) : null}
+
+      <p className="ai-customer-summary">{estimate.customerSummary}</p>
+
+      <div className="ai-actions">
+        <button className="admin-primary-button" type="button" onClick={applyEstimate}>
+          <WandSparkles size={17} aria-hidden="true" />
+          Apply to quote
+        </button>
+        <button className="admin-secondary-button" type="button" onClick={copyEstimate}>
+          <Clipboard size={17} aria-hidden="true" />
+          Copy draft
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function WorkdayAssistant({ user, leads, selectedLead, setSelectedLeadId, setActiveView, updateLead, emailSettings }) {
+  const stats = workdayStats(leads)
+  const priorityLeads = [...stats.openLeads].sort((a, b) => leadSortScore(b) - leadSortScore(a)).slice(0, 5)
+  const assistantLead = selectedLead || priorityLeads[0] || leads[0]
+  const nextName = assistantLead?.name || 'the next lead'
+  const topEstimate = assistantLead ? aiEstimateForLead(assistantLead) : null
+
+  const openLead = (lead) => {
+    setSelectedLeadId(lead.id)
+    setActiveView('leads')
+  }
+
+  return (
+    <section className="admin-page assistant-page">
+      <div className="assistant-hero admin-panel">
+        <div className="assistant-hero-copy">
+          <p className="admin-eyebrow">AI workbench</p>
+          <h1>{greetingFor(user)}</h1>
+          <p>
+            I am watching new requests, unfinished forms, follow-ups, job-cost math, Joist handoffs, and the next estimate Nick should move.
+          </p>
+          <div className="assistant-hero-actions">
+            <button className="admin-primary-button" type="button" onClick={() => setActiveView('leads')}>
+              <Users size={17} aria-hidden="true" />
+              Work leads
+            </button>
+            <button className="admin-secondary-button" type="button" onClick={() => setActiveView('money')}>
+              <DollarSign size={17} aria-hidden="true" />
+              Check money
+            </button>
+          </div>
+        </div>
+        <div className="assistant-focus-card">
+          <span>
+            <Target size={20} aria-hidden="true" />
+            Next best move
+          </span>
+          <strong>{assistantLead ? `${visibleLeadStatus(assistantLead)}: ${nextName}` : 'No leads yet'}</strong>
+          <p>
+            {assistantLead
+              ? `${topEstimate.customerSummary} Next: ${topEstimate.nextStep}`
+              : 'When the first website request lands, this panel will turn it into a call plan, estimate range, and follow-up draft.'}
+          </p>
+          {assistantLead ? (
+            <button type="button" onClick={() => openLead(assistantLead)}>
+              Open this lead
+              <ExternalLink size={15} aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="assistant-metric-grid">
+        <article>
+          <Clock3 size={18} aria-hidden="true" />
+          <span>Follow-ups</span>
+          <strong>{stats.followUps.length}</strong>
+        </article>
+        <article>
+          <Hammer size={18} aria-hidden="true" />
+          <span>Need estimates</span>
+          <strong>{stats.estimateQueue.length}</strong>
+        </article>
+        <article>
+          <TrendingUp size={18} aria-hidden="true" />
+          <span>Open pipeline</span>
+          <strong>{formatCurrency(stats.totalPipeline)}</strong>
+        </article>
+        <article>
+          <Mail size={18} aria-hidden="true" />
+          <span>Email</span>
+          <strong>{smtpStatusLabel(emailSettings)}</strong>
+        </article>
+      </div>
+
+      <div className="assistant-layout">
+        <section className="admin-panel assistant-queue">
+          <div className="panel-title-row">
+            <div>
+              <p className="admin-eyebrow">Fastest wins</p>
+              <strong>Sorted by lead stage, priority, and age.</strong>
+            </div>
+            <button type="button" onClick={() => setActiveView('leads')}>
+              <Users size={16} aria-hidden="true" />
+              Full CRM
+            </button>
+          </div>
+
+          {priorityLeads.length ? (
+            <div className="assistant-lead-stack">
+              {priorityLeads.map((lead) => {
+                const estimate = aiEstimateForLead(lead)
+                return (
+                  <button type="button" className="assistant-lead-card" key={lead.id} onClick={() => openLead(lead)}>
+                    <span className={`lead-priority priority-${lead.priority.toLowerCase()}`}>{lead.priority}</span>
+                    <div>
+                      <strong>{lead.name}</strong>
+                      <small>{visibleLeadStatus(lead)} / {estimate.profile.label}</small>
+                      <em>{formatCurrency(estimate.low)}-{formatCurrency(estimate.high)}</em>
+                    </div>
+                    <ExternalLink size={16} aria-hidden="true" />
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="admin-empty compact-empty">
+              <CheckCircle2 size={24} aria-hidden="true" />
+              <strong>No open leads</strong>
+              <span>The assistant queue is clear.</span>
+            </div>
+          )}
+        </section>
+
+        <AiEstimatePanel lead={assistantLead} updateLead={updateLead} compact />
+      </div>
+
+      <div className="assistant-ops-grid">
+        <section className="admin-panel assistant-mini-panel">
+          <MessageSquareText size={20} aria-hidden="true" />
+          <div>
+            <p className="admin-eyebrow">Follow-up script</p>
+            <strong>Ask for address, photos, timing, and decision maker before promising a price.</strong>
+            <span>Use the lead detail page to copy the exact stage email after the call.</span>
+          </div>
+        </section>
+        <section className="admin-panel assistant-mini-panel">
+          <ReceiptText size={20} aria-hidden="true" />
+          <div>
+            <p className="admin-eyebrow">Joist bridge</p>
+            <strong>Paste Joist estimate and invoice numbers back into each lead.</strong>
+            <span>That keeps CPA exports, revenue, deposits, and follow-up in one place while Joist stays official.</span>
+          </div>
+        </section>
+        <section className="admin-panel assistant-mini-panel">
+          <MapPin size={20} aria-hidden="true" />
+          <div>
+            <p className="admin-eyebrow">Service area</p>
+            <strong>New Castle County jobs stay the default filter in the estimate thinking.</strong>
+            <span>Address capture feeds scheduling and future route planning.</span>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
 function LeadList({ leads, selectedLeadId, setSelectedLeadId }) {
   if (!leads.length) {
     return (
@@ -515,6 +1032,19 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
   const currentEmailDraft = emailDraftFor(workingLead)
   const financials = leadFinancials(workingLead)
   const depositAmount = financials.customerPrice * (moneyValue(quoteDepositPercent) / 100)
+
+  const applyAiEstimateToLocal = (patch) => {
+    setEstimateAmount(patch.estimateAmount || '')
+    setQuoteLaborCost(patch.quoteLaborCost || '')
+    setQuoteMaterialCost(patch.quoteMaterialCost || '')
+    setQuoteSubCost(patch.quoteSubCost || '')
+    setQuoteOtherCost(patch.quoteOtherCost || '')
+    setQuoteMarkupPercent(patch.quoteMarkupPercent || '28')
+    setQuoteCustomerPrice(patch.quoteCustomerPrice || '')
+    setQuoteDepositPercent(patch.quoteDepositPercent || '33')
+    setNextStep(patch.nextStep || '')
+    setNotes(patch.notes || '')
+  }
 
   const applyStage = (status) => {
     const play = stagePlaybook.find((item) => item.status === status)
@@ -707,6 +1237,12 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <textarea value={lead.message} readOnly rows="5" />
       </label>
 
+      <AiEstimatePanel
+        lead={workingLead}
+        updateLead={updateLead}
+        onApplyEstimate={applyAiEstimateToLocal}
+      />
+
       <div className="lead-detail-grid">
         <label>
           Estimate amount
@@ -885,8 +1421,7 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
             <p className="admin-eyebrow">Email follow-up</p>
             <strong>{currentEmailDraft.subject}</strong>
             <span>
-              SMTP sender: {emailSettings?.from || smtpSenderFallback}
-              {emailSettings?.configured ? ' ready' : ' needs Railway settings'}
+              {emailSettings?.configured ? 'Secure sender is configured in Railway.' : 'Sender is not connected yet. Use copy or mailto for now.'}
             </span>
           </div>
           <div className="lead-contact-actions">
@@ -1624,7 +2159,7 @@ function FinancialDashboard({ leads, emailSettings }) {
           <Mail size={22} aria-hidden="true" />
           <div>
             <p className="admin-eyebrow">Outbound email</p>
-            <strong>{emailSettings?.from || smtpSenderFallback}</strong>
+            <strong>{smtpStatusLabel(emailSettings)}</strong>
             <span>{emailSettings?.configured ? 'SMTP is ready for future one-click sending.' : 'Use mailto drafts now; add Gmail SMTP settings in Railway when ready.'}</span>
           </div>
         </section>
@@ -1733,7 +2268,7 @@ function exportCsv(leads) {
 }
 
 function AdminDashboard({ content, setContent, goHome }) {
-  const [activeView, setActiveView] = useState('leads')
+  const [activeView, setActiveView] = useState('assistant')
   const [activeContentTab, setActiveContentTab] = useState('overview')
   const [auth, setAuth] = useState(readSessionAuth)
   const [email, setEmail] = useState('')
@@ -1770,7 +2305,7 @@ function AdminDashboard({ content, setContent, goHome }) {
       saveStoredContent(nextContent)
       setMode('server')
       setUnlocked(true)
-      setMessage(`Connected as ${sessionUser?.email || 'super admin'}.`)
+      setMessage(`Welcome back, ${adminFirstName(sessionUser)}. Your assistant is ready.`)
       const nextSession = { token, user: sessionUser || auth.user, expiresAt: auth.expiresAt || '' }
       setAuth((current) => ({ ...current, ...nextSession }))
       writeSessionAuth(nextSession)
@@ -2035,17 +2570,15 @@ function AdminDashboard({ content, setContent, goHome }) {
           </span>
           <div>
             <strong>Flanagan Admin</strong>
-            <small>
-              {mode === 'server'
-                ? auth.user?.email || 'Production'
-                : mode === 'setup'
-                  ? 'Setup needed'
-                  : 'Local'}
-            </small>
+            <small>{mode === 'server' ? `${adminFirstName(auth.user)}'s AI workbench` : mode === 'setup' ? 'Setup needed' : 'Local mode'}</small>
           </div>
         </div>
 
         <nav className="admin-main-tabs" aria-label="Admin sections">
+          <button className={activeView === 'assistant' ? 'active' : ''} type="button" onClick={() => setActiveView('assistant')}>
+            <Bot size={17} aria-hidden="true" />
+            Assistant
+          </button>
           <button className={activeView === 'leads' ? 'active' : ''} type="button" onClick={() => setActiveView('leads')}>
             <Users size={17} aria-hidden="true" />
             Leads
@@ -2085,6 +2618,18 @@ function AdminDashboard({ content, setContent, goHome }) {
         </div>
       ) : null}
 
+      {activeView === 'assistant' ? (
+        <WorkdayAssistant
+          user={auth.user}
+          leads={leads}
+          selectedLead={selectedLead}
+          setSelectedLeadId={setSelectedLeadId}
+          setActiveView={setActiveView}
+          updateLead={updateLead}
+          emailSettings={emailSettings}
+        />
+      ) : null}
+
       {activeView === 'leads' ? (
         <section className="admin-page">
           <div className="admin-page-head">
@@ -2103,7 +2648,7 @@ function AdminDashboard({ content, setContent, goHome }) {
           <section className="admin-panel smtp-status-card">
             <div>
               <p className="admin-eyebrow">Outbound email</p>
-              <strong>{emailSettings?.from || smtpSenderFallback}</strong>
+              <strong>{smtpStatusLabel(emailSettings)}</strong>
               <span>
                 {emailSettings?.configured
                   ? 'SMTP is configured for future one-click sending.'
