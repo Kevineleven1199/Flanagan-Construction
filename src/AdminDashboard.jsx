@@ -2087,6 +2087,14 @@ function fillGrowthTemplate(template, lead = {}, reviewLink = '') {
     .replaceAll('{googleReviewLink}', reviewLink || '[paste Google review link]')
 }
 
+function reviewFollowUpMailto(lead, template, reviewLink) {
+  const params = new URLSearchParams({
+    subject: `Flanagan Construction follow-up: ${template?.title || 'thank you'}`,
+    body: fillGrowthTemplate(template?.body, lead, reviewLink),
+  })
+  return `mailto:${lead.email || ''}?${params.toString()}`
+}
+
 function IntegrationCard({ title, status, copy, href }) {
   return (
     <article className="integration-card">
@@ -2109,8 +2117,12 @@ function GrowthDashboard({ draft, updateSection, saveContent, savingContent, lea
   const integrations = draft.integrations || {}
   const reviewAutomation = draft.reviewAutomation || {}
   const nextdoor = draft.nextdoorPlaybook || {}
+  const reviewTemplate = reviewAutomation.templates?.[1] || reviewAutomation.templates?.[0] || {}
+  const reviewQueue = leads
+    .filter((lead) => ['Complete', 'Completed', 'Receipt Sent', 'Won'].includes(lead.status))
+    .slice(0, 8)
   const reviewLead =
-    leads.find((lead) => ['Complete', 'Receipt Sent', 'Won'].includes(lead.status)) ||
+    reviewQueue[0] ||
     leads[0] ||
     { name: 'there', address: 'your project', projectType: 'your project' }
   const googleReviewLink = reviewAutomation.googleReviewLink || integrations.googleBusinessReviewUrl || ''
@@ -2219,6 +2231,47 @@ function GrowthDashboard({ draft, updateSection, saveContent, savingContent, lea
               </article>
             )
           })}
+        </div>
+        <div className="review-queue">
+          <div className="panel-title-row">
+            <div>
+              <p className="admin-eyebrow">Review request queue</p>
+              <strong>Jobs marked complete or won show here for fast Google-review follow-up.</strong>
+            </div>
+          </div>
+          {reviewQueue.length ? (
+            <div className="review-queue-list">
+              {reviewQueue.map((lead) => {
+                const text = fillGrowthTemplate(reviewTemplate.body, lead, googleReviewLink)
+                return (
+                  <article className="review-queue-card" key={lead.id}>
+                    <div>
+                      <strong>{lead.name || 'Unnamed customer'}</strong>
+                      <span>{lead.projectType || 'Project'} / {lead.status}</span>
+                      <small>{lead.email || 'No email on lead yet'}</small>
+                    </div>
+                    <div>
+                      {lead.email ? (
+                        <a className="admin-primary-link" href={reviewFollowUpMailto(lead, reviewTemplate, googleReviewLink)}>
+                          <Mail size={15} aria-hidden="true" />
+                          Open review email
+                        </a>
+                      ) : null}
+                      <button className="admin-secondary-button" type="button" onClick={() => copyText(text)}>
+                        <Clipboard size={15} aria-hidden="true" />
+                        Copy review ask
+                      </button>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="admin-empty compact-empty">
+              <strong>No completed jobs in the queue yet.</strong>
+              <span>When a lead moves to Complete, Completed, Won, or Receipt Sent, the review ask appears here.</span>
+            </div>
+          )}
         </div>
       </section>
 
