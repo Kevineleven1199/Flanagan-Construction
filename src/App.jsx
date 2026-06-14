@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
+  Image,
   MapPin,
   Mail,
   Menu,
@@ -520,7 +521,7 @@ function LeadPanel({
   )
 }
 
-function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
+function SiteHeader({ business, menuOpen, goHome, goSection, goPath, setMenuOpen }) {
   const phoneHref = phoneHrefFor(business.phone)
 
   return (
@@ -550,6 +551,15 @@ function SiteHeader({ business, menuOpen, goHome, goSection, setMenuOpen }) {
           }}
         >
           Work
+        </a>
+        <a
+          href="/our-work"
+          onClick={(event) => {
+            event.preventDefault()
+            goPath('/our-work')
+          }}
+        >
+          Our Work
         </a>
         <a className="nav-call" href={phoneHref} onClick={() => track('phone_click', { location: 'header' })}>
           <Phone size={16} aria-hidden="true" />
@@ -786,6 +796,83 @@ function HomePage({
         services={services}
         servicesIntro={servicesIntro}
       />
+    </>
+  )
+}
+
+function OurWorkPage({ content, goSection }) {
+  const { business, gallery, workGallery } = content
+  const items = workGallery?.items?.length
+    ? workGallery.items
+    : (gallery.items || []).map((item) => ({
+        ...item,
+        category: item.title,
+        location: business.location,
+        summary: item.copy,
+        completedAt: 'Recent project',
+        source: 'Site gallery',
+      }))
+
+  return (
+    <>
+      <section className="our-work-hero" id="top">
+        <div>
+          <p className="eyebrow">{workGallery?.eyebrow || 'Our work'}</p>
+          <h1>{workGallery?.title || 'Projects and job photos from New Castle County.'}</h1>
+          <p>{workGallery?.copy || 'Browse kitchens, baths, concrete, exterior work, decks, repairs, and additions.'}</p>
+          <button className="primary-action button-link" type="button" onClick={() => goSection('estimate')}>
+            Start a similar request
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="our-work-feature">
+          {(items[0]?.image || gallery.items?.[0]?.image) ? (
+            <img src={items[0]?.image || gallery.items?.[0]?.image} alt={items[0]?.title || 'Recent Flanagan Construction project'} />
+          ) : null}
+          <span>{items[0]?.category || 'Recent work'}</span>
+        </div>
+      </section>
+
+      <section className="our-work-gallery" aria-label="Previous jobs">
+        {items.length ? (
+          <div className="our-work-grid">
+            {items.map((item, index) => (
+              <article className="our-work-card" key={`${item.title}-${index}`} data-reveal="card">
+                <div className="our-work-photo">
+                  {item.image ? <img src={item.image} alt={item.title || `${item.category || 'Project'} photo`} /> : null}
+                </div>
+                <div>
+                  <span>{item.category || 'Project'}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.summary || item.copy}</p>
+                  <small>
+                    <MapPin size={14} aria-hidden="true" />
+                    {item.location || business.location}
+                    {item.completedAt ? ` / ${item.completedAt}` : ''}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="our-work-empty">
+            <Image size={28} aria-hidden="true" />
+            <strong>{workGallery?.emptyTitle || 'Job photos are coming soon.'}</strong>
+            <p>{workGallery?.emptyCopy || 'The office can add finished work from the admin dashboard.'}</p>
+          </div>
+        )}
+      </section>
+
+      <section className="our-work-cta">
+        <div>
+          <h2>{workGallery?.ctaTitle || 'See something like your project?'}</h2>
+          <p>{workGallery?.ctaCopy || 'Start a request and we will follow up with the next step.'}</p>
+        </div>
+        <button className="primary-action button-link" type="button" onClick={() => goSection('estimate')}>
+          Free estimate
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      </section>
     </>
   )
 }
@@ -1073,9 +1160,27 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const goPath = (path) => {
+    setMenuOpen(false)
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path)
+      setRoutePath(path)
+    }
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+  }
+
   const goSection = (id) => {
     setMenuOpen(false)
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    const scrollToSection = () => {
+      document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+    }
+    if (window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/')
+      setRoutePath('/')
+      window.setTimeout(scrollToSection, 80)
+      return
+    }
+    scrollToSection()
   }
 
   const handleChange = (event) => {
@@ -1281,25 +1386,30 @@ function App() {
         menuOpen={menuOpen}
         goHome={goHome}
         goSection={goSection}
+        goPath={goPath}
         setMenuOpen={setMenuOpen}
       />
 
-      <HomePage
-        content={siteContent}
-        form={form}
-        handleChange={handleChange}
-        handleSubmit={handleSubmit}
-        status={status}
-        submitting={submitting}
-        submitted={submitted}
-        onReset={resetForm}
-        goSection={goSection}
-        selectedNeeds={selectedNeeds}
-        toggleNeed={toggleNeed}
-        draftSaving={draftSaving}
-        lastSavedAt={lastSavedAt}
-        onAddressSelect={handleAddressSelect}
-      />
+      {routePath.startsWith('/our-work') ? (
+        <OurWorkPage content={siteContent} goSection={goSection} />
+      ) : (
+        <HomePage
+          content={siteContent}
+          form={form}
+          handleChange={handleChange}
+          handleSubmit={handleSubmit}
+          status={status}
+          submitting={submitting}
+          submitted={submitted}
+          onReset={resetForm}
+          goSection={goSection}
+          selectedNeeds={selectedNeeds}
+          toggleNeed={toggleNeed}
+          draftSaving={draftSaving}
+          lastSavedAt={lastSavedAt}
+          onAddressSelect={handleAddressSelect}
+        />
+      )}
 
       <SiteFooter business={business} services={siteContent.services} goSection={goSection} />
 

@@ -219,6 +219,59 @@ export const defaultSiteContent = {
     ],
   },
 
+  workGallery: {
+    eyebrow: 'Our work',
+    title: 'Real projects, practical fixes, and the kind of work we want more of.',
+    copy:
+      'A place for job photos from kitchens, baths, concrete, roofing, siding, windows, decks, and repairs around New Castle County.',
+    emptyTitle: 'Job photos are coming soon.',
+    emptyCopy: 'Check back as the office adds finished work, progress photos, and before-and-after shots.',
+    ctaTitle: 'See something like your project?',
+    ctaCopy: 'Send the address, a few details, and the photos you have. We will follow up with a clear next step.',
+    items: [
+      {
+        title: 'Bathroom refresh',
+        category: 'Kitchen & bath',
+        location: 'New Castle County, DE',
+        summary: 'Tile, fixtures, paint, trim, and the details that make the room easier to use.',
+        completedAt: 'Recent project',
+        source: 'Sample',
+        image:
+          'https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?auto=format&fit=crop&w=1400&q=82',
+      },
+      {
+        title: 'Concrete driveway and walk',
+        category: 'Concrete',
+        location: 'New Castle County, DE',
+        summary: 'Driveways, sidewalks, drainage notes, and clean access for the homeowner.',
+        completedAt: 'Recent project',
+        source: 'Sample',
+        image:
+          'https://images.pexels.com/photos/33405139/pexels-photo-33405139.jpeg?auto=compress&cs=tinysrgb&w=1400',
+      },
+      {
+        title: 'Exterior repair planning',
+        category: 'Roofing, siding, windows',
+        location: 'New Castle County, DE',
+        summary: 'Exterior protection work, leak checks, siding, windows, doors, and gutter coordination.',
+        completedAt: 'Recent project',
+        source: 'Sample',
+        image:
+          'https://images.pexels.com/photos/37677394/pexels-photo-37677394.jpeg?auto=compress&cs=tinysrgb&w=1400',
+      },
+      {
+        title: 'Deck and outdoor work',
+        category: 'Decks & porches',
+        location: 'New Castle County, DE',
+        summary: 'Deck repairs, screened-in porch planning, railings, steps, fencing, and outdoor living.',
+        completedAt: 'Recent project',
+        source: 'Sample',
+        image:
+          'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=82',
+      },
+    ],
+  },
+
   serviceLocations: {
     eyebrow: 'Service locations',
     title: 'Serving New Castle County homes, from Wilmington to Townsend.',
@@ -432,6 +485,87 @@ export const defaultSiteContent = {
       'Hot leads include kitchens, bathrooms, concrete driveways, concrete sidewalks, roofing, siding, windows, ready timelines, and clear phone/email contact.',
     emailAutomationNotes:
       'Use Nick Flanagan as the sender. Match emails to lead stages: contact, estimate scheduled, estimate sent, follow-up, payment link, deposit paid, scheduled, complete, and receipt sent.',
+  },
+
+  integrations: {
+    googlePhotosAlbumUrl: '',
+    googleDriveFolderUrl: '',
+    icloudSharedAlbumUrl: '',
+    instagramProfileUrl: '',
+    facebookPageUrl: '',
+    googleBusinessReviewUrl: '',
+    nextdoorBusinessUrl: '',
+    notes:
+      'Google Photos can upload app-created media. Google Drive Picker can select or upload Drive files. Meta requires OAuth for Instagram and Facebook Page publishing. iCloud Shared Albums should start as shared/public album link intake.',
+  },
+
+  reviewAutomation: {
+    googleReviewLink: '',
+    schedule: [
+      'When job is marked Complete: send thank-you and ask if anything needs attention.',
+      'Next business day: send Google review request if the customer is happy.',
+      'Three days later: send one polite reminder only.',
+    ],
+    templates: [
+      {
+        title: 'Project complete thank-you',
+        channel: 'Email or text',
+        body:
+          'Hi {name}, thanks again for trusting Flanagan Construction with the work at {address}. If anything needs attention, reply here and we will take care of it. If everything looks good, we would really appreciate a quick Google review: {googleReviewLink}',
+      },
+      {
+        title: 'Short Google review ask',
+        channel: 'Text',
+        body:
+          'Hi {name}, this is Nick with Flanagan Construction. If you are happy with the work, would you mind leaving us a quick Google review? It helps local homeowners know who to call. {googleReviewLink}',
+      },
+      {
+        title: 'Polite reminder',
+        channel: 'Email or text',
+        body:
+          'Hi {name}, just a quick follow-up. If the project went well, a Google review would mean a lot to our small local business: {googleReviewLink}. Thank you again.',
+      },
+    ],
+  },
+
+  nextdoorPlaybook: {
+    title: 'Nextdoor local reply playbook',
+    copy:
+      'Use this as a quick coaching page when neighbors ask for a contractor. Keep replies helpful, local, honest, and low-pressure.',
+    coaching: [
+      'Claim and keep the Nextdoor business page updated.',
+      'Reply like a neighbor, not an ad. Mention the job type and the county.',
+      'Ask happy customers to recommend the business from their own account.',
+      'Do not overpost. One helpful reply beats five salesy replies.',
+      'Move real prospects to phone, email, or the website request form.',
+    ],
+    replies: [
+      {
+        jobType: 'Kitchen or bathroom',
+        reply:
+          'We handle kitchen and bathroom remodels around New Castle County. Happy to look at layout, tile, plumbing coordination, ventilation, and repair work if another job went sideways. You can send the address and a few details through our site and we will follow up.',
+      },
+      {
+        jobType: 'Concrete driveway or sidewalk',
+        reply:
+          'We can help with concrete driveways, sidewalks, repairs, drainage notes, pavers, patios, and retaining walls. If you want, send the location and rough scope through our request form so we can see the right next step.',
+      },
+      {
+        jobType: 'Roofing, siding, windows',
+        reply:
+          'We handle roofing, siding, windows, doors, gutters, and exterior repairs. The big things are finding the leak points, checking flashing and trim, and being clear on scope before price.',
+      },
+      {
+        jobType: 'Decks, porches, fences',
+        reply:
+          'We do decks, screened-in porches, railings, stairs, repairs, fences, and outdoor living work. Send a few details and the address and we can follow up with the right next step.',
+      },
+      {
+        jobType: 'General contractor recommendation',
+        reply:
+          'Flanagan Construction is local to New Castle County and handles remodels, repairs, concrete, exterior work, decks, additions, and trade coordination. We are licensed and insured and try to keep communication clear.',
+      },
+    ],
   },
 
   images: {

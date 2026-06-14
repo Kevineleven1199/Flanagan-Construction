@@ -130,6 +130,7 @@ const contentTabs = [
   { id: 'overview', label: 'Homepage', icon: Home },
   { id: 'services', label: 'Services', icon: FileText },
   { id: 'photos', label: 'Photos', icon: Image },
+  { id: 'workGallery', label: 'Our Work', icon: Hammer },
   { id: 'reviews', label: 'Reviews & FAQ', icon: Sparkles },
   { id: 'builder', label: 'Builder', icon: GripVertical },
   { id: 'ai', label: 'AI-ready', icon: WandSparkles },
@@ -336,6 +337,16 @@ function mailtoFor(lead, draft) {
     body: draft.body,
   })
   return `mailto:${lead.email || ''}?${params.toString()}`
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    window.prompt('Copy this text', text)
+    return false
+  }
 }
 
 function toDateTimeInputValue(value) {
@@ -1692,6 +1703,81 @@ function PhotosEditor({ draft, updateSection, updateNestedArrayItem }) {
   )
 }
 
+function WorkGalleryEditor({ draft, updateSection, updateNestedArrayItem, addNestedArrayItem, removeNestedArrayItem }) {
+  const items = draft.workGallery?.items || []
+  const addProject = () =>
+    addNestedArrayItem('workGallery', 'items', {
+      title: 'New project',
+      category: 'Kitchen & bath',
+      location: 'New Castle County, DE',
+      summary: 'Describe the work, what changed, and why it matters.',
+      completedAt: 'Recent project',
+      source: 'Uploaded by office',
+      image: draft.gallery?.items?.[0]?.image || draft.images?.hero || '',
+    })
+
+  return (
+    <div className="content-editor-grid">
+      <section className="admin-panel full-span-panel">
+        <div className="builder-intro">
+          <div>
+            <p className="admin-eyebrow">Our Work page</p>
+            <h2>Post previous job photos without touching code.</h2>
+          </div>
+          <span>Drop a small image file or paste a hosted URL. Use real job photos when available.</span>
+        </div>
+        <div className="admin-form-grid">
+          <Field label="Page eyebrow" value={draft.workGallery?.eyebrow || ''} onChange={(value) => updateSection('workGallery', 'eyebrow', value)} />
+          <Field label="Page headline" value={draft.workGallery?.title || ''} onChange={(value) => updateSection('workGallery', 'title', value)} />
+          <Field label="Intro copy" value={draft.workGallery?.copy || ''} textarea rows={3} onChange={(value) => updateSection('workGallery', 'copy', value)} />
+          <Field label="CTA headline" value={draft.workGallery?.ctaTitle || ''} onChange={(value) => updateSection('workGallery', 'ctaTitle', value)} />
+          <Field label="CTA copy" value={draft.workGallery?.ctaCopy || ''} textarea rows={3} onChange={(value) => updateSection('workGallery', 'ctaCopy', value)} />
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Job photo posts</p>
+            <strong>{items.length} project cards on the public page.</strong>
+          </div>
+          <button type="button" onClick={addProject}>
+            <Plus size={16} aria-hidden="true" />
+            Add project
+          </button>
+        </div>
+
+        <div className="work-gallery-admin-grid">
+          {items.map((item, index) => (
+            <article className="repeater-item work-photo-editor" key={`${item.title}-${index}`}>
+              <div className="repeater-actions">
+                <strong>Project {index + 1}</strong>
+                <button type="button" onClick={() => removeNestedArrayItem('workGallery', 'items', index)}>
+                  <Trash2 size={15} aria-hidden="true" />
+                  Remove
+                </button>
+              </div>
+              <AssetDropField
+                label="Upload/drop job photo"
+                value={item.image}
+                onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'image', value)}
+              />
+              <div className="admin-form-grid">
+                <Field label="Title" value={item.title} onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'title', value)} />
+                <Field label="Category" value={item.category} onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'category', value)} />
+                <Field label="Location" value={item.location} onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'location', value)} />
+                <Field label="Completed/date" value={item.completedAt} onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'completedAt', value)} />
+                <Field label="Source" value={item.source} onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'source', value)} />
+                <Field label="Summary" value={item.summary} textarea rows={3} onChange={(value) => updateNestedArrayItem('workGallery', 'items', index, 'summary', value)} />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  )
+}
+
 function ReviewsEditor({ draft, updateSection, updateArrayItem, addArrayItem, removeArrayItem }) {
   return (
     <div className="content-editor-grid">
@@ -1981,6 +2067,216 @@ function AiReadyEditor({ draft, updateSection }) {
         </div>
       </section>
     </div>
+  )
+}
+
+const integrationDocs = {
+  googlePhotos: 'https://developers.google.com/photos/library/guides/upload-media',
+  googleDrive: 'https://developers.google.com/workspace/drive/picker/guides/overview',
+  instagram: 'https://developers.facebook.com/docs/instagram-platform/content-publishing/',
+  facebook: 'https://developers.facebook.com/docs/pages-api/',
+  googleBusiness: 'https://developers.google.com/my-business/content/review-data',
+  nextdoor: 'https://business.nextdoor.com/en-us/small-business',
+}
+
+function fillGrowthTemplate(template, lead = {}, reviewLink = '') {
+  return String(template || '')
+    .replaceAll('{name}', lead.name || 'there')
+    .replaceAll('{address}', lead.address || 'your project')
+    .replaceAll('{projectType}', lead.projectType || 'your project')
+    .replaceAll('{googleReviewLink}', reviewLink || '[paste Google review link]')
+}
+
+function IntegrationCard({ title, status, copy, href }) {
+  return (
+    <article className="integration-card">
+      <div>
+        <span>{status}</span>
+        <h3>{title}</h3>
+        <p>{copy}</p>
+      </div>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer">
+          Docs
+          <ExternalLink size={15} aria-hidden="true" />
+        </a>
+      ) : null}
+    </article>
+  )
+}
+
+function GrowthDashboard({ draft, updateSection, saveContent, savingContent, leads }) {
+  const integrations = draft.integrations || {}
+  const reviewAutomation = draft.reviewAutomation || {}
+  const nextdoor = draft.nextdoorPlaybook || {}
+  const reviewLead =
+    leads.find((lead) => ['Complete', 'Receipt Sent', 'Won'].includes(lead.status)) ||
+    leads[0] ||
+    { name: 'there', address: 'your project', projectType: 'your project' }
+  const googleReviewLink = reviewAutomation.googleReviewLink || integrations.googleBusinessReviewUrl || ''
+
+  return (
+    <section className="admin-page growth-page">
+      <div className="admin-page-head">
+        <div>
+          <p className="admin-eyebrow">Growth systems</p>
+          <h1>Photos, social, reviews, and Nextdoor</h1>
+        </div>
+        <button className="admin-primary-button" type="button" onClick={saveContent} disabled={savingContent}>
+          {savingContent ? <RefreshCw size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
+          Save growth settings
+        </button>
+      </div>
+
+      <section className="admin-panel growth-hero-panel">
+        <div>
+          <p className="admin-eyebrow">Photo pipeline</p>
+          <h2>Upload here today. Connect cloud sources when accounts are ready.</h2>
+          <p>
+            Direct uploads publish to the Our Work page now. Google, Drive, iCloud, Instagram, and Facebook fields keep the handoff organized for OAuth and shared-album setup.
+          </p>
+        </div>
+        <button className="admin-secondary-button" type="button" onClick={() => copyText(draft.integrations?.notes || '')}>
+          <Clipboard size={16} aria-hidden="true" />
+          Copy integration notes
+        </button>
+      </section>
+
+      <div className="integration-grid">
+        <IntegrationCard
+          title="Google Photos"
+          status="API-ready"
+          copy="Best for app-created uploads. Full-library sync needs Google's current Photos rules and OAuth approval."
+          href={integrationDocs.googlePhotos}
+        />
+        <IntegrationCard
+          title="Google Drive"
+          status="Picker-ready"
+          copy="Best near-term path for selecting job folders and uploading files into Drive."
+          href={integrationDocs.googleDrive}
+        />
+        <IntegrationCard
+          title="iCloud Shared Albums"
+          status="Link intake"
+          copy="Apple does not provide a normal public business sync API for Shared Albums, so start with shared album links."
+        />
+        <IntegrationCard
+          title="Instagram and Facebook"
+          status="Meta OAuth"
+          copy="Use Instagram Graph content publishing and Facebook Pages API after Meta app setup and permissions."
+          href={integrationDocs.instagram}
+        />
+      </div>
+
+      <section className="admin-panel full-span-panel">
+        <p className="admin-eyebrow">Source links and account handoff</p>
+        <div className="admin-form-grid">
+          <Field label="Google Photos album URL" value={integrations.googlePhotosAlbumUrl || ''} onChange={(value) => updateSection('integrations', 'googlePhotosAlbumUrl', value)} />
+          <Field label="Google Drive folder URL" value={integrations.googleDriveFolderUrl || ''} onChange={(value) => updateSection('integrations', 'googleDriveFolderUrl', value)} />
+          <Field label="iCloud shared album URL" value={integrations.icloudSharedAlbumUrl || ''} onChange={(value) => updateSection('integrations', 'icloudSharedAlbumUrl', value)} />
+          <Field label="Instagram profile URL" value={integrations.instagramProfileUrl || ''} onChange={(value) => updateSection('integrations', 'instagramProfileUrl', value)} />
+          <Field label="Facebook page URL" value={integrations.facebookPageUrl || ''} onChange={(value) => updateSection('integrations', 'facebookPageUrl', value)} />
+          <Field label="Google review link" value={googleReviewLink} onChange={(value) => {
+            updateSection('integrations', 'googleBusinessReviewUrl', value)
+            updateSection('reviewAutomation', 'googleReviewLink', value)
+          }} />
+          <Field label="Nextdoor business URL" value={integrations.nextdoorBusinessUrl || ''} onChange={(value) => updateSection('integrations', 'nextdoorBusinessUrl', value)} />
+          <Field label="Integration notes" value={integrations.notes || ''} textarea rows={4} onChange={(value) => updateSection('integrations', 'notes', value)} />
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Automated review follow-ups</p>
+            <strong>Use these now as copy/paste. SMTP automation can send them by stage later.</strong>
+          </div>
+          <a className="admin-primary-link" href={integrationDocs.googleBusiness} target="_blank" rel="noreferrer">
+            Google review API
+            <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </div>
+        <div className="review-schedule-grid">
+          {(reviewAutomation.schedule || []).map((step) => (
+            <span key={step}>
+              <CheckCircle2 size={15} aria-hidden="true" />
+              {step}
+            </span>
+          ))}
+        </div>
+        <div className="template-grid">
+          {(reviewAutomation.templates || []).map((template) => {
+            const text = fillGrowthTemplate(template.body, reviewLead, googleReviewLink)
+            return (
+              <article className="template-card" key={template.title}>
+                <span>{template.channel}</span>
+                <h3>{template.title}</h3>
+                <p>{text}</p>
+                <button type="button" onClick={() => copyText(text)}>
+                  <Clipboard size={15} aria-hidden="true" />
+                  Copy follow-up
+                </button>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel nextdoor-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Nextdoor playbook</p>
+            <strong>{nextdoor.title || 'Nextdoor local reply playbook'}</strong>
+          </div>
+          <a className="admin-secondary-button" href={integrationDocs.nextdoor} target="_blank" rel="noreferrer">
+            Nextdoor business
+            <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </div>
+        <p>{nextdoor.copy}</p>
+        <div className="nextdoor-coaching">
+          {(nextdoor.coaching || []).map((item) => (
+            <span key={item}>
+              <MessageSquareText size={15} aria-hidden="true" />
+              {item}
+            </span>
+          ))}
+        </div>
+        <div className="template-grid">
+          {(nextdoor.replies || []).map((reply) => (
+            <article className="template-card" key={reply.jobType}>
+              <span>{reply.jobType}</span>
+              <p>{reply.reply}</p>
+              <button type="button" onClick={() => copyText(reply.reply)}>
+                <Clipboard size={15} aria-hidden="true" />
+                Copy reply
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <p className="admin-eyebrow">Social post starter</p>
+        <div className="template-grid">
+          {(draft.workGallery?.items || []).slice(0, 6).map((item) => {
+            const caption = `${item.title} in ${item.location || 'New Castle County'}: ${item.summary || 'finished project work from Flanagan Construction'}. For kitchens, baths, concrete, roofing, siding, windows, decks, and repairs, start a request on our site.`
+            return (
+              <article className="template-card social-template-card" key={`${item.title}-${item.image}`}>
+                <div className="social-template-photo" style={{ backgroundImage: cssUrl(item.image) }}></div>
+                <span>{item.category || 'Project post'}</span>
+                <h3>{item.title}</h3>
+                <p>{caption}</p>
+                <button type="button" onClick={() => copyText(caption)}>
+                  <Send size={15} aria-hidden="true" />
+                  Copy caption
+                </button>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+    </section>
   )
 }
 
@@ -2426,10 +2722,30 @@ function AdminDashboard({ content, setContent, goHome }) {
     }))
   }
 
+  const addNestedArrayItem = (section, arrayName, item) => {
+    setDraft((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [arrayName]: [...(current[section]?.[arrayName] || []), item],
+      },
+    }))
+  }
+
   const removeArrayItem = (arrayName, index) => {
     setDraft((current) => ({
       ...current,
       [arrayName]: current[arrayName].filter((_, itemIndex) => itemIndex !== index),
+    }))
+  }
+
+  const removeNestedArrayItem = (section, arrayName, index) => {
+    setDraft((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [arrayName]: (current[section]?.[arrayName] || []).filter((_, itemIndex) => itemIndex !== index),
+      },
     }))
   }
 
@@ -2591,6 +2907,10 @@ function AdminDashboard({ content, setContent, goHome }) {
             <Edit3 size={17} aria-hidden="true" />
             Site editor
           </button>
+          <button className={activeView === 'growth' ? 'active' : ''} type="button" onClick={() => setActiveView('growth')}>
+            <Target size={17} aria-hidden="true" />
+            Growth
+          </button>
         </nav>
 
         <div className="admin-topbar-actions">
@@ -2697,6 +3017,16 @@ function AdminDashboard({ content, setContent, goHome }) {
         <FinancialDashboard leads={leads} emailSettings={emailSettings} />
       ) : null}
 
+      {activeView === 'growth' ? (
+        <GrowthDashboard
+          draft={draft}
+          updateSection={updateSection}
+          saveContent={saveContent}
+          savingContent={savingContent}
+          leads={leads}
+        />
+      ) : null}
+
       {activeView === 'content' ? (
         <section className="admin-page">
           <div className="admin-page-head">
@@ -2742,6 +3072,15 @@ function AdminDashboard({ content, setContent, goHome }) {
                   draft={draft}
                   updateSection={updateSection}
                   updateNestedArrayItem={updateNestedArrayItem}
+                />
+              ) : null}
+              {activeContentTab === 'workGallery' ? (
+                <WorkGalleryEditor
+                  draft={draft}
+                  updateSection={updateSection}
+                  updateNestedArrayItem={updateNestedArrayItem}
+                  addNestedArrayItem={addNestedArrayItem}
+                  removeNestedArrayItem={removeNestedArrayItem}
                 />
               ) : null}
               {activeContentTab === 'reviews' ? (
