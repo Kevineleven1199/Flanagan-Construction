@@ -154,6 +154,7 @@ function SplashIntro({ business, heroImage, onDone }) {
       </div>
       <div className="splash-roller-sweep" aria-hidden="true">
         <span className="css-paint-roller splash-roller"></span>
+        <span className="splash-roller-label">Painting the page</span>
       </div>
       <div className="splash-flash" aria-hidden="true"></div>
       <div className="splash-card paint-splash-card">
@@ -544,13 +545,13 @@ function SiteHeader({ business, menuOpen, goHome, goSection, goPath, setMenuOpen
 
       <nav className={menuOpen ? 'nav open' : 'nav'} aria-label="Primary navigation">
         <a
-          href="#services"
+          href="/"
           onClick={(event) => {
             event.preventDefault()
-            goSection('services')
+            goHome()
           }}
         >
-          Work
+          Home
         </a>
         <a
           href="/our-work"
@@ -1023,7 +1024,7 @@ function App() {
 
   useEffect(() => {
     if (!showSplash) return undefined
-    const timeout = window.setTimeout(dismissSplash, 4400)
+    const timeout = window.setTimeout(dismissSplash, 2300)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
 
