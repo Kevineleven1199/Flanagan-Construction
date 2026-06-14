@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Bot,
@@ -126,6 +126,66 @@ const emailTemplates = {
       'Hi {name},\n\nAttached or linked is your receipt for {projectType}. Thank you again for working with us.\n\nThanks,\nNick Flanagan',
   },
 }
+
+const dripCampaigns = [
+  {
+    id: 'new-lead-speed',
+    name: 'New lead speed-to-contact',
+    audience: 'Fresh website leads',
+    goal: 'Get phone contact, address, photos, and estimate timing fast.',
+    steps: [
+      '0-15 minutes: call once, leave a short voicemail, then send the first email/text.',
+      'Same afternoon: ask for photos, address confirmation, and best time to talk.',
+      'Next business morning: follow up with one clear next step and no pressure.',
+    ],
+    subject: 'Quick next step for your Flanagan Construction request',
+    body:
+      'Hi {name}, thanks for reaching out about {projectType}. I have the address as {address}. Can you send any photos and the best time for a quick call? We will give you a clear next step before we talk price.\n\nThanks,\nNick Flanagan',
+  },
+  {
+    id: 'estimate-recovery',
+    name: 'Estimate follow-up and recovery',
+    audience: 'Estimate sent, no decision yet',
+    goal: 'Bring back good jobs without sounding pushy.',
+    steps: [
+      'Day 1 after estimate: ask if scope or timing needs adjusting.',
+      'Day 3: offer to talk through line items and choices.',
+      'Day 7: close the loop politely and keep the door open.',
+    ],
+    subject: 'Checking in on your Flanagan Construction estimate',
+    body:
+      'Hi {name}, I wanted to check in on the estimate for {projectType}. If you want to adjust scope, compare options, or talk through timing, I am happy to help. If now is not the right time, no pressure.\n\nThanks,\nNick Flanagan',
+  },
+  {
+    id: 'post-job-review-referral',
+    name: 'Post-job review and referral',
+    audience: 'Completed and won jobs',
+    goal: 'Ask for Google reviews, referrals, and future work.',
+    steps: [
+      'Completion day: thank them and ask if anything needs attention.',
+      'Next business day: ask for Google review if they are happy.',
+      'One week later: ask who else needs kitchen, bath, concrete, roofing, siding, or windows.',
+    ],
+    subject: 'Thank you from Flanagan Construction',
+    body:
+      'Hi {name}, thanks again for trusting us with {projectType}. If everything looks good, a quick Google review would really help our local business. If you know someone who needs kitchen, bath, concrete, roofing, siding, windows, decks, or repairs, we would appreciate the introduction.\n\nThanks,\nNick Flanagan',
+  },
+  {
+    id: 'partner-referral',
+    name: 'Realtor and subcontractor partner',
+    audience: 'BNI, realtors, subs, referral partners',
+    goal: 'Create repeat business-to-business referral conversations.',
+    steps: [
+      'Start with a useful intro and the jobs Flanagan wants most.',
+      'Ask what jobs or trades they need help with too.',
+      'Follow up monthly with a simple project photo or useful contractor tip.',
+    ],
+    subject: 'Good referral fit for Flanagan Construction',
+    body:
+      'Hi {name}, Flanagan Construction is looking for steady introductions to homeowners, realtors, and trade partners around New Castle County. Our best-fit work is kitchens and baths, concrete driveways and sidewalks, roofing, siding, windows, decks, and repairs. Who would be a good person for us to meet?\n\nThanks,\nNick Flanagan',
+  },
+]
+
 const contentTabs = [
   { id: 'overview', label: 'Homepage', icon: Home },
   { id: 'services', label: 'Services', icon: FileText },
@@ -528,6 +588,87 @@ function workdayStats(leads) {
   return { openLeads, followUps, estimateQueue, hotLeads, totalPipeline }
 }
 
+function nextBusinessMorningIso(daysFromNow = 1) {
+  const date = new Date()
+  date.setDate(date.getDate() + daysFromNow)
+  date.setHours(9, 0, 0, 0)
+  if (date.getDay() === 0) date.setDate(date.getDate() + 1)
+  if (date.getDay() === 6) date.setDate(date.getDate() + 2)
+  return date.toISOString()
+}
+
+function fillCampaignTemplate(template, lead = {}) {
+  return String(template || '')
+    .replaceAll('{name}', lead.name || 'there')
+    .replaceAll('{address}', lead.address || 'the project address')
+    .replaceAll('{projectType}', lead.projectType || 'your project')
+    .replaceAll('{selectedNeeds}', lead.selectedNeeds?.length ? lead.selectedNeeds.join(', ') : 'the work you selected')
+    .replaceAll('{estimateAmount}', formatMoney(lead.estimateAmount || lead.quoteCustomerPrice))
+    .replaceAll('{paymentLink}', lead.paymentLink || '[paste payment link]')
+}
+
+function campaignDraftFor(lead, campaign) {
+  return {
+    subject: fillCampaignTemplate(campaign?.subject || 'Following up from Flanagan Construction', lead),
+    body: fillCampaignTemplate(campaign?.body || '', lead),
+  }
+}
+
+function campaignMailtoFor(lead, campaign) {
+  const draft = campaignDraftFor(lead, campaign)
+  const params = new URLSearchParams({ subject: draft.subject, body: draft.body })
+  return `mailto:${lead.email || ''}?${params.toString()}`
+}
+
+function joistPacketForLead(lead = {}) {
+  const financials = leadFinancials(lead)
+  const estimate = aiEstimateForLead(lead)
+  return [
+    'Joist entry packet - Flanagan Construction',
+    '',
+    `Customer: ${lead.joistClientName || lead.name || 'Website lead'}`,
+    `Phone: ${lead.phone || 'Not listed'}`,
+    `Email: ${lead.email || 'Not listed'}`,
+    `Address: ${lead.address || 'Not listed'}`,
+    `Project: ${lead.projectType || estimate.profile.label}`,
+    lead.selectedNeeds?.length ? `Needs: ${lead.selectedNeeds.join(', ')}` : '',
+    '',
+    'Scope notes:',
+    lead.message || lead.nextStep || 'Add walkthrough notes, measurements, photos, and material choices.',
+    '',
+    'Pricing check:',
+    `Planning range: ${formatCurrency(estimate.low)}-${formatCurrency(estimate.high)}`,
+    `Customer price: ${formatCurrency(financials.customerPrice || estimate.suggestedPrice)}`,
+    `Deposit target: ${formatCurrency((financials.customerPrice || estimate.suggestedPrice) * ((moneyValue(lead.quoteDepositPercent) || estimate.depositPercent) / 100))}`,
+    `Total cost: ${formatCurrency(financials.totalCost || estimate.totalCost)}`,
+    `Gross margin: ${Math.round(financials.margin || estimate.profile.markup)}%`,
+    '',
+    `Joist estimate #: ${lead.joistEstimateNumber || 'Add after creating estimate'}`,
+    `Joist invoice #: ${lead.joistInvoiceNumber || 'Add after converting to invoice'}`,
+    `Joist status: ${lead.joistStatus || 'Needs Joist entry'}`,
+    `Payment link: ${lead.paymentLink || 'Add Joist/Square payment link when ready'}`,
+  ].filter(Boolean).join('\n')
+}
+
+function dueLabel(value) {
+  if (!value) return 'No follow-up date'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'No follow-up date'
+  const diffHours = (date.getTime() - Date.now()) / 36e5
+  if (diffHours < -24) return 'Overdue'
+  if (diffHours < 0) return 'Due now'
+  if (diffHours < 24) return 'Due today'
+  return formatDate(value)
+}
+
+function followUpScore(lead) {
+  const dueBonus = lead.followUpAt && new Date(lead.followUpAt).getTime() <= Date.now() ? 40 : 0
+  const staleHours = lead.lastContactedAt
+    ? Math.max(0, (Date.now() - new Date(lead.lastContactedAt).getTime()) / 36e5)
+    : 36
+  return leadSortScore(lead) + dueBonus + Math.min(30, staleHours / 4)
+}
+
 function Field({ label, value, onChange, textarea = false, type = 'text', rows = 3 }) {
   const Control = textarea ? 'textarea' : 'input'
   return (
@@ -645,6 +786,193 @@ function PipelineStats({ leads }) {
         <strong>{won}</strong>
       </article>
     </div>
+  )
+}
+
+function CrmCommandCenter({ leads, selectedLead, setSelectedLeadId, updateLead, emailSettings }) {
+  const stats = workdayStats(leads)
+  const followQueue = [...leads]
+    .filter((lead) => !['Lost', 'Complete', 'Receipt Sent'].includes(lead.status))
+    .sort((a, b) => followUpScore(b) - followUpScore(a))
+    .slice(0, 6)
+  const activeLead = selectedLead || followQueue[0] || leads[0]
+  const joistNeeds = leads.filter((lead) =>
+    !['Lost'].includes(lead.status) &&
+    (['Estimate Scheduled', 'Estimate Sent', 'Payment Link Sent', 'Deposit Paid', 'Scheduled', 'In Progress'].includes(lead.status) ||
+      lead.quoteCustomerPrice ||
+      lead.estimateAmount) &&
+    (!lead.joistEstimateNumber || !lead.joistStatus)
+  )
+  const selectedCampaign = dripCampaigns.find((campaign) => campaign.name === activeLead?.campaignName) || dripCampaigns[0]
+  const selectedCampaignDraft = activeLead ? campaignDraftFor(activeLead, selectedCampaign) : null
+
+  const assignCampaign = (campaign) => {
+    if (!activeLead) return
+    updateLead(activeLead.id, {
+      campaignName: campaign.name,
+      campaignStep: '1',
+      campaignNextAt: new Date().toISOString(),
+      nextStep: campaign.steps[0],
+      emailStage: campaign.name,
+      emailSubject: campaign.subject,
+      emailBody: fillCampaignTemplate(campaign.body, activeLead),
+    })
+  }
+
+  const markCampaignSent = (lead, campaign) => {
+    updateLead(lead.id, {
+      campaignName: campaign.name,
+      campaignStep: String(Math.min(3, Number(lead.campaignStep || 1) + 1)),
+      campaignNextAt: nextBusinessMorningIso(2),
+      campaignLastSentAt: new Date().toISOString(),
+      lastContactedAt: new Date().toISOString(),
+      status: lead.status === 'New' ? 'Contacted' : lead.status,
+      nextStep: campaign.steps[Math.min(2, Number(lead.campaignStep || 1))] || campaign.goal,
+    })
+  }
+
+  return (
+    <section className="crm-command-center">
+      <div className="admin-panel crm-coach-panel">
+        <div>
+          <p className="admin-eyebrow">Daily office coach</p>
+          <h2>Today: protect the hot leads, send the next touch, keep Joist clean.</h2>
+        </div>
+        <div className="crm-coach-steps">
+          <span><strong>1</strong> Call every new/hot lead before anything else.</span>
+          <span><strong>2</strong> Send estimate follow-ups before lunch.</span>
+          <span><strong>3</strong> Copy Joist packets for priced jobs and paste Joist IDs back here.</span>
+          <span><strong>4</strong> Ask completed happy customers for Google reviews and referrals.</span>
+        </div>
+      </div>
+
+      <div className="crm-command-grid">
+        <section className="admin-panel crm-priority-panel">
+          <div className="panel-title-row">
+            <div>
+              <p className="admin-eyebrow">Priority queue</p>
+              <strong>{followQueue.length ? 'Work these from top to bottom.' : 'No active follow-ups yet.'}</strong>
+            </div>
+            <span className="crm-pill">{stats.openLeads.length} open</span>
+          </div>
+          <div className="crm-priority-list">
+            {followQueue.length ? followQueue.map((lead) => (
+              <button type="button" key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
+                <span className={`lead-priority priority-${lead.priority.toLowerCase()}`}>{lead.priority}</span>
+                <span>
+                  <strong>{lead.name || 'Website lead'}</strong>
+                  <small>{visibleLeadStatus(lead)} / {dueLabel(lead.followUpAt || lead.campaignNextAt)}</small>
+                </span>
+                <em>{lead.campaignName || 'No drip'}</em>
+              </button>
+            )) : (
+              <div className="admin-empty compact-empty">
+                <strong>Clear for now.</strong>
+                <span>New leads, estimate follow-ups, and active campaigns will appear here.</span>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="admin-panel crm-campaign-panel">
+          <div className="panel-title-row">
+            <div>
+              <p className="admin-eyebrow">Drip campaigns</p>
+              <strong>{activeLead ? `Selected: ${activeLead.name}` : 'Select a lead to assign a drip.'}</strong>
+            </div>
+            <span className="crm-pill">{smtpStatusLabel(emailSettings)}</span>
+          </div>
+          <div className="campaign-grid">
+            {dripCampaigns.map((campaign) => (
+              <article key={campaign.id} className={activeLead?.campaignName === campaign.name ? 'campaign-card active' : 'campaign-card'}>
+                <span>{campaign.audience}</span>
+                <h3>{campaign.name}</h3>
+                <p>{campaign.goal}</p>
+                <ol>
+                  {campaign.steps.map((step) => <li key={step}>{step}</li>)}
+                </ol>
+                <div className="campaign-actions">
+                  <button type="button" onClick={() => assignCampaign(campaign)} disabled={!activeLead}>
+                    <Target size={15} aria-hidden="true" />
+                    Assign drip
+                  </button>
+                  {activeLead?.email ? (
+                    <a href={campaignMailtoFor(activeLead, campaign)} onClick={() => markCampaignSent(activeLead, campaign)}>
+                      <Mail size={15} aria-hidden="true" />
+                      Open email
+                    </a>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="admin-panel crm-email-panel">
+          <div className="panel-title-row">
+            <div>
+              <p className="admin-eyebrow">Selected email campaign</p>
+              <strong>{activeLead ? selectedCampaign.name : 'No lead selected'}</strong>
+            </div>
+            {activeLead ? <span className="crm-pill">Step {activeLead.campaignStep || '1'}</span> : null}
+          </div>
+          {activeLead && selectedCampaignDraft ? (
+            <>
+              <pre>{`Subject: ${selectedCampaignDraft.subject}\n\n${selectedCampaignDraft.body}`}</pre>
+              <div className="lead-contact-actions">
+                <button type="button" onClick={() => copyText(`Subject: ${selectedCampaignDraft.subject}\n\n${selectedCampaignDraft.body}`)}>
+                  <Clipboard size={16} aria-hidden="true" />
+                  Copy campaign
+                </button>
+                <button type="button" onClick={() => markCampaignSent(activeLead, selectedCampaign)}>
+                  <CheckCircle2 size={16} aria-hidden="true" />
+                  Mark touch sent
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="admin-empty compact-empty">
+              <strong>Select a lead to generate campaign copy.</strong>
+              <span>The office can copy or open drafts now, then one-click send can be added when SMTP is fully configured.</span>
+            </div>
+          )}
+        </section>
+
+        <section className="admin-panel crm-joist-panel">
+          <div className="panel-title-row">
+            <div>
+              <p className="admin-eyebrow">Joist command center</p>
+              <strong>{joistNeeds.length} leads need Joist estimate/status cleanup.</strong>
+            </div>
+            <a className="admin-primary-link" href="https://www.joist.com/" target="_blank" rel="noreferrer">
+              Open Joist
+              <ExternalLink size={15} aria-hidden="true" />
+            </a>
+          </div>
+          <p>
+            Joist does not expose a public API in the docs I could safely wire here. This bridge keeps Joist official for estimates/invoices while this CRM owns follow-up, margin checks, and CPA reporting.
+          </p>
+          {activeLead ? (
+            <div className="lead-contact-actions">
+              <button type="button" onClick={() => copyText(joistPacketForLead(activeLead))}>
+                <Clipboard size={16} aria-hidden="true" />
+                Copy selected Joist packet
+              </button>
+              <button
+                type="button"
+                onClick={() => updateLead(activeLead.id, {
+                  joistStatus: activeLead.joistStatus || 'Needs Joist estimate',
+                  nextStep: 'Create/update Joist estimate, then paste Joist estimate number and invoice status back into CRM.',
+                })}
+              >
+                <ReceiptText size={16} aria-hidden="true" />
+                Flag for Joist
+              </button>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </section>
   )
 }
 
@@ -1043,6 +1371,7 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
   const currentEmailDraft = emailDraftFor(workingLead)
   const financials = leadFinancials(workingLead)
   const depositAmount = financials.customerPrice * (moneyValue(quoteDepositPercent) / 100)
+  const activeCampaign = dripCampaigns.find((campaign) => campaign.name === lead.campaignName)
 
   const applyAiEstimateToLocal = (patch) => {
     setEstimateAmount(patch.estimateAmount || '')
@@ -1229,6 +1558,38 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
               <span>{stage.status}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="campaign-status-strip">
+        <div>
+          <p className="admin-eyebrow">Drip status</p>
+          <strong>{lead.campaignName || 'No campaign assigned yet'}</strong>
+          <span>
+            {lead.campaignName
+              ? `Step ${lead.campaignStep || '1'} / next touch: ${dueLabel(lead.campaignNextAt || followUpAt)}`
+              : 'Assign a campaign from the CRM cockpit above.'}
+          </span>
+        </div>
+        <div className="lead-contact-actions">
+          <button
+            type="button"
+            onClick={() => updateLead(lead.id, {
+              campaignName: activeCampaign?.name || dripCampaigns[0].name,
+              campaignStep: lead.campaignStep || '1',
+              campaignNextAt: nextBusinessMorningIso(1),
+              nextStep: activeCampaign?.steps?.[0] || dripCampaigns[0].steps[0],
+            })}
+          >
+            <Clock3 size={16} aria-hidden="true" />
+            Next touch tomorrow
+          </button>
+          {lead.campaignName ? (
+            <button type="button" onClick={() => updateLead(lead.id, { campaignName: '', campaignStep: '', campaignNextAt: '', campaignLastSentAt: '' })}>
+              <Trash2 size={16} aria-hidden="true" />
+              Clear drip
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1868,6 +2229,7 @@ function ReviewsEditor({ draft, updateSection, updateArrayItem, addArrayItem, re
 
 function AssetDropField({ label, value, onChange }) {
   const [dragging, setDragging] = useState(false)
+  const fileInputRef = useRef(null)
 
   const handleFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return
@@ -1903,7 +2265,31 @@ function AssetDropField({ label, value, onChange }) {
         <Image size={20} aria-hidden="true" />
         <strong>Drop image or URL</strong>
       </div>
-      <input value={value || ''} onChange={(event) => onChange(event.target.value)} />
+      <div className="asset-drop-actions">
+        <button
+          type="button"
+          className="asset-upload-button"
+          onClick={(event) => {
+            event.preventDefault()
+            fileInputRef.current?.click()
+          }}
+        >
+          <Image size={16} aria-hidden="true" />
+          Upload photo
+        </button>
+        <span>or paste a hosted image URL below</span>
+      </div>
+      <input
+        ref={fileInputRef}
+        className="asset-file-input"
+        type="file"
+        accept="image/*"
+        onChange={(event) => {
+          handleFile(event.target.files?.[0])
+          event.target.value = ''
+        }}
+      />
+      <input className="asset-url-input" value={value || ''} onChange={(event) => onChange(event.target.value)} />
     </label>
   )
 }
@@ -2075,6 +2461,7 @@ const integrationDocs = {
   googleDrive: 'https://developers.google.com/workspace/drive/picker/guides/overview',
   instagram: 'https://developers.facebook.com/docs/instagram-platform/content-publishing/',
   facebook: 'https://developers.facebook.com/docs/pages-api/',
+  joist: 'https://www.joist.com/',
   googleBusiness: 'https://developers.google.com/my-business/content/review-data',
   nextdoor: 'https://business.nextdoor.com/en-us/small-business',
 }
@@ -2178,6 +2565,12 @@ function GrowthDashboard({ draft, updateSection, saveContent, savingContent, lea
           copy="Use Instagram Graph content publishing and Facebook Pages API after Meta app setup and permissions."
           href={integrationDocs.instagram}
         />
+        <IntegrationCard
+          title="Joist"
+          status="Bridge now"
+          copy="Keep official estimates and invoices in Joist. Use CRM packets, IDs, status, payment links, and CPA exports here until API access exists."
+          href={integrationDocs.joist}
+        />
       </div>
 
       <section className="admin-panel full-span-panel">
@@ -2188,6 +2581,7 @@ function GrowthDashboard({ draft, updateSection, saveContent, savingContent, lea
           <Field label="iCloud shared album URL" value={integrations.icloudSharedAlbumUrl || ''} onChange={(value) => updateSection('integrations', 'icloudSharedAlbumUrl', value)} />
           <Field label="Instagram profile URL" value={integrations.instagramProfileUrl || ''} onChange={(value) => updateSection('integrations', 'instagramProfileUrl', value)} />
           <Field label="Facebook page URL" value={integrations.facebookPageUrl || ''} onChange={(value) => updateSection('integrations', 'facebookPageUrl', value)} />
+          <Field label="Joist login URL" value={integrations.joistLoginUrl || integrationDocs.joist} onChange={(value) => updateSection('integrations', 'joistLoginUrl', value)} />
           <Field label="Google review link" value={googleReviewLink} onChange={(value) => {
             updateSection('integrations', 'googleBusinessReviewUrl', value)
             updateSection('reviewAutomation', 'googleReviewLink', value)
@@ -2582,6 +2976,13 @@ function exportCsv(leads) {
     'Payment Link',
     'Follow Up',
     'Last Contacted',
+    'Campaign',
+    'Campaign Step',
+    'Campaign Next Touch',
+    'Campaign Last Sent',
+    'Joist Estimate #',
+    'Joist Invoice #',
+    'Joist Status',
     'Next Step',
     'Notes',
     'Received',
@@ -2600,6 +3001,13 @@ function exportCsv(leads) {
     lead.paymentLink,
     lead.followUpAt,
     lead.lastContactedAt,
+    lead.campaignName,
+    lead.campaignStep,
+    lead.campaignNextAt,
+    lead.campaignLastSentAt,
+    lead.joistEstimateNumber,
+    lead.joistInvoiceNumber,
+    lead.joistStatus,
     lead.nextStep,
     lead.notes,
     lead.receivedAt,
@@ -3017,6 +3425,14 @@ function AdminDashboard({ content, setContent, goHome }) {
           </div>
 
           <PipelineStats leads={leads} />
+
+          <CrmCommandCenter
+            leads={leads}
+            selectedLead={selectedLead}
+            setSelectedLeadId={setSelectedLeadId}
+            updateLead={updateLead}
+            emailSettings={emailSettings}
+          />
 
           <section className="admin-panel smtp-status-card">
             <div>

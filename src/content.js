@@ -493,6 +493,7 @@ export const defaultSiteContent = {
     icloudSharedAlbumUrl: '',
     instagramProfileUrl: '',
     facebookPageUrl: '',
+    joistLoginUrl: 'https://www.joist.com/',
     googleBusinessReviewUrl: '',
     nextdoorBusinessUrl: '',
     notes:
