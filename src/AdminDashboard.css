@@ -1498,6 +1498,50 @@
   line-height: 1.35;
 }
 
+.review-queue {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.review-queue-list {
+  display: grid;
+  gap: 10px;
+}
+
+.review-queue-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(18, 63, 109, 0.1);
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 12px;
+}
+
+.review-queue-card > div {
+  display: grid;
+  gap: 4px;
+}
+
+.review-queue-card > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.review-queue-card strong {
+  color: #1c1f21;
+}
+
+.review-queue-card span,
+.review-queue-card small {
+  color: #59636a;
+  font-weight: 800;
+}
+
 .template-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1527,6 +1571,7 @@
   .integration-grid,
   .template-grid,
   .review-schedule-grid,
+  .review-queue-card,
   .nextdoor-coaching,
   .work-gallery-admin-grid,
   .assistant-hero,
@@ -1565,6 +1610,7 @@
   .quote-metric-grid,
   .template-grid,
   .review-schedule-grid,
+  .review-queue-card,
   .nextdoor-coaching,
   .work-gallery-admin-grid,
   .lead-tools {
