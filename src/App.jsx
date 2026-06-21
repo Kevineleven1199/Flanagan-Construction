@@ -182,7 +182,11 @@ function PaintCursor() {
   return (
     <div className="paint-cursor" aria-hidden="true">
       <span className="paint-cursor-trail"></span>
-      <span className="paint-cursor-roller"></span>
+      <span className="paint-cursor-roller">
+        <span className="roller-head"></span>
+        <span className="roller-arm"></span>
+        <span className="roller-grip"></span>
+      </span>
     </div>
   )
 }
@@ -988,11 +992,6 @@ function App() {
     setShowSplash(false)
   }, [])
 
-  const replaySplash = useCallback(() => {
-    setShowSplash(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
-
   const goAdminLogin = useCallback(() => {
     dismissSplash()
     setMenuOpen(false)
@@ -1057,8 +1056,8 @@ function App() {
       const root = document.documentElement
       root.style.setProperty('--pointer-x', `${event.clientX}px`)
       root.style.setProperty('--pointer-y', `${event.clientY}px`)
-      root.style.setProperty('--hero-drift-x', `${((event.clientX / window.innerWidth - 0.5) * 18).toFixed(2)}px`)
-      root.style.setProperty('--hero-drift-y', `${((event.clientY / window.innerHeight - 0.5) * 14).toFixed(2)}px`)
+      root.style.setProperty('--hero-drift-x', `${((event.clientX / window.innerWidth - 0.5) * 5).toFixed(2)}px`)
+      root.style.setProperty('--hero-drift-y', `${((event.clientY / window.innerHeight - 0.5) * 4).toFixed(2)}px`)
     }
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
@@ -1413,12 +1412,6 @@ function App() {
       )}
 
       <SiteFooter business={business} services={siteContent.services} goSection={goSection} />
-
-      {!showSplash ? (
-        <button className="splash-replay-button" type="button" onClick={replaySplash}>
-          Paint intro
-        </button>
-      ) : null}
 
       <div className="mobile-cta" aria-label="Quick contact">
         <a

@@ -264,33 +264,6 @@ main {
   animation: splash-flash 4.92s ease forwards;
 }
 
-.splash-replay-button {
-  position: fixed;
-  left: max(18px, env(safe-area-inset-left));
-  bottom: max(18px, env(safe-area-inset-bottom));
-  z-index: 28;
-  border: 1px solid rgba(242, 184, 75, 0.36);
-  border-radius: 999px;
-  background: rgba(7, 24, 39, 0.88);
-  color: #fff;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
-  cursor: pointer;
-  padding: 11px 15px;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 950;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  backdrop-filter: blur(14px);
-  animation: replay-pulse 2.8s ease-in-out infinite;
-}
-
-.splash-replay-button:hover {
-  background: var(--brand-yellow);
-  color: var(--brand-black);
-  transform: translateY(-2px);
-}
-
 .paint-splash {
   background: #071827;
   animation: splash-exit 520ms ease 3.18s forwards;
@@ -545,21 +518,24 @@ main {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.8;
-  filter: saturate(0.92) contrast(1.08);
+  object-position: 50% 50%;
+  opacity: 0.5;
+  filter: saturate(0.86) contrast(1.02) brightness(0.82);
+  transform: scale(1.01);
 }
 
 .hero-video-scrim {
   background:
     linear-gradient(
       90deg,
-      rgba(7, 24, 39, 0.9) 0%,
-      rgba(7, 24, 39, 0.7) 43%,
-      rgba(7, 24, 39, 0.26) 76%,
-      rgba(7, 24, 39, 0.14) 100%
+      rgba(7, 24, 39, 0.92) 0%,
+      rgba(7, 24, 39, 0.78) 38%,
+      rgba(7, 24, 39, 0.42) 68%,
+      rgba(7, 24, 39, 0.24) 100%
     ),
-    linear-gradient(180deg, rgba(7, 24, 39, 0.12) 0%, rgba(7, 24, 39, 0.72) 100%),
-    radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(242, 184, 75, 0.2), transparent 28%);
+    linear-gradient(180deg, rgba(7, 24, 39, 0.28) 0%, rgba(7, 24, 39, 0.8) 100%),
+    radial-gradient(circle at 72% 20%, rgba(242, 184, 75, 0.16), transparent 34%),
+    radial-gradient(circle at var(--pointer-x) var(--pointer-y), rgba(242, 184, 75, 0.08), transparent 22%);
 }
 
 .hero-motion-layer {
@@ -576,20 +552,20 @@ main {
   position: fixed;
   left: var(--pointer-x);
   top: var(--pointer-y);
-  width: 520px;
-  height: 520px;
+  width: 340px;
+  height: 340px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(242, 184, 75, 0.18), rgba(242, 184, 75, 0.06) 32%, transparent 68%);
+  background: radial-gradient(circle, rgba(242, 184, 75, 0.08), rgba(242, 184, 75, 0.025) 32%, transparent 70%);
   filter: blur(2px);
   transform: translate(-50%, -50%);
   mix-blend-mode: screen;
-  opacity: 0.78;
+  opacity: 0.36;
 }
 
 .blueprint-grid {
   position: absolute;
   inset: 0;
-  opacity: 0.18;
+  opacity: 0.1;
   background-image:
     linear-gradient(rgba(242, 184, 75, 0.26) 1px, transparent 1px),
     linear-gradient(90deg, rgba(242, 184, 75, 0.18) 1px, transparent 1px);
@@ -609,7 +585,7 @@ main {
       transparent 24px 38px
     );
   box-shadow: 0 0 20px rgba(242, 184, 75, 0.25);
-  opacity: 0.48;
+  opacity: 0.28;
   transform: rotate(var(--rail-angle, 0deg));
   transform-origin: left center;
 }
@@ -670,26 +646,28 @@ main {
 
 .floating-job-stack {
   position: absolute;
-  top: clamp(112px, 17vh, 154px);
-  left: clamp(22px, 6vw, 82px);
+  top: clamp(104px, 14vh, 138px);
+  left: clamp(22px, 5vw, 64px);
   display: flex;
-  width: min(64vw, 760px);
-  gap: 10px;
+  width: min(54vw, 620px);
+  gap: 8px;
   align-items: stretch;
 }
 
 .floating-job-card {
   display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  flex: 0 1 190px;
+  grid-template-columns: 52px minmax(0, 1fr);
+  flex: 1 1 0;
   min-width: 0;
-  gap: 5px 10px;
+  gap: 4px 10px;
   align-items: center;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
-  background: rgba(7, 24, 39, 0.72);
-  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.24);
-  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(7, 24, 39, 0.82), rgba(18, 63, 109, 0.62)),
+    rgba(7, 24, 39, 0.78);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+  padding: 9px 10px;
   backdrop-filter: blur(16px);
   animation: job-card-float 5.6s ease-in-out infinite;
   animation-delay: var(--float-loop-delay, 0ms);
@@ -705,24 +683,24 @@ main {
 
 .floating-job-card span {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   grid-row: span 2;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--brand-yellow);
   color: var(--brand-black);
 }
 
 .floating-job-card strong {
   color: #fff;
-  font-size: 0.94rem;
+  font-size: 0.88rem;
   line-height: 1.05;
 }
 
 .floating-job-card small {
   color: rgba(255, 255, 255, 0.68);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   line-height: 1.25;
 }
 
@@ -2999,28 +2977,32 @@ legend {
 /* Simplified homeowner page */
 .simple-home-hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(340px, 500px);
-  gap: clamp(28px, 5vw, 72px);
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 460px);
+  gap: clamp(24px, 4vw, 56px);
   align-items: center;
-  min-height: 100svh;
-  padding: clamp(94px, 12vh, 128px) clamp(18px, 6vw, 90px) clamp(30px, 5vh, 58px);
+  min-height: 94svh;
+  padding: clamp(92px, 11vh, 118px) clamp(22px, 5.5vw, 78px) clamp(30px, 5vh, 58px);
 }
 
 .simple-home-hero .hero-inner {
-  max-width: 660px;
+  max-width: 620px;
 }
 
 .simple-home-hero .hero-inner h1 {
-  max-width: 12ch;
-  font-size: clamp(2.2rem, 4.25vw, 3.8rem);
+  max-width: 13ch;
+  font-size: clamp(2.25rem, 3.75vw, 3.55rem);
+  line-height: 1.02;
 }
 
 .simple-home-hero .lead-panel {
   position: relative;
   z-index: 2;
-  max-width: 500px;
+  max-width: 460px;
   justify-self: end;
-  padding: clamp(14px, 2vw, 20px);
+  padding: clamp(14px, 1.8vw, 18px);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
 .simple-home-hero .panel-heading {
@@ -3028,7 +3010,7 @@ legend {
 }
 
 .simple-home-hero .panel-heading h2 {
-  font-size: 1.28rem;
+  font-size: 1.18rem;
 }
 
 .simple-home-hero .panel-heading p {
@@ -3036,13 +3018,13 @@ legend {
 }
 
 .simple-home-hero form {
-  gap: 9px;
+  gap: 8px;
 }
 
 .simple-home-hero input,
 .simple-home-hero select,
 .simple-home-hero textarea {
-  padding: 10px;
+  padding: 9px 10px;
 }
 
 .simple-home-hero .funnel-save-note,
@@ -3084,7 +3066,7 @@ legend {
 }
 
 .simple-home-hero textarea {
-  min-height: 54px;
+  min-height: 50px;
 }
 
 .simple-services {
@@ -3758,10 +3740,12 @@ legend {
 }
 
 @media (max-width: 720px) {
-  .splash-replay-button {
-    bottom: calc(82px + env(safe-area-inset-bottom));
-    padding: 9px 12px;
-    font-size: 0.72rem;
+  .paint-cursor {
+    display: none;
+  }
+
+  body.paint-cursor-active {
+    cursor: auto !important;
   }
 
   .mobile-cta {
@@ -3984,7 +3968,7 @@ legend {
 
 /* Motion layer for the short public site. */
 .simple-home-hero {
-  animation: hero-shift 18s ease-in-out infinite alternate;
+  animation: hero-shift 28s ease-in-out infinite alternate;
 }
 
 .simple-home-hero .hero-inner {
@@ -4310,11 +4294,11 @@ legend {
   left: 0;
   top: 0;
   z-index: 220;
-  width: 112px;
-  height: 82px;
+  width: 118px;
+  height: 88px;
   opacity: 0;
   pointer-events: none;
-  transform: translate3d(calc(var(--pointer-x) - 30px), calc(var(--pointer-y) - 24px), 0) rotate(-16deg);
+  transform: translate3d(calc(var(--pointer-x) - 32px), calc(var(--pointer-y) - 26px), 0) rotate(-14deg);
   transition: opacity 180ms ease;
 }
 
@@ -4336,10 +4320,10 @@ body.paint-cursor-active :where(input, textarea, select) {
 
 .paint-cursor-trail {
   position: absolute;
-  left: -34px;
-  top: 32px;
-  width: 92px;
-  height: 16px;
+  left: -42px;
+  top: 35px;
+  width: 104px;
+  height: 18px;
   border-radius: 999px;
   background:
     linear-gradient(90deg, transparent, rgba(242, 184, 75, 0.92), rgba(255, 244, 207, 0.24)),
@@ -4359,11 +4343,10 @@ body.paint-cursor-active :where(input, textarea, select) {
 .paint-cursor-roller {
   left: 30px;
   top: 13px;
-  width: 70px;
-  height: 50px;
+  width: 94px;
+  height: 68px;
 }
 
-.paint-cursor-roller::before,
 .css-paint-roller::before {
   position: absolute;
   left: 0;
@@ -4380,7 +4363,6 @@ body.paint-cursor-active :where(input, textarea, select) {
   content: '';
 }
 
-.paint-cursor-roller::after,
 .css-paint-roller::after {
   position: absolute;
   left: 43px;
@@ -4391,6 +4373,76 @@ body.paint-cursor-active :where(input, textarea, select) {
   border-bottom: 6px solid #071827;
   border-radius: 0 0 20px 0;
   content: '';
+}
+
+.paint-cursor-roller::before,
+.paint-cursor-roller::after {
+  content: none;
+}
+
+.paint-cursor-roller .roller-head {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 72px;
+  height: 38px;
+  border: 3px solid #071827;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 24% 22%, rgba(255, 255, 255, 0.72), transparent 12%),
+    repeating-linear-gradient(90deg, #e6a534 0 6px, #f2b84b 6px 12px, #ffd87b 12px 18px, #fff4cf 18px 22px);
+  background-size: 36px 100%;
+  box-shadow:
+    inset 0 5px 0 rgba(255, 255, 255, 0.48),
+    inset 0 -5px 0 rgba(154, 103, 18, 0.18),
+    0 0 0 2px rgba(255, 244, 207, 0.74),
+    0 12px 24px rgba(0, 0, 0, 0.28);
+  animation: roller-head-roll 360ms linear infinite;
+}
+
+.paint-cursor-roller .roller-head::before,
+.paint-cursor-roller .roller-head::after {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 22px;
+  border: 3px solid #071827;
+  border-radius: 999px;
+  background: #fff4cf;
+  content: '';
+  transform: translateY(-50%);
+}
+
+.paint-cursor-roller .roller-head::before {
+  left: -8px;
+}
+
+.paint-cursor-roller .roller-head::after {
+  right: -8px;
+}
+
+.paint-cursor-roller .roller-arm {
+  position: absolute;
+  left: 56px;
+  top: 32px;
+  width: 43px;
+  height: 38px;
+  border-right: 7px solid #071827;
+  border-bottom: 7px solid #071827;
+  border-radius: 0 0 20px 0;
+}
+
+.paint-cursor-roller .roller-grip {
+  position: absolute;
+  left: 82px;
+  top: 62px;
+  width: 35px;
+  height: 15px;
+  border: 3px solid #071827;
+  border-radius: 999px;
+  background: #123f6d;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.32);
+  transform: rotate(28deg);
 }
 
 .paint-cursor-roller {
@@ -4678,6 +4730,8 @@ body.paint-cursor-active :where(input, textarea, select) {
   border-radius: 12px;
   background:
     repeating-linear-gradient(90deg, #f2b84b 0 10px, #ffd66b 10px 16px, #fff4cf 16px 21px);
+  background-size: 42px 100%;
+  animation: roller-head-roll 420ms linear infinite;
 }
 
 .splash-roller-sweep .css-paint-roller::after {
@@ -4858,21 +4912,6 @@ body.paint-cursor-active :where(input, textarea, select) {
   }
 }
 
-@keyframes replay-pulse {
-  0%,
-  100% {
-    border-color: rgba(242, 184, 75, 0.34);
-    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
-  }
-
-  50% {
-    border-color: rgba(242, 184, 75, 0.86);
-    box-shadow:
-      0 18px 42px rgba(0, 0, 0, 0.28),
-      0 0 0 5px rgba(242, 184, 75, 0.1);
-  }
-}
-
 @keyframes hero-pop-on {
   from {
     opacity: 0;
@@ -4933,6 +4972,16 @@ body.paint-cursor-active :where(input, textarea, select) {
   50% {
     opacity: 0.95;
     transform: scaleX(1.06);
+  }
+}
+
+@keyframes roller-head-roll {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: 30px 0;
   }
 }
 
@@ -5289,5 +5338,184 @@ body.paint-cursor-active :where(input, textarea, select) {
 
   50% {
     transform: translateY(-2px) rotate(-2deg);
+  }
+}
+
+/* Pitch polish: calmer hero scale, stronger first impression, less magnified background. */
+.simple-home-hero {
+  isolation: isolate;
+}
+
+.simple-home-hero::after {
+  position: absolute;
+  inset: clamp(86px, 11vh, 118px) clamp(16px, 3.8vw, 54px) clamp(18px, 4vh, 42px);
+  z-index: 1;
+  border: 1px solid rgba(242, 184, 75, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 244, 207, 0.045), transparent 38%),
+    linear-gradient(90deg, rgba(7, 24, 39, 0.12), transparent 48%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  content: '';
+  pointer-events: none;
+}
+
+.simple-home-hero .hero-inner,
+.simple-home-hero .lead-panel {
+  z-index: 3;
+}
+
+.simple-home-hero .hero-inner h1 {
+  text-wrap: balance;
+}
+
+.simple-home-hero .hero-lede {
+  max-width: 48ch;
+}
+
+.simple-home-hero .lead-panel {
+  backdrop-filter: blur(18px);
+}
+
+.simple-home-hero .address-helper {
+  font-size: 0.7rem;
+}
+
+.simple-home-hero .funnel-save-note {
+  gap: 6px;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.simple-home-hero .need-chip .need-chip-photo {
+  width: 30px;
+  height: 30px;
+  border-width: 2px;
+  border-radius: 8px;
+}
+
+.simple-home-hero .submit-button {
+  min-height: 48px;
+}
+
+.simple-home-hero .hero-tech-strip span {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(7, 24, 39, 0.54);
+}
+
+.simple-home-hero .floating-job-card {
+  min-height: 72px;
+}
+
+.simple-home-hero .floating-job-card .job-card-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  transform: rotate(0deg);
+}
+
+.simple-home-hero .hero-paint-bursts span {
+  opacity: 0;
+  filter: blur(0.6px);
+}
+
+@media (min-width: 981px) {
+  .simple-home-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 455px);
+    min-height: 92svh;
+    padding-right: clamp(28px, 4.5vw, 70px);
+    padding-left: clamp(28px, 4.5vw, 70px);
+  }
+
+  .simple-home-hero .hero-inner {
+    transform: translateY(18px);
+  }
+
+  .simple-home-hero .lead-panel {
+    transform: translateY(6px);
+  }
+}
+
+@media (min-width: 981px) and (max-height: 780px) {
+  .simple-home-hero {
+    min-height: 100svh;
+    padding-top: 88px;
+    padding-bottom: 24px;
+  }
+
+  .simple-home-hero .hero-inner {
+    transform: translateY(8px);
+  }
+
+  .simple-home-hero .hero-inner h1 {
+    font-size: clamp(2.15rem, 3.35vw, 3.18rem);
+    max-width: 13.5ch;
+  }
+
+  .simple-home-hero .hero-lede {
+    font-size: 0.98rem;
+    line-height: 1.42;
+  }
+
+  .simple-home-hero .lead-panel {
+    max-height: calc(100svh - 116px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    transform: none;
+  }
+
+  .simple-home-hero .lead-panel::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .simple-home-hero .lead-panel::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(18, 63, 109, 0.34);
+  }
+
+  .simple-home-hero .floating-job-stack {
+    display: none;
+  }
+
+  .simple-home-hero .hero-tech-strip {
+    display: none;
+  }
+
+  .simple-home-hero .hero-actions {
+    margin-top: 14px;
+  }
+
+}
+
+@media (max-width: 980px) {
+  .simple-home-hero::after {
+    display: none;
+  }
+
+  .hero-video {
+    opacity: 0.42;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-video {
+    opacity: 0.36;
+    object-position: 52% 50%;
+  }
+
+  .hero-spotlight {
+    opacity: 0.22;
+  }
+}
+
+@media (max-width: 720px) {
+  .paint-cursor {
+    display: none;
+  }
+
+  body.paint-cursor-active,
+  body.paint-cursor-active :where(a, button, .simple-service-card, .need-chip, .brand),
+  body.paint-cursor-active :where(input, textarea, select) {
+    cursor: auto !important;
   }
 }
