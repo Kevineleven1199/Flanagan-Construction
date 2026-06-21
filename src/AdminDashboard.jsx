@@ -44,6 +44,7 @@ import {
   cloneSiteContent,
   cssUrl,
   loadStoredLeads,
+  makeLeadId,
   mergeSiteContent,
   normalizeLead,
   resetStoredContent,
@@ -69,6 +70,19 @@ const statusOptions = [
   'Lost',
 ]
 const priorityOptions = ['Hot', 'Warm', 'Normal', 'Low']
+const priorityFilterOptions = ['All', ...priorityOptions]
+const focusFilterOptions = ['All', 'Needs call', 'Due now', 'Estimate queue', 'Joist cleanup', 'Review/referral']
+const closedStatuses = ['Won', 'Lost', 'Complete', 'Receipt Sent']
+const estimateQueueStatuses = ['New', 'Contacted', 'Estimate Scheduled']
+const joistWorkStatuses = ['Estimate Scheduled', 'Estimate Sent', 'Payment Link Sent', 'Deposit Paid', 'Scheduled', 'In Progress']
+const pipelineGroups = [
+  { id: 'intake', label: 'Intake', statuses: ['Started', 'New'], helper: 'Call fast, get address/photos.' },
+  { id: 'estimate', label: 'Estimate', statuses: ['Contacted', 'Estimate Scheduled'], helper: 'Scope and schedule.' },
+  { id: 'followup', label: 'Follow-up', statuses: ['Estimate Sent', 'Follow Up'], helper: 'Recover good jobs.' },
+  { id: 'money', label: 'Money', statuses: ['Payment Link Sent', 'Deposit Paid'], helper: 'Deposit and Joist.' },
+  { id: 'production', label: 'Production', statuses: ['Scheduled', 'In Progress'], helper: 'Prep, subs, updates.' },
+  { id: 'done', label: 'Done', statuses: ['Complete', 'Receipt Sent', 'Won'], helper: 'Receipt, review, referral.' },
+]
 const stagePlaybook = [
   { status: 'Contacted', nextStep: 'Confirm scope, address, and best estimate time.' },
   { status: 'Estimate Scheduled', nextStep: 'Send appointment confirmation and add it to the calendar.' },
@@ -429,7 +443,7 @@ function adminFirstName(user) {
   const email = String(user?.email || '').toLowerCase()
   if (email.includes('nick')) return 'Nick'
   if (email.includes('kevin')) return 'Kevin'
-  return 'there'
+  return 'Nick'
 }
 
 function greetingFor(user) {
@@ -447,6 +461,85 @@ function visibleLeadStatus(lead) {
   if (!lead) return ''
   if (lead.leadKind === 'Started funnel' || lead.status === 'Started') return 'Started form'
   return lead.status || 'New'
+}
+
+function isClosedLead(lead) {
+  return closedStatuses.includes(lead?.status)
+}
+
+function isDueNow(lead) {
+  const value = lead?.followUpAt || lead?.campaignNextAt
+  if (!value || isClosedLead(lead)) return false
+  const date = new Date(value)
+  return !Number.isNaN(date.getTime()) && date.getTime() <= Date.now()
+}
+
+function needsFirstCall(lead) {
+  if (!lead || isClosedLead(lead)) return false
+  return ['Started', 'New'].includes(lead.status) || !lead.lastContactedAt
+}
+
+function needsEstimateWork(lead) {
+  return Boolean(lead && !isClosedLead(lead) && estimateQueueStatuses.includes(lead.status))
+}
+
+function needsJoistWork(lead) {
+  return Boolean(
+    lead &&
+      lead.status !== 'Lost' &&
+      (joistWorkStatuses.includes(lead.status) || lead.quoteCustomerPrice || lead.estimateAmount) &&
+      (!lead.joistEstimateNumber || !lead.joistStatus),
+  )
+}
+
+function needsReviewAsk(lead) {
+  return Boolean(lead && ['Complete', 'Receipt Sent', 'Won'].includes(lead.status))
+}
+
+function leadMatchesFocus(lead, focus) {
+  if (focus === 'All') return true
+  if (focus === 'Needs call') return needsFirstCall(lead)
+  if (focus === 'Due now') return isDueNow(lead)
+  if (focus === 'Estimate queue') return needsEstimateWork(lead)
+  if (focus === 'Joist cleanup') return needsJoistWork(lead)
+  if (focus === 'Review/referral') return needsReviewAsk(lead)
+  return true
+}
+
+function leadAgeLabel(value) {
+  if (!value) return 'No date'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'No date'
+  const diffHours = Math.max(0, (Date.now() - date.getTime()) / 36e5)
+  if (diffHours < 1) return 'Just now'
+  if (diffHours < 24) return `${Math.floor(diffHours)}h old`
+  const days = Math.floor(diffHours / 24)
+  return `${days}d old`
+}
+
+function shortLeadNeed(lead) {
+  if (lead?.selectedNeeds?.length) return lead.selectedNeeds.slice(0, 2).join(', ')
+  return lead?.projectType || 'Project'
+}
+
+function leadCommandStats(leads) {
+  const stats = workdayStats(leads)
+  const dueNow = leads.filter(isDueNow)
+  const needsCall = leads.filter(needsFirstCall)
+  const needsEstimate = leads.filter(needsEstimateWork)
+  const joistCleanup = leads.filter(needsJoistWork)
+  const reviewQueue = leads.filter(needsReviewAsk)
+  const topLead = [...stats.openLeads].sort((a, b) => leadSortScore(b) - leadSortScore(a))[0] || leads[0]
+
+  return {
+    ...stats,
+    dueNow,
+    needsCall,
+    needsEstimate,
+    joistCleanup,
+    reviewQueue,
+    topLead,
+  }
 }
 
 function serviceProfileFor(lead = {}) {
@@ -785,6 +878,219 @@ function PipelineStats({ leads }) {
         <span>Won</span>
         <strong>{won}</strong>
       </article>
+    </div>
+  )
+}
+
+function AdminCommandBoard({ leads, selectedLead, setSelectedLeadId, setActiveView, emailSettings, mode }) {
+  const stats = leadCommandStats(leads)
+  const focusLead = selectedLead || stats.topLead
+  const commandTiles = [
+    { label: 'Call first', value: stats.needsCall.length, helper: 'New or untouched leads', lead: stats.needsCall[0] },
+    { label: 'Due now', value: stats.dueNow.length, helper: 'Follow-ups waiting', lead: stats.dueNow[0] },
+    { label: 'Estimates', value: stats.needsEstimate.length, helper: 'Scope and pricing queue', lead: stats.needsEstimate[0] },
+    { label: 'Joist cleanup', value: stats.joistCleanup.length, helper: 'Needs IDs/status', lead: stats.joistCleanup[0] },
+    { label: 'Review asks', value: stats.reviewQueue.length, helper: 'Completed jobs', lead: stats.reviewQueue[0] },
+  ]
+
+  const openLead = (lead) => {
+    if (lead?.id) setSelectedLeadId(lead.id)
+    setActiveView('leads')
+  }
+
+  return (
+    <section className="admin-command-board" aria-label="Daily command board">
+      <div className="command-board-intro">
+        <p className="admin-eyebrow">Office command center</p>
+        <h2>{focusLead ? `Next best lead: ${focusLead.name || 'Website lead'}` : 'Ready for the next lead.'}</h2>
+        <p>
+          {focusLead
+            ? `${visibleLeadStatus(focusLead)} / ${shortLeadNeed(focusLead)} / ${dueLabel(focusLead.followUpAt || focusLead.campaignNextAt)}`
+            : 'New website requests, phone leads, Joist handoffs, and review follow-ups will queue up here.'}
+        </p>
+        <div className="command-board-actions">
+          <button className="admin-primary-button" type="button" onClick={() => openLead(focusLead)} disabled={!focusLead}>
+            <Target size={17} aria-hidden="true" />
+            Work next lead
+          </button>
+          <button className="admin-secondary-button" type="button" onClick={() => setActiveView('growth')}>
+            <TrendingUp size={17} aria-hidden="true" />
+            Grow reviews
+          </button>
+        </div>
+      </div>
+
+      <div className="command-tile-grid">
+        {commandTiles.map((tile) => (
+          <button
+            className={tile.value ? 'command-tile needs-work' : 'command-tile'}
+            key={tile.label}
+            type="button"
+            onClick={() => openLead(tile.lead)}
+            disabled={!tile.lead}
+          >
+            <span>{tile.label}</span>
+            <strong>{tile.value}</strong>
+            <small>{tile.helper}</small>
+          </button>
+        ))}
+        <article className="command-tile command-system-tile">
+          <span>System</span>
+          <strong>{mode === 'server' ? 'Live' : 'Local'}</strong>
+          <small>{smtpStatusLabel(emailSettings)}</small>
+        </article>
+      </div>
+    </section>
+  )
+}
+
+function ManualLeadPanel({ createLead }) {
+  const emptyLead = {
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    projectType: 'Kitchen or bathroom remodel',
+    priority: 'Warm',
+    message: '',
+  }
+  const [open, setOpen] = useState(false)
+  const [lead, setLead] = useState(emptyLead)
+
+  const update = (field, value) => setLead((current) => ({ ...current, [field]: value }))
+  const submitLead = async (event) => {
+    event.preventDefault()
+    await createLead({
+      ...lead,
+      name: lead.name || 'Phone/referral lead',
+      projectType: lead.projectType || 'Project',
+      leadKind: 'Office-entered lead',
+      status: 'New',
+      source: 'flanagan-admin',
+      nextStep: 'Call back, confirm scope, address, photos, and estimate timing.',
+    })
+    setLead(emptyLead)
+    setOpen(false)
+  }
+
+  return (
+    <section className={open ? 'admin-panel manual-lead-panel open' : 'admin-panel manual-lead-panel'}>
+      <div className="panel-title-row">
+        <div>
+          <p className="admin-eyebrow">Fast intake</p>
+          <strong>Add a phone, referral, BNI, or walk-in lead while it is fresh.</strong>
+        </div>
+        <button type="button" onClick={() => setOpen((current) => !current)}>
+          <Plus size={16} aria-hidden="true" />
+          {open ? 'Close intake' : 'Add lead'}
+        </button>
+      </div>
+      {open ? (
+        <form className="manual-lead-form" onSubmit={submitLead}>
+          <label>
+            Name
+            <input value={lead.name} placeholder="Customer name" onChange={(event) => update('name', event.target.value)} />
+          </label>
+          <label>
+            Phone
+            <input value={lead.phone} placeholder="Best phone" onChange={(event) => update('phone', event.target.value)} />
+          </label>
+          <label>
+            Email
+            <input value={lead.email} placeholder="Email if you have it" onChange={(event) => update('email', event.target.value)} />
+          </label>
+          <label>
+            Priority
+            <select value={lead.priority} onChange={(event) => update('priority', event.target.value)}>
+              {priorityOptions.map((priority) => <option key={priority}>{priority}</option>)}
+            </select>
+          </label>
+          <label>
+            Project type
+            <input value={lead.projectType} onChange={(event) => update('projectType', event.target.value)} />
+          </label>
+          <label>
+            Address
+            <input value={lead.address} placeholder="Job address if known" onChange={(event) => update('address', event.target.value)} />
+          </label>
+          <label className="manual-lead-notes">
+            Notes
+            <textarea value={lead.message} rows="3" placeholder="What do they need, who referred them, timing..." onChange={(event) => update('message', event.target.value)} />
+          </label>
+          <button className="admin-primary-button" type="submit" disabled={!lead.phone && !lead.email}>
+            <Plus size={17} aria-hidden="true" />
+            Create lead
+          </button>
+        </form>
+      ) : null}
+    </section>
+  )
+}
+
+function PipelineBoard({ leads, setSelectedLeadId }) {
+  return (
+    <section className="admin-panel pipeline-board" aria-label="Pipeline board">
+      <div className="panel-title-row">
+        <div>
+          <p className="admin-eyebrow">Pipeline map</p>
+          <strong>See where the work is stuck before opening individual records.</strong>
+        </div>
+        <span className="crm-pill">{leads.filter((lead) => !isClosedLead(lead)).length} active</span>
+      </div>
+      <div className="pipeline-lane-grid">
+        {pipelineGroups.map((group) => {
+          const groupLeads = leads.filter((lead) => group.statuses.includes(lead.status)).slice(0, 4)
+          const total = leads.filter((lead) => group.statuses.includes(lead.status)).length
+          return (
+            <article className="pipeline-lane" key={group.id}>
+              <div className="pipeline-lane-head">
+                <span>{group.label}</span>
+                <strong>{total}</strong>
+              </div>
+              <small>{group.helper}</small>
+              <div className="pipeline-lane-list">
+                {groupLeads.length ? groupLeads.map((lead) => (
+                  <button type="button" key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
+                    <span className={`lead-priority priority-${lead.priority.toLowerCase()}`}>{lead.priority}</span>
+                    <strong>{lead.name || 'Website lead'}</strong>
+                    <small>{shortLeadNeed(lead)} / {leadAgeLabel(lead.receivedAt)}</small>
+                  </button>
+                )) : (
+                  <em>Clear</em>
+                )}
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function LeadReadinessChecklist({ lead }) {
+  const checks = [
+    { label: 'Phone captured', done: Boolean(lead.phone) },
+    { label: 'Email captured', done: Boolean(lead.email) },
+    { label: 'Job address', done: Boolean(lead.address) },
+    { label: 'Scope/photos note', done: Boolean(lead.message || lead.selectedNeeds?.length) },
+    { label: 'Follow-up date', done: Boolean(lead.followUpAt || lead.campaignNextAt) },
+    { label: 'Joist status', done: Boolean(lead.joistEstimateNumber || lead.joistStatus) },
+  ]
+
+  return (
+    <div className="lead-readiness-card">
+      <div>
+        <p className="admin-eyebrow">Lead readiness</p>
+        <strong>What the office should collect before Nick prices it.</strong>
+      </div>
+      <div className="readiness-grid">
+        {checks.map((check) => (
+          <span className={check.done ? 'done' : ''} key={check.label}>
+            <CheckCircle2 size={15} aria-hidden="true" />
+            {check.label}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -1473,6 +1779,39 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     }
   }
 
+  const markCalledNow = () => {
+    const nextFollowUp = nextBusinessMorningIso(1)
+    setFollowUpAt(toDateTimeInputValue(nextFollowUp))
+    updateLead(lead.id, {
+      status: ['Started', 'New'].includes(lead.status) ? 'Contacted' : lead.status,
+      lastContactedAt: new Date().toISOString(),
+      followUpAt: nextFollowUp,
+      nextStep: nextStep || 'Send photos/address reminder and confirm estimate timing.',
+    })
+  }
+
+  const followUpTomorrow = () => {
+    const nextFollowUp = nextBusinessMorningIso(1)
+    setFollowUpAt(toDateTimeInputValue(nextFollowUp))
+    updateLead(lead.id, {
+      status: lead.status === 'New' ? 'Contacted' : 'Follow Up',
+      followUpAt: nextFollowUp,
+      nextStep: nextStep || 'Follow up tomorrow with one clear next step.',
+    })
+  }
+
+  const copyTextMessage = async () => {
+    await copyText(
+      `Hi ${lead.name || 'there'}, this is Nick with Flanagan Construction. Thanks for reaching out about ${lead.projectType || 'your project'}. Can you send the job address, a few photos, and the best time for a quick call?`,
+    )
+    updateLead(lead.id, {
+      lastContactedAt: new Date().toISOString(),
+      nextStep: nextStep || 'Text copied. Watch for photos/address and schedule estimate.',
+    })
+  }
+
+  const mapsUrl = lead.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.address)}` : ''
+
   return (
     <section className="admin-panel lead-detail-panel">
       <div className="lead-detail-head">
@@ -1540,6 +1879,33 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           <input value={lead.phone} readOnly />
         </label>
       </div>
+
+      <div className="lead-quick-action-strip">
+        <button type="button" onClick={markCalledNow}>
+          <Phone size={16} aria-hidden="true" />
+          Log call now
+        </button>
+        <button type="button" onClick={followUpTomorrow}>
+          <Clock3 size={16} aria-hidden="true" />
+          Follow up tomorrow
+        </button>
+        <button type="button" onClick={copyTextMessage}>
+          <MessageSquareText size={16} aria-hidden="true" />
+          Copy text
+        </button>
+        {mapsUrl ? (
+          <a href={mapsUrl} target="_blank" rel="noreferrer">
+            <MapPin size={16} aria-hidden="true" />
+            Open map
+          </a>
+        ) : null}
+        <button type="button" onClick={() => applyStage('Estimate Sent')}>
+          <FileText size={16} aria-hidden="true" />
+          Estimate sent
+        </button>
+      </div>
+
+      <LeadReadinessChecklist lead={workingLead} />
 
       <div className="stage-playbook">
         <div>
@@ -3039,6 +3405,8 @@ function AdminDashboard({ content, setContent, goHome }) {
   const [emailSettings, setEmailSettings] = useState(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [priorityFilter, setPriorityFilter] = useState('All')
+  const [focusFilter, setFocusFilter] = useState('All')
   const [selectedLeadId, setSelectedLeadId] = useState('')
   const [draft, setDraft] = useState(() => cloneSiteContent(content))
   const [savingContent, setSavingContent] = useState(false)
@@ -3099,9 +3467,11 @@ function AdminDashboard({ content, setContent, goHome }) {
     const needle = query.trim().toLowerCase()
     return leads
       .filter((lead) => statusFilter === 'All' || lead.status === statusFilter)
+      .filter((lead) => priorityFilter === 'All' || lead.priority === priorityFilter)
+      .filter((lead) => leadMatchesFocus(lead, focusFilter))
       .filter((lead) => {
         if (!needle) return true
-        return [lead.name, lead.phone, lead.email, lead.projectType, lead.message, lead.notes]
+        return [lead.name, lead.phone, lead.email, lead.address, lead.projectType, lead.message, lead.notes]
           .join(' ')
           .toLowerCase()
           .includes(needle)
@@ -3111,7 +3481,7 @@ function AdminDashboard({ content, setContent, goHome }) {
         const bTime = new Date(b.receivedAt).getTime() || 0
         return bTime - aTime
       })
-  }, [leads, query, statusFilter])
+  }, [leads, query, statusFilter, priorityFilter, focusFilter])
 
   const activeSelectedLeadId =
     selectedLeadId && filteredLeads.some((lead) => lead.id === selectedLeadId)
@@ -3135,6 +3505,43 @@ function AdminDashboard({ content, setContent, goHome }) {
       })
     } catch (error) {
       setMessage(error.message || 'Lead update failed.')
+    }
+  }
+
+  const createLead = async (leadDraft) => {
+    const receivedAt = new Date().toISOString()
+    const optimisticLead = normalizeLead({
+      ...leadDraft,
+      id: makeLeadId({ ...leadDraft, receivedAt }),
+      receivedAt,
+      status: leadDraft.status || 'New',
+      priority: leadDraft.priority || 'Warm',
+    })
+    const optimisticLeads = [optimisticLead, ...leads]
+    setLeads(optimisticLeads)
+    saveStoredLeads(optimisticLeads)
+    setSelectedLeadId(optimisticLead.id)
+    setActiveView('leads')
+    setMessage(`Added ${optimisticLead.name}. Work it before it cools off.`)
+
+    if (mode !== 'server') return optimisticLead
+
+    try {
+      const payload = await adminRequest('/api/admin/leads', {
+        method: 'POST',
+        token: auth.token,
+        body: optimisticLead,
+      })
+      const savedLead = normalizeLead(payload.lead || optimisticLead)
+      const savedLeads = [savedLead, ...leads.filter((lead) => lead.id !== optimisticLead.id)]
+      setLeads(savedLeads)
+      saveStoredLeads(savedLeads)
+      setSelectedLeadId(savedLead.id)
+      setMessage(`Added ${savedLead.name} to the live CRM.`)
+      return savedLead
+    } catch (error) {
+      setMessage(error.message || 'Lead saved locally, but server create failed.')
+      return optimisticLead
     }
   }
 
@@ -3399,6 +3806,15 @@ function AdminDashboard({ content, setContent, goHome }) {
         </div>
       ) : null}
 
+      <AdminCommandBoard
+        leads={leads}
+        selectedLead={selectedLead}
+        setSelectedLeadId={setSelectedLeadId}
+        setActiveView={setActiveView}
+        emailSettings={emailSettings}
+        mode={mode}
+      />
+
       {activeView === 'assistant' ? (
         <WorkdayAssistant
           user={auth.user}
@@ -3425,6 +3841,10 @@ function AdminDashboard({ content, setContent, goHome }) {
           </div>
 
           <PipelineStats leads={leads} />
+
+          <ManualLeadPanel createLead={createLead} />
+
+          <PipelineBoard leads={leads} setSelectedLeadId={setSelectedLeadId} />
 
           <CrmCommandCenter
             leads={leads}
@@ -3464,6 +3884,23 @@ function AdminDashboard({ content, setContent, goHome }) {
                     <option key={status}>{status}</option>
                   ))}
                 </select>
+                <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+                  {priorityFilterOptions.map((priority) => (
+                    <option key={priority}>{priority}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="lead-focus-tabs" aria-label="Lead focus filters">
+                {focusFilterOptions.map((filter) => (
+                  <button
+                    className={focusFilter === filter ? 'active' : ''}
+                    key={filter}
+                    type="button"
+                    onClick={() => setFocusFilter(filter)}
+                  >
+                    {filter}
+                  </button>
+                ))}
               </div>
               <LeadList
                 leads={filteredLeads}

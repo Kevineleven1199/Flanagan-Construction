@@ -498,6 +498,43 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
     return
   }
 
+  if (pathname === '/api/admin/leads' && req.method === 'POST') {
+    try {
+      const data = await readJsonBody(req, 100000)
+      const hasContact = Boolean(String(data.phone || '').trim() || String(data.email || '').trim())
+      if (!hasContact) {
+        sendJson(res, 422, { ok: false, error: 'Phone or email is required to create an office lead.' }, gzipOk)
+        return
+      }
+
+      const lead = normalizeLeadRecord({
+        ...data,
+        id: String(data.id || randomUUID()),
+        name: String(data.name || 'Phone/referral lead').trim(),
+        source: 'flanagan-admin',
+        leadKind: String(data.leadKind || 'Office-entered lead'),
+        receivedAt: data.receivedAt || new Date().toISOString(),
+        status: data.status || 'New',
+        priority: data.priority || 'Warm',
+      })
+
+      await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
+      const crm = await readJsonFile(leadCrmPath, {})
+      crm[lead.id] = {
+        status: lead.status,
+        priority: lead.priority,
+        nextStep: lead.nextStep,
+        notes: lead.notes,
+        updatedAt: new Date().toISOString(),
+      }
+      await writeJsonFile(leadCrmPath, crm)
+      sendJson(res, 201, { ok: true, lead }, gzipOk)
+    } catch (error) {
+      sendJson(res, 400, { ok: false, error: error.message || 'Lead create failed.' }, gzipOk)
+    }
+    return
+  }
+
   const match = pathname.match(/^\/api\/admin\/leads\/([^/]+)$/)
   if (match && req.method === 'PATCH') {
     try {
@@ -545,7 +582,7 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
     return
   }
 
-  send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, PATCH' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+  send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET, POST, PATCH' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
 }
 
 // Vite emits content-hashed asset names (e.g. index-DiNKpkIN.js). Those can be
