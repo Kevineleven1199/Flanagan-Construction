@@ -1858,6 +1858,323 @@
   background-size: cover;
 }
 
+.admin-brand > span.admin-logo-mark {
+  overflow: hidden;
+  border: 1px solid rgba(242, 184, 75, 0.38);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent),
+    url('/brand-mark.svg') center/cover no-repeat;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+}
+
+.ads-page {
+  max-width: 1380px;
+}
+
+.ads-hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  border-color: rgba(18, 63, 109, 0.2);
+  background:
+    linear-gradient(135deg, rgba(7, 24, 39, 0.96), rgba(18, 63, 109, 0.88)),
+    #071827;
+  color: #fff;
+}
+
+.ads-hero-panel::after {
+  content: "";
+  position: absolute;
+  right: -70px;
+  bottom: -95px;
+  width: 260px;
+  height: 260px;
+  border: 42px solid rgba(242, 184, 75, 0.16);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.ads-hero-panel h2,
+.ads-hero-panel p {
+  margin: 0;
+}
+
+.ads-hero-panel h2 {
+  max-width: 840px;
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  line-height: 0.98;
+}
+
+.ads-hero-panel p {
+  max-width: 820px;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.55;
+}
+
+.ads-hero-panel .admin-eyebrow {
+  color: #f2b84b;
+}
+
+.ads-score-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 220px;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 18px;
+  backdrop-filter: blur(14px);
+}
+
+.ads-score-card span {
+  color: #f2b84b;
+  font-size: 3.2rem;
+  font-weight: 950;
+  line-height: 0.9;
+}
+
+.ads-score-card strong,
+.ads-score-card small {
+  display: block;
+}
+
+.ads-score-card small {
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.tracking-status-grid,
+.ads-link-grid,
+.ads-tutorial-grid,
+.seo-check-grid,
+.keyword-group-grid,
+.weekly-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.tracking-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 14px 0;
+}
+
+.tracking-status-grid span {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(154, 103, 18, 0.18);
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #725012;
+  padding: 0 12px;
+  font-weight: 900;
+}
+
+.tracking-status-grid span.done {
+  border-color: rgba(31, 157, 107, 0.28);
+  background: #edf9f3;
+  color: #1d684c;
+}
+
+.ads-settings-grid {
+  align-items: start;
+}
+
+.ads-link-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ads-link-grid a {
+  display: flex;
+  min-height: 74px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(18, 63, 109, 0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, #fff, #f8fbff);
+  color: #123f6d;
+  font-weight: 950;
+  padding: 14px;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.ads-link-grid a:hover {
+  border-color: rgba(242, 184, 75, 0.72);
+  box-shadow: 0 16px 34px rgba(18, 63, 109, 0.12);
+  transform: translateY(-2px);
+}
+
+.ads-link-grid svg {
+  color: #f2b84b;
+  flex: 0 0 auto;
+}
+
+.ads-tutorial-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ads-step-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, #fff, #f8fbff);
+  padding: 16px;
+}
+
+.ads-step-number {
+  display: inline-grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: #071827;
+  color: #f2b84b;
+  font-weight: 950;
+}
+
+.ads-step-card h3,
+.keyword-group-card h3,
+.weekly-ads-panel h2 {
+  margin: 0;
+  color: #1c1f21;
+}
+
+.ads-step-card p,
+.keyword-group-card p {
+  margin: 0;
+  color: #59636a;
+  line-height: 1.5;
+}
+
+.ads-step-card a {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 38px;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px;
+  background: #eef5fb;
+  color: #123f6d;
+  font-weight: 900;
+  padding: 0 11px;
+  text-decoration: none;
+}
+
+.seo-check-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.seo-check-grid article {
+  display: flex;
+  gap: 10px;
+  border: 1px solid rgba(18, 63, 109, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.seo-check-grid svg {
+  color: #1d684c;
+  flex: 0 0 auto;
+}
+
+.seo-check-grid strong,
+.seo-check-grid p {
+  display: block;
+  margin: 0;
+}
+
+.seo-check-grid p {
+  margin-top: 5px;
+  color: #59636a;
+  line-height: 1.45;
+}
+
+.keyword-group-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.keyword-group-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  padding: 15px;
+}
+
+.negative-card {
+  border-color: rgba(154, 103, 18, 0.24);
+  background: #fff8e6;
+}
+
+.keyword-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.keyword-chip-list span {
+  border: 1px solid rgba(18, 63, 109, 0.1);
+  border-radius: 999px;
+  background: #eef5fb;
+  color: #123f6d;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.negative-card .keyword-chip-list span {
+  border-color: rgba(154, 103, 18, 0.18);
+  background: #fff;
+  color: #725012;
+}
+
+.weekly-ads-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.62fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  border-color: rgba(31, 157, 107, 0.2);
+  background:
+    linear-gradient(135deg, rgba(237, 249, 243, 0.94), rgba(255, 255, 255, 0.96));
+}
+
+.weekly-ads-panel h2 {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.02;
+}
+
+.weekly-checklist span {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  border: 1px solid rgba(31, 157, 107, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  color: #1d684c;
+  padding: 12px;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
 /* Admin cockpit upgrade: faster triage, clearer hierarchy, less beige form fatigue. */
 .admin-shell {
   background:
@@ -2300,6 +2617,12 @@
   .crm-command-grid,
   .content-layout,
   .integration-grid,
+  .ads-hero-panel,
+  .ads-link-grid,
+  .ads-tutorial-grid,
+  .seo-check-grid,
+  .keyword-group-grid,
+  .weekly-ads-panel,
   .template-grid,
   .review-schedule-grid,
   .review-queue-card,
@@ -2338,11 +2661,17 @@
   .admin-form-grid,
   .repeater-list.two-col,
   .repeater-list.three-col,
-  .quote-metric-grid,
-  .crm-coach-steps,
-  .campaign-grid,
-  .template-grid,
-  .review-schedule-grid,
+    .quote-metric-grid,
+    .crm-coach-steps,
+    .campaign-grid,
+    .tracking-status-grid,
+    .ads-link-grid,
+    .ads-tutorial-grid,
+    .seo-check-grid,
+    .keyword-group-grid,
+    .weekly-ads-panel,
+    .template-grid,
+    .review-schedule-grid,
   .review-queue-card,
   .nextdoor-coaching,
   .work-gallery-admin-grid,
@@ -2498,6 +2827,22 @@
   .admin-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .ads-hero-panel {
+    padding: 16px;
+  }
+
+  .ads-hero-panel h2 {
+    font-size: 2.15rem;
+  }
+
+  .ads-score-card {
+    min-width: 0;
+  }
+
+  .ads-link-grid a {
+    min-height: 54px;
   }
 
   .assistant-hero {

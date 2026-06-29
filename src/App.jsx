@@ -30,9 +30,110 @@ function track(event, data = {}) {
   try {
     window.dataLayer = window.dataLayer || []
     window.dataLayer.push({ event, ...data })
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', event, data)
+    }
   } catch {
     // analytics must never break the page
   }
+}
+
+function cleanTrackingId(value) {
+  return String(value || '').trim()
+}
+
+function loadTrackingScript(id, src) {
+  if (typeof document === 'undefined' || !id || !src) return
+  if (document.getElementById(id)) return
+  const script = document.createElement('script')
+  script.id = id
+  script.async = true
+  script.src = src
+  document.head.appendChild(script)
+}
+
+function configureGoogleTracking(integrations = {}) {
+  if (typeof window === 'undefined') return
+
+  const gtmId = cleanTrackingId(integrations.gtmContainerId)
+  if (gtmId) {
+    window.dataLayer = window.dataLayer || []
+    window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' })
+    loadTrackingScript(
+      'flanagan-gtm',
+      `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}`,
+    )
+  }
+
+  const tagIds = [
+    cleanTrackingId(integrations.ga4MeasurementId),
+    cleanTrackingId(integrations.googleAdsConversionId),
+  ].filter(Boolean)
+  if (!tagIds.length) return
+
+  window.dataLayer = window.dataLayer || []
+  window.gtag =
+    window.gtag ||
+    function gtag(...args) {
+      window.dataLayer.push(args)
+    }
+
+  loadTrackingScript(
+    'flanagan-gtag',
+    `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(tagIds[0])}`,
+  )
+  window.gtag('js', new Date())
+  tagIds.forEach((tagId) => window.gtag('config', tagId))
+}
+
+function sendLeadConversion(integrations = {}, lead = {}) {
+  const conversionId = cleanTrackingId(integrations.googleAdsConversionId)
+  const conversionLabel = cleanTrackingId(integrations.googleAdsLeadConversionLabel)
+  track('generate_lead', {
+    projectType: lead.projectType,
+    service_area: lead.addressCity || 'New Castle County',
+  })
+  if (!conversionId || !conversionLabel || typeof window.gtag !== 'function') return
+  window.gtag('event', 'conversion', {
+    send_to: `${conversionId}/${conversionLabel}`,
+    value: 1.0,
+    currency: 'USD',
+  })
+}
+
+function setMetaAttribute(selector, attribute, value) {
+  if (typeof document === 'undefined' || !value) return
+  const element = document.head.querySelector(selector)
+  if (element) element.setAttribute(attribute, value)
+}
+
+function setCanonicalUrl(value) {
+  if (typeof document === 'undefined' || !value) return
+  const element = document.head.querySelector('link[rel="canonical"]')
+  if (element) element.setAttribute('href', value)
+}
+
+function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
+  const seo = content.seo || defaultSiteContent.seo
+  const baseUrl = 'https://flanaganconstructionde.com'
+  const isAdmin = routePath.startsWith('/admin')
+  const isWork = routePath.startsWith('/our-work')
+  const title = isAdmin ? 'Flanagan Admin' : isWork ? seo.ourWorkTitle : seo.homeTitle
+  const description = isAdmin ? 'Private Flanagan Construction admin dashboard.' : isWork ? seo.ourWorkDescription : seo.homeDescription
+  const url = `${baseUrl}${isWork ? '/our-work' : '/'}`
+
+  document.title = title
+  setMetaAttribute('meta[name="description"]', 'content', description)
+  setMetaAttribute('meta[name="keywords"]', 'content', seo.keywords || defaultSiteContent.seo.keywords)
+  setMetaAttribute('meta[name="robots"]', 'content', isAdmin ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1')
+  setMetaAttribute('meta[property="og:title"]', 'content', title)
+  setMetaAttribute('meta[property="og:description"]', 'content', description)
+  setMetaAttribute('meta[property="og:url"]', 'content', url)
+  setMetaAttribute('meta[property="og:image"]', 'content', seo.ogImage || defaultSiteContent.seo.ogImage)
+  setMetaAttribute('meta[name="twitter:title"]', 'content', title)
+  setMetaAttribute('meta[name="twitter:description"]', 'content', description)
+  setMetaAttribute('meta[name="twitter:image"]', 'content', seo.ogImage || defaultSiteContent.seo.ogImage)
+  setCanonicalUrl(url)
 }
 
 const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
@@ -62,7 +163,7 @@ const projectVisuals = [
     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=84',
   },
 ]
-const brandVisual = 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=500&q=84'
+const brandVisual = '/brand-mark.svg'
 const proofVisuals = [
   'https://images.unsplash.com/photo-1581092160607-ee22731c00f6?auto=format&fit=crop&w=500&q=82',
   'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=500&q=82',
@@ -988,6 +1089,14 @@ function App() {
   const business = siteContent.business
   const phoneHref = phoneHrefFor(business.phone)
 
+  useEffect(() => {
+    configureGoogleTracking(siteContent.integrations || {})
+  }, [siteContent.integrations])
+
+  useEffect(() => {
+    applyDocumentSeo(siteContent, routePath)
+  }, [routePath, siteContent])
+
   const dismissSplash = useCallback(() => {
     setShowSplash(false)
   }, [])
@@ -1343,7 +1452,7 @@ function App() {
       if (!response.ok) throw new Error(`Request failed: ${response.status}`)
       setSubmitted(true)
       setStatus('Request received. We will reach out within one business day.')
-      track('generate_lead', { projectType: finalLead.projectType, budget: submittedForm.budget })
+      sendLeadConversion(siteContent.integrations || {}, finalLead)
       window.setTimeout(() => {
         document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 60)

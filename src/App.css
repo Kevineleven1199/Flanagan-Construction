@@ -4075,6 +4075,11 @@ legend {
   border-radius: 18px;
 }
 
+.brand-mark.photo-mark::after,
+.splash-mark.photo-mark::after {
+  opacity: 0.08;
+}
+
 .service-photo-badge {
   width: 58px;
   height: 58px;

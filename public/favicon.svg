@@ -1,8 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="48" height="48">
-  <rect width="24" height="24" rx="5" fill="#f2b84b" />
-  <g transform="translate(2.64 2.64) scale(0.78)" fill="none" stroke="#161616" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0a2.12 2.12 0 0 1 0-3L12 9" />
-    <path d="M17.64 15 22 10.64" />
-    <path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 0 0-3.94-1.64H9l.92.82A6.18 6.18 0 0 1 12 8.4v1.56l2 2h2.47l2.26 1.91" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Flanagan Construction">
+  <defs>
+    <linearGradient id="navy" x1="12" x2="84" y1="10" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#071827"/>
+      <stop offset=".58" stop-color="#123f6d"/>
+      <stop offset="1" stop-color="#06111c"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="26" x2="76" y1="18" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd36a"/>
+      <stop offset=".55" stop-color="#f2b84b"/>
+      <stop offset="1" stop-color="#d89322"/>
+    </linearGradient>
+  </defs>
+  <rect width="96" height="96" rx="20" fill="url(#navy)"/>
+  <path fill="none" stroke="#f2b84b" stroke-linecap="round" stroke-linejoin="round" stroke-width="7" d="M18 43 48 20l30 23"/>
+  <path fill="#fff" d="M28 73V44h38v10H41v7h21v9H41v3H28Z"/>
+  <path fill="#48b8f0" d="M66 52h10v21H66z"/>
+  <path fill="url(#gold)" d="M15 70h66v9H15z"/>
+  <circle cx="75" cy="25" r="5" fill="#f2b84b"/>
 </svg>

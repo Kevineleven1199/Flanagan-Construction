@@ -476,6 +476,18 @@ export const defaultSiteContent = {
     beforeFooter: '',
   },
 
+  seo: {
+    homeTitle: 'New Castle County Remodeling Contractor | Flanagan Construction',
+    homeDescription:
+      'Flanagan Construction handles kitchen and bath remodeling, concrete driveways and sidewalks, roofing, siding, windows, decks, and repairs across New Castle County, Delaware.',
+    ourWorkTitle: 'Our Work | Flanagan Construction New Castle County',
+    ourWorkDescription:
+      'See recent kitchens, baths, concrete, roofing, siding, windows, decks, and repair projects from Flanagan Construction around New Castle County, Delaware.',
+    keywords:
+      'remodeling contractor New Castle County DE, kitchen remodel Delaware, bathroom remodel Delaware, concrete driveway Delaware, roofing siding windows Delaware, deck contractor New Castle County',
+    ogImage: 'https://flanaganconstructionde.com/og.png',
+  },
+
   aiUpgrade: {
     brandVoice:
       'Plain-spoken, salt-of-the-earth, professional, local, helpful, and never luxury or expensive sounding.',
@@ -496,6 +508,20 @@ export const defaultSiteContent = {
     joistLoginUrl: 'https://www.joist.com/',
     googleBusinessReviewUrl: '',
     nextdoorBusinessUrl: '',
+    googleAdsUrl: 'https://ads.google.com/',
+    googleAdsCustomerId: '',
+    googleAdsConversionId: '',
+    googleAdsLeadConversionLabel: '',
+    ga4MeasurementId: '',
+    gtmContainerId: '',
+    googleSearchConsoleUrl: 'https://search.google.com/search-console',
+    googleTagAssistantUrl: 'https://tagassistant.google.com/',
+    adsLandingPageUrl: 'https://flanaganconstructionde.com/',
+    adsMonthlyBudget: '',
+    adsPrimaryGoal:
+      'Phone calls and estimate requests for kitchens and baths, concrete driveways and sidewalks, roofing, siding, and windows in New Castle County.',
+    adsNotes:
+      'Start with Google Search ads only. Keep the location tight to New Castle County, use call and lead-form conversions, and review search terms weekly before raising budget.',
     notes:
       'Google Photos can upload app-created media. Google Drive Picker can select or upload Drive files. Meta requires OAuth for Instagram and Facebook Page publishing. iCloud Shared Albums should start as shared/public album link intake.',
   },

@@ -4,14 +4,21 @@
   "description": "Kitchen, bath, concrete, roofing, siding, windows, decks, and repair work across New Castle County, Delaware.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f7f4ec",
-  "theme_color": "#161616",
+  "background_color": "#f5f7fa",
+  "theme_color": "#071827",
+  "categories": ["business", "productivity", "home"],
   "icons": [
     {
       "src": "/favicon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any"
+    },
+    {
+      "src": "/brand-mark.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
     }
   ]
 }

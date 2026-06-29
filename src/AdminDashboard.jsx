@@ -2900,7 +2900,138 @@ const integrationDocs = {
   joist: 'https://www.joist.com/',
   googleBusiness: 'https://developers.google.com/my-business/content/review-data',
   nextdoor: 'https://business.nextdoor.com/en-us/small-business',
+  googleAds: 'https://ads.google.com/',
+  googleAdsHelp: 'https://support.google.com/google-ads/',
+  campaignHelp: 'https://support.google.com/google-ads/topic/3121941',
+  keywordPlanner: 'https://support.google.com/google-ads/answer/6325025',
+  conversionTracking: 'https://support.google.com/google-ads/answer/1722022',
+  googleTag: 'https://support.google.com/google-ads/answer/6331304',
+  autoTagging: 'https://support.google.com/google-ads/answer/3095550',
+  searchConsole: 'https://search.google.com/search-console/about',
+  tagAssistant: 'https://tagassistant.google.com/',
 }
+
+const seoChecklist = [
+  {
+    title: 'Google Business Profile',
+    copy: 'Keep services, service area, phone, photos, hours, and review link current. Add job photos every week.',
+  },
+  {
+    title: 'Local pages and sitemap',
+    copy: 'Homepage and Our Work are in the sitemap. Keep New Castle County towns and main job types in page copy.',
+  },
+  {
+    title: 'Reviews and replies',
+    copy: 'Ask after completed jobs. Reply with the job type and town so local keywords happen naturally.',
+  },
+  {
+    title: 'Conversion tracking',
+    copy: 'Track form submits and phone clicks before spending real ad budget. Verify tags with Google Tag Assistant.',
+  },
+  {
+    title: 'Photo proof',
+    copy: 'Upload real kitchens, baths, concrete, roofing, siding, windows, decks, and repairs with plain captions.',
+  },
+  {
+    title: 'Weekly Search Console check',
+    copy: 'Look for queries, pages gaining impressions, crawl issues, and mobile problems before making site changes.',
+  },
+]
+
+const googleAdsSteps = [
+  {
+    title: 'Open Google Ads and set the goal',
+    copy: 'Use Leads as the goal. Start with Search only, not Display or Performance Max, so spending goes toward people actively looking for a contractor.',
+    action: 'Open Google Ads',
+    href: integrationDocs.googleAds,
+  },
+  {
+    title: 'Keep location tight',
+    copy: 'Target New Castle County, Delaware. Exclude distant counties unless Nick intentionally wants those calls.',
+    action: 'Campaign setup help',
+    href: integrationDocs.campaignHelp,
+  },
+  {
+    title: 'Build three starting ad groups',
+    copy: 'Kitchen and bath remodeling, concrete driveways and sidewalks, and roofing/siding/windows. Keep decks and additions separate later.',
+    action: 'Keyword Planner',
+    href: integrationDocs.keywordPlanner,
+  },
+  {
+    title: 'Turn on conversions before budget',
+    copy: 'Paste GA4, Google tag, or Google Ads conversion IDs into this page. Test the estimate form and phone buttons before scaling.',
+    action: 'Conversion tracking',
+    href: integrationDocs.conversionTracking,
+  },
+  {
+    title: 'Use auto-tagging and UTMs',
+    copy: 'Auto-tagging helps Google Ads report leads correctly. UTMs help the CRM show where the lead came from later.',
+    action: 'Auto-tagging docs',
+    href: integrationDocs.autoTagging,
+  },
+  {
+    title: 'Optimize once a week',
+    copy: 'Pause wasteful search terms, add negatives, raise bids only on leads that answer, and keep ads pointing to the simple request form.',
+    action: 'Google Ads Help',
+    href: integrationDocs.googleAdsHelp,
+  },
+]
+
+const googleAdsKeywordGroups = [
+  {
+    title: 'Kitchen & bath',
+    keywords: [
+      'kitchen remodel new castle county',
+      'bathroom remodel newark de',
+      'bathroom contractor wilmington de',
+      'tile shower contractor delaware',
+      'kitchen renovation near me',
+    ],
+  },
+  {
+    title: 'Concrete',
+    keywords: [
+      'concrete driveway new castle county',
+      'sidewalk repair delaware',
+      'driveway replacement newark de',
+      'concrete patio contractor near me',
+      'paver patio new castle county',
+    ],
+  },
+  {
+    title: 'Roofing, siding, windows',
+    keywords: [
+      'roof repair new castle county',
+      'siding contractor delaware',
+      'window replacement newark de',
+      'gutter guards delaware',
+      'exterior repair contractor near me',
+    ],
+  },
+]
+
+const googleAdsNegativeKeywords = [
+  'jobs',
+  'career',
+  'salary',
+  'free materials',
+  'diy',
+  'how to',
+  'home depot',
+  'lowes',
+  'class',
+  'training',
+  'apartment rental',
+  'cheap only',
+]
+
+const weeklyAdsRoutine = [
+  'Check yesterday and last 7 days for form leads and phone clicks.',
+  'Open search terms. Add junk searches to negatives before raising budget.',
+  'Listen to which calls became real estimates. Mark bad-fit leads in the CRM.',
+  'Add one real project photo or review if a job wrapped up.',
+  'Send Nick a short note: spend, leads, booked estimates, and next adjustment.',
+]
 
 function fillGrowthTemplate(template, lead = {}, reviewLink = '') {
   return String(template || '')
@@ -2933,6 +3064,245 @@ function IntegrationCard({ title, status, copy, href }) {
         </a>
       ) : null}
     </article>
+  )
+}
+
+function AdsSeoDashboard({ draft, updateSection, saveContent, savingContent }) {
+  const integrations = draft.integrations || {}
+  const trackingItems = [
+    { label: 'GTM', value: integrations.gtmContainerId },
+    { label: 'GA4', value: integrations.ga4MeasurementId },
+    { label: 'Google Ads ID', value: integrations.googleAdsConversionId },
+    { label: 'Lead label', value: integrations.googleAdsLeadConversionLabel },
+  ]
+  const configuredCount = trackingItems.filter((item) => String(item.value || '').trim()).length
+  const keywordCopy = googleAdsKeywordGroups
+    .map((group) => `${group.title}\n${group.keywords.map((keyword) => `- ${keyword}`).join('\n')}`)
+    .join('\n\n')
+  const negativeCopy = googleAdsNegativeKeywords.join('\n')
+  const adDraft = [
+    'Headline ideas:',
+    'New Castle County Remodeler',
+    'Kitchen, Bath & Concrete Help',
+    'Roofing Siding Windows',
+    '',
+    'Description ideas:',
+    'Licensed and insured local contractor. Send the job address and details for a clear next step.',
+    'Kitchens, baths, concrete, roofing, siding, windows, decks, and repairs across New Castle County.',
+  ].join('\n')
+
+  return (
+    <section className="admin-page ads-page">
+      <div className="admin-page-head">
+        <div>
+          <p className="admin-eyebrow">SEO + Google Ads</p>
+          <h1>Office manager growth coach</h1>
+        </div>
+        <div className="admin-page-actions">
+          <a className="admin-secondary-button" href={integrationDocs.googleAds} target="_blank" rel="noreferrer">
+            <ExternalLink size={17} aria-hidden="true" />
+            Google Ads
+          </a>
+          <button className="admin-primary-button" type="button" onClick={saveContent} disabled={savingContent}>
+            {savingContent ? <RefreshCw size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
+            Save SEO / ads settings
+          </button>
+        </div>
+      </div>
+
+      <section className="admin-panel ads-hero-panel">
+        <div>
+          <p className="admin-eyebrow">Step-by-step setup</p>
+          <h2>Start simple: local search ads, real lead tracking, weekly cleanup.</h2>
+          <p>
+            This page is the playbook for getting Flanagan found on Google without wasting money. Fill in account links and tracking IDs as they are created, then use the weekly checklist to keep campaigns healthy.
+          </p>
+        </div>
+        <div className="ads-score-card" aria-label="Tracking readiness">
+          <span>{configuredCount}/4</span>
+          <strong>Tracking fields ready</strong>
+          <small>Form leads fire Google events once IDs are saved.</small>
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Tracking and account links</p>
+            <strong>Paste IDs here after Google Ads, GA4, Tag Manager, and Search Console are created.</strong>
+          </div>
+          <a className="admin-primary-link" href={integrationDocs.tagAssistant} target="_blank" rel="noreferrer">
+            Tag Assistant
+            <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </div>
+        <div className="tracking-status-grid">
+          {trackingItems.map((item) => (
+            <span className={String(item.value || '').trim() ? 'done' : ''} key={item.label}>
+              <CheckCircle2 size={15} aria-hidden="true" />
+              {item.label}
+            </span>
+          ))}
+        </div>
+        <div className="admin-form-grid ads-settings-grid">
+          <Field label="Google Ads account URL" value={integrations.googleAdsUrl || integrationDocs.googleAds} onChange={(value) => updateSection('integrations', 'googleAdsUrl', value)} />
+          <Field label="Google Ads customer ID" value={integrations.googleAdsCustomerId || ''} onChange={(value) => updateSection('integrations', 'googleAdsCustomerId', value)} />
+          <Field label="Google Tag Manager ID" value={integrations.gtmContainerId || ''} onChange={(value) => updateSection('integrations', 'gtmContainerId', value)} />
+          <Field label="GA4 measurement ID" value={integrations.ga4MeasurementId || ''} onChange={(value) => updateSection('integrations', 'ga4MeasurementId', value)} />
+          <Field label="Google Ads conversion ID" value={integrations.googleAdsConversionId || ''} onChange={(value) => updateSection('integrations', 'googleAdsConversionId', value)} />
+          <Field label="Lead conversion label" value={integrations.googleAdsLeadConversionLabel || ''} onChange={(value) => updateSection('integrations', 'googleAdsLeadConversionLabel', value)} />
+          <Field label="Search Console URL" value={integrations.googleSearchConsoleUrl || integrationDocs.searchConsole} onChange={(value) => updateSection('integrations', 'googleSearchConsoleUrl', value)} />
+          <Field label="Ads landing page URL" value={integrations.adsLandingPageUrl || 'https://flanaganconstructionde.com/'} onChange={(value) => updateSection('integrations', 'adsLandingPageUrl', value)} />
+          <Field label="Starting monthly budget" value={integrations.adsMonthlyBudget || ''} onChange={(value) => updateSection('integrations', 'adsMonthlyBudget', value)} />
+          <Field label="Primary campaign goal" value={integrations.adsPrimaryGoal || ''} textarea rows={3} onChange={(value) => updateSection('integrations', 'adsPrimaryGoal', value)} />
+          <Field label="Google Ads notes" value={integrations.adsNotes || ''} textarea rows={4} onChange={(value) => updateSection('integrations', 'adsNotes', value)} />
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel seo-editor-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">SEO page settings</p>
+            <strong>Edit what Google and social previews see for the homepage and Our Work page.</strong>
+          </div>
+          <a className="admin-secondary-button" href={integrationDocs.searchConsole} target="_blank" rel="noreferrer">
+            Search Console
+            <ExternalLink size={15} aria-hidden="true" />
+          </a>
+        </div>
+        <div className="admin-form-grid">
+          <Field label="Homepage SEO title" value={draft.seo?.homeTitle || ''} onChange={(value) => updateSection('seo', 'homeTitle', value)} />
+          <Field label="Our Work SEO title" value={draft.seo?.ourWorkTitle || ''} onChange={(value) => updateSection('seo', 'ourWorkTitle', value)} />
+          <Field label="Homepage description" value={draft.seo?.homeDescription || ''} textarea rows={3} onChange={(value) => updateSection('seo', 'homeDescription', value)} />
+          <Field label="Our Work description" value={draft.seo?.ourWorkDescription || ''} textarea rows={3} onChange={(value) => updateSection('seo', 'ourWorkDescription', value)} />
+          <Field label="SEO keywords" value={draft.seo?.keywords || ''} textarea rows={3} onChange={(value) => updateSection('seo', 'keywords', value)} />
+          <Field label="Social preview image URL" value={draft.seo?.ogImage || ''} onChange={(value) => updateSection('seo', 'ogImage', value)} />
+        </div>
+      </section>
+
+      <div className="ads-link-grid">
+        <a href={integrationDocs.googleAds} target="_blank" rel="noreferrer">
+          <Target size={18} aria-hidden="true" />
+          Open Google Ads
+        </a>
+        <a href={integrationDocs.keywordPlanner} target="_blank" rel="noreferrer">
+          <Search size={18} aria-hidden="true" />
+          Keyword Planner
+        </a>
+        <a href={integrationDocs.conversionTracking} target="_blank" rel="noreferrer">
+          <CheckCircle2 size={18} aria-hidden="true" />
+          Conversion tracking
+        </a>
+        <a href={integrationDocs.googleTag} target="_blank" rel="noreferrer">
+          <Settings size={18} aria-hidden="true" />
+          Google tag
+        </a>
+        <a href={integrationDocs.searchConsole} target="_blank" rel="noreferrer">
+          <TrendingUp size={18} aria-hidden="true" />
+          Search Console
+        </a>
+      </div>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Google Ads tutorial</p>
+            <strong>Follow these in order before spending serious budget.</strong>
+          </div>
+        </div>
+        <div className="ads-tutorial-grid">
+          {googleAdsSteps.map((step, index) => (
+            <article className="ads-step-card" key={step.title}>
+              <span className="ads-step-number">{String(index + 1).padStart(2, '0')}</span>
+              <h3>{step.title}</h3>
+              <p>{step.copy}</p>
+              <a href={step.href} target="_blank" rel="noreferrer">
+                {step.action}
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">SEO enhancement checklist</p>
+            <strong>Small weekly habits that make the site easier to find and easier to trust.</strong>
+          </div>
+        </div>
+        <div className="seo-check-grid">
+          {seoChecklist.map((item) => (
+            <article key={item.title}>
+              <CheckCircle2 size={18} aria-hidden="true" />
+              <div>
+                <strong>{item.title}</strong>
+                <p>{item.copy}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Starter campaigns</p>
+            <strong>Copy these into Google Ads, then refine based on real calls and estimate quality.</strong>
+          </div>
+          <div className="admin-page-actions">
+            <button className="admin-secondary-button" type="button" onClick={() => copyText(keywordCopy)}>
+              <Clipboard size={16} aria-hidden="true" />
+              Copy keywords
+            </button>
+            <button className="admin-secondary-button" type="button" onClick={() => copyText(negativeCopy)}>
+              <Clipboard size={16} aria-hidden="true" />
+              Copy negatives
+            </button>
+            <button className="admin-secondary-button" type="button" onClick={() => copyText(adDraft)}>
+              <Clipboard size={16} aria-hidden="true" />
+              Copy ad draft
+            </button>
+          </div>
+        </div>
+        <div className="keyword-group-grid">
+          {googleAdsKeywordGroups.map((group) => (
+            <article className="keyword-group-card" key={group.title}>
+              <h3>{group.title}</h3>
+              <div className="keyword-chip-list">
+                {group.keywords.map((keyword) => (
+                  <span key={keyword}>{keyword}</span>
+                ))}
+              </div>
+            </article>
+          ))}
+          <article className="keyword-group-card negative-card">
+            <h3>Negative keywords</h3>
+            <div className="keyword-chip-list">
+              {googleAdsNegativeKeywords.map((keyword) => (
+                <span key={keyword}>{keyword}</span>
+              ))}
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel weekly-ads-panel">
+        <div>
+          <p className="admin-eyebrow">Weekly routine</p>
+          <h2>What the office should do every week</h2>
+        </div>
+        <div className="weekly-checklist">
+          {weeklyAdsRoutine.map((item) => (
+            <span key={item}>
+              <CheckCircle2 size={16} aria-hidden="true" />
+              {item}
+            </span>
+          ))}
+        </div>
+      </section>
+    </section>
   )
 }
 
@@ -3819,9 +4189,7 @@ function AdminDashboard({ content, setContent, goHome }) {
     <main className="admin-shell">
       <header className="admin-topbar">
         <div className="admin-brand">
-          <span>
-            <Sparkles size={20} aria-hidden="true" />
-          </span>
+          <span className="admin-logo-mark" aria-hidden="true"></span>
           <div>
             <strong>Flanagan Admin</strong>
             <small>{mode === 'server' ? `${adminFirstName(auth.user)}'s AI workbench` : mode === 'setup' ? 'Setup needed' : 'Local mode'}</small>
@@ -3848,6 +4216,10 @@ function AdminDashboard({ content, setContent, goHome }) {
           <button className={activeView === 'growth' ? 'active' : ''} type="button" onClick={() => setActiveView('growth')}>
             <Target size={17} aria-hidden="true" />
             Growth
+          </button>
+          <button className={activeView === 'ads' ? 'active' : ''} type="button" onClick={() => setActiveView('ads')}>
+            <TrendingUp size={17} aria-hidden="true" />
+            SEO + Ads
           </button>
         </nav>
 
@@ -4000,6 +4372,15 @@ function AdminDashboard({ content, setContent, goHome }) {
           saveContent={saveContent}
           savingContent={savingContent}
           leads={leads}
+        />
+      ) : null}
+
+      {activeView === 'ads' ? (
+        <AdsSeoDashboard
+          draft={draft}
+          updateSection={updateSection}
+          saveContent={saveContent}
+          savingContent={savingContent}
         />
       ) : null}
 
