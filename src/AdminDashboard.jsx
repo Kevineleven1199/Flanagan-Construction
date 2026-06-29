@@ -960,10 +960,21 @@ function ManualLeadPanel({ createLead }) {
   const update = (field, value) => setLead((current) => ({ ...current, [field]: value }))
   const submitLead = async (event) => {
     event.preventDefault()
-    await createLead({
+    const formData = new FormData(event.currentTarget)
+    const submittedLead = {
       ...lead,
-      name: lead.name || 'Phone/referral lead',
-      projectType: lead.projectType || 'Project',
+      name: String(formData.get('name') || lead.name),
+      phone: String(formData.get('phone') || lead.phone),
+      email: String(formData.get('email') || lead.email),
+      address: String(formData.get('address') || lead.address),
+      projectType: String(formData.get('projectType') || lead.projectType),
+      priority: String(formData.get('priority') || lead.priority),
+      message: String(formData.get('message') || lead.message),
+    }
+    await createLead({
+      ...submittedLead,
+      name: submittedLead.name || 'Phone/referral lead',
+      projectType: submittedLead.projectType || 'Project',
       leadKind: 'Office-entered lead',
       status: 'New',
       source: 'flanagan-admin',
@@ -989,33 +1000,33 @@ function ManualLeadPanel({ createLead }) {
         <form className="manual-lead-form" onSubmit={submitLead}>
           <label>
             Name
-            <input value={lead.name} placeholder="Customer name" onChange={(event) => update('name', event.target.value)} />
+            <input name="name" value={lead.name} placeholder="Customer name" onChange={(event) => update('name', event.target.value)} />
           </label>
           <label>
             Phone
-            <input value={lead.phone} placeholder="Best phone" onChange={(event) => update('phone', event.target.value)} />
+            <input name="phone" value={lead.phone} placeholder="Best phone" onChange={(event) => update('phone', event.target.value)} />
           </label>
           <label>
             Email
-            <input value={lead.email} placeholder="Email if you have it" onChange={(event) => update('email', event.target.value)} />
+            <input name="email" value={lead.email} placeholder="Email if you have it" onChange={(event) => update('email', event.target.value)} />
           </label>
           <label>
             Priority
-            <select value={lead.priority} onChange={(event) => update('priority', event.target.value)}>
+            <select name="priority" value={lead.priority} onChange={(event) => update('priority', event.target.value)}>
               {priorityOptions.map((priority) => <option key={priority}>{priority}</option>)}
             </select>
           </label>
           <label>
             Project type
-            <input value={lead.projectType} onChange={(event) => update('projectType', event.target.value)} />
+            <input name="projectType" value={lead.projectType} onChange={(event) => update('projectType', event.target.value)} />
           </label>
           <label>
             Address
-            <input value={lead.address} placeholder="Job address if known" onChange={(event) => update('address', event.target.value)} />
+            <input name="address" value={lead.address} placeholder="Job address if known" onChange={(event) => update('address', event.target.value)} />
           </label>
           <label className="manual-lead-notes">
             Notes
-            <textarea value={lead.message} rows="3" placeholder="What do they need, who referred them, timing..." onChange={(event) => update('message', event.target.value)} />
+            <textarea name="message" value={lead.message} rows="3" placeholder="What do they need, who referred them, timing..." onChange={(event) => update('message', event.target.value)} />
           </label>
           <button className="admin-primary-button" type="submit" disabled={!lead.phone && !lead.email}>
             <Plus size={17} aria-hidden="true" />
@@ -1114,14 +1125,15 @@ function CrmCommandCenter({ leads, selectedLead, setSelectedLeadId, updateLead, 
 
   const assignCampaign = (campaign) => {
     if (!activeLead) return
+    const draft = campaignDraftFor(activeLead, campaign)
     updateLead(activeLead.id, {
       campaignName: campaign.name,
       campaignStep: '1',
-      campaignNextAt: new Date().toISOString(),
+      campaignNextAt: nextBusinessMorningIso(1),
       nextStep: campaign.steps[0],
       emailStage: campaign.name,
-      emailSubject: campaign.subject,
-      emailBody: fillCampaignTemplate(campaign.body, activeLead),
+      emailSubject: draft.subject,
+      emailBody: draft.body,
     })
   }
 
@@ -1307,6 +1319,9 @@ function AiEstimatePanel({ lead, updateLead, onApplyEstimate, compact = false })
       quoteCustomerPrice: String(estimate.suggestedPrice),
       quoteDepositPercent: String(estimate.depositPercent),
       estimateAmount: String(estimate.suggestedPrice),
+      followUpAt: lead.followUpAt || nextBusinessMorningIso(1),
+      status: ['Started', 'New'].includes(lead.status) ? 'Contacted' : lead.status,
+      emailStage: lead.emailStage || 'Estimate Scheduled',
       nextStep: estimate.nextStep,
       notes: [
         lead.notes,
@@ -1630,26 +1645,32 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     )
   }
 
-  const saveNotes = () => {
+  const detailFieldValue = (root, field, fallback = '') => (
+    root?.querySelector(`[data-lead-field="${field}"]`)?.value ?? fallback
+  )
+
+  const saveNotes = (overrides = {}, sourceElement = null) => {
+    const root = sourceElement?.closest?.('.lead-detail-panel')
     updateLead(lead.id, {
-      notes,
-      nextStep,
-      estimateAmount,
-      paymentLink,
-      followUpAt: fromDateTimeInputValue(followUpAt),
-      quoteLaborCost,
-      quoteMaterialCost,
-      quoteSubCost,
-      quoteOtherCost,
-      quoteMarkupPercent,
-      quoteCustomerPrice,
-      quoteDepositPercent,
-      revenueReceived,
-      expenseTotal,
-      joistClientName,
-      joistEstimateNumber,
-      joistInvoiceNumber,
-      joistStatus,
+      notes: detailFieldValue(root, 'notes', notes),
+      nextStep: detailFieldValue(root, 'nextStep', nextStep),
+      estimateAmount: detailFieldValue(root, 'estimateAmount', estimateAmount),
+      paymentLink: detailFieldValue(root, 'paymentLink', paymentLink),
+      followUpAt: fromDateTimeInputValue(detailFieldValue(root, 'followUpAt', followUpAt)),
+      quoteLaborCost: detailFieldValue(root, 'quoteLaborCost', quoteLaborCost),
+      quoteMaterialCost: detailFieldValue(root, 'quoteMaterialCost', quoteMaterialCost),
+      quoteSubCost: detailFieldValue(root, 'quoteSubCost', quoteSubCost),
+      quoteOtherCost: detailFieldValue(root, 'quoteOtherCost', quoteOtherCost),
+      quoteMarkupPercent: detailFieldValue(root, 'quoteMarkupPercent', quoteMarkupPercent),
+      quoteCustomerPrice: detailFieldValue(root, 'quoteCustomerPrice', quoteCustomerPrice),
+      quoteDepositPercent: detailFieldValue(root, 'quoteDepositPercent', quoteDepositPercent),
+      revenueReceived: detailFieldValue(root, 'revenueReceived', revenueReceived),
+      expenseTotal: detailFieldValue(root, 'expenseTotal', expenseTotal),
+      joistClientName: detailFieldValue(root, 'joistClientName', joistClientName),
+      joistEstimateNumber: detailFieldValue(root, 'joistEstimateNumber', joistEstimateNumber),
+      joistInvoiceNumber: detailFieldValue(root, 'joistInvoiceNumber', joistInvoiceNumber),
+      joistStatus: detailFieldValue(root, 'joistStatus', joistStatus),
+      ...overrides,
     })
   }
 
@@ -1688,20 +1709,39 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     setQuoteMarkupPercent(patch.quoteMarkupPercent || '28')
     setQuoteCustomerPrice(patch.quoteCustomerPrice || '')
     setQuoteDepositPercent(patch.quoteDepositPercent || '33')
+    if (patch.followUpAt) setFollowUpAt(toDateTimeInputValue(patch.followUpAt))
     setNextStep(patch.nextStep || '')
     setNotes(patch.notes || '')
+  }
+
+  const workflowCampaignForStatus = (status) => {
+    if (['Estimate Sent', 'Follow Up'].includes(status)) return dripCampaigns.find((campaign) => campaign.id === 'estimate-recovery')
+    if (['Complete', 'Receipt Sent', 'Won'].includes(status)) return dripCampaigns.find((campaign) => campaign.id === 'post-job-review-referral')
+    if (['Contacted', 'Estimate Scheduled'].includes(status)) return dripCampaigns.find((campaign) => campaign.id === 'new-lead-speed')
+    return null
+  }
+
+  const followUpForStatus = (status) => {
+    if (['Estimate Sent', 'Follow Up'].includes(status)) return nextBusinessMorningIso(2)
+    if (['Payment Link Sent', 'Deposit Paid', 'Complete'].includes(status)) return nextBusinessMorningIso(1)
+    if (status === 'Scheduled') return nextBusinessMorningIso(2)
+    return fromDateTimeInputValue(followUpAt)
   }
 
   const applyStage = (status) => {
     const play = stagePlaybook.find((item) => item.status === status)
     const draft = emailDraftFor(workingLead, status)
-    if (play?.nextStep) setNextStep(play.nextStep)
+    const campaign = workflowCampaignForStatus(status)
+    const nextFollowUp = followUpForStatus(status)
+    const nextStepValue = play?.nextStep || nextStep
+    if (nextStepValue) setNextStep(nextStepValue)
+    if (nextFollowUp) setFollowUpAt(toDateTimeInputValue(nextFollowUp))
     updateLead(lead.id, {
       status,
-      nextStep: play?.nextStep || nextStep,
+      nextStep: nextStepValue,
       estimateAmount,
       paymentLink,
-      followUpAt: fromDateTimeInputValue(followUpAt),
+      followUpAt: nextFollowUp,
       quoteLaborCost,
       quoteMaterialCost,
       quoteSubCost,
@@ -1718,6 +1758,9 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
       emailStage: status,
       emailSubject: draft.subject,
       emailBody: draft.body,
+      campaignName: campaign?.name || lead.campaignName,
+      campaignStep: campaign ? '1' : lead.campaignStep,
+      campaignNextAt: campaign ? nextFollowUp || nextBusinessMorningIso(1) : lead.campaignNextAt,
       lastContactedAt: new Date().toISOString(),
     })
   }
@@ -1768,8 +1811,12 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     notes || lead.message || 'No notes yet.',
   ].filter(Boolean).join('\n')
 
-  const copyJoistHandOff = async () => {
-    saveNotes()
+  const saveJoistInfo = (event) => {
+    saveNotes({}, event.currentTarget)
+  }
+
+  const copyJoistHandOff = async (event) => {
+    saveNotes({}, event.currentTarget)
     try {
       await navigator.clipboard.writeText(joistHandOffText)
     } catch {
@@ -1781,22 +1828,26 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
 
   const markCalledNow = () => {
     const nextFollowUp = nextBusinessMorningIso(1)
+    const nextStepValue = nextStep || 'Send photos/address reminder and confirm estimate timing.'
     setFollowUpAt(toDateTimeInputValue(nextFollowUp))
+    setNextStep(nextStepValue)
     updateLead(lead.id, {
       status: ['Started', 'New'].includes(lead.status) ? 'Contacted' : lead.status,
       lastContactedAt: new Date().toISOString(),
       followUpAt: nextFollowUp,
-      nextStep: nextStep || 'Send photos/address reminder and confirm estimate timing.',
+      nextStep: nextStepValue,
     })
   }
 
   const followUpTomorrow = () => {
     const nextFollowUp = nextBusinessMorningIso(1)
+    const nextStepValue = 'Follow up tomorrow with one clear next step.'
     setFollowUpAt(toDateTimeInputValue(nextFollowUp))
+    setNextStep(nextStepValue)
     updateLead(lead.id, {
       status: lead.status === 'New' ? 'Contacted' : 'Follow Up',
       followUpAt: nextFollowUp,
-      nextStep: nextStep || 'Follow up tomorrow with one clear next step.',
+      nextStep: nextStepValue,
     })
   }
 
@@ -1804,9 +1855,24 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     await copyText(
       `Hi ${lead.name || 'there'}, this is Nick with Flanagan Construction. Thanks for reaching out about ${lead.projectType || 'your project'}. Can you send the job address, a few photos, and the best time for a quick call?`,
     )
+    const nextStepValue = nextStep || 'Text copied. Watch for photos/address and schedule estimate.'
+    setNextStep(nextStepValue)
     updateLead(lead.id, {
       lastContactedAt: new Date().toISOString(),
-      nextStep: nextStep || 'Text copied. Watch for photos/address and schedule estimate.',
+      nextStep: nextStepValue,
+    })
+  }
+
+  const scheduleNextTouchTomorrow = () => {
+    const campaign = activeCampaign || dripCampaigns[0]
+    const nextCampaignTouch = nextBusinessMorningIso(1)
+    const nextStepValue = campaign.steps?.[0] || dripCampaigns[0].steps[0]
+    setNextStep(nextStepValue)
+    updateLead(lead.id, {
+      campaignName: campaign.name,
+      campaignStep: lead.campaignStep || '1',
+      campaignNextAt: nextCampaignTouch,
+      nextStep: nextStepValue,
     })
   }
 
@@ -1940,12 +2006,7 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <div className="lead-contact-actions">
           <button
             type="button"
-            onClick={() => updateLead(lead.id, {
-              campaignName: activeCampaign?.name || dripCampaigns[0].name,
-              campaignStep: lead.campaignStep || '1',
-              campaignNextAt: nextBusinessMorningIso(1),
-              nextStep: activeCampaign?.steps?.[0] || dripCampaigns[0].steps[0],
-            })}
+            onClick={scheduleNextTouchTomorrow}
           >
             <Clock3 size={16} aria-hidden="true" />
             Next touch tomorrow
@@ -1986,9 +2047,10 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           Estimate amount
           <input
             value={estimateAmount}
+            data-lead-field="estimateAmount"
             inputMode="decimal"
             placeholder="$"
-            onBlur={saveNotes}
+            onBlur={(event) => saveNotes({ estimateAmount: event.currentTarget.value }, event.currentTarget)}
             onChange={(event) => setEstimateAmount(event.target.value)}
           />
         </label>
@@ -1996,8 +2058,9 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           Payment link
           <input
             value={paymentLink}
+            data-lead-field="paymentLink"
             placeholder="https://..."
-            onBlur={saveNotes}
+            onBlur={(event) => saveNotes({ paymentLink: event.currentTarget.value }, event.currentTarget)}
             onChange={(event) => setPaymentLink(event.target.value)}
           />
         </label>
@@ -2006,7 +2069,8 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           <input
             type="datetime-local"
             value={followUpAt}
-            onBlur={saveNotes}
+            data-lead-field="followUpAt"
+            onBlur={(event) => saveNotes({ followUpAt: fromDateTimeInputValue(event.currentTarget.value) }, event.currentTarget)}
             onChange={(event) => setFollowUpAt(event.target.value)}
           />
         </label>
@@ -2045,31 +2109,31 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <div className="lead-detail-grid">
           <label>
             Labor cost
-            <input value={quoteLaborCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteLaborCost(event.target.value)} />
+            <input value={quoteLaborCost} data-lead-field="quoteLaborCost" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ quoteLaborCost: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteLaborCost(event.target.value)} />
           </label>
           <label>
             Materials cost
-            <input value={quoteMaterialCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteMaterialCost(event.target.value)} />
+            <input value={quoteMaterialCost} data-lead-field="quoteMaterialCost" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ quoteMaterialCost: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteMaterialCost(event.target.value)} />
           </label>
           <label>
             Subcontractors
-            <input value={quoteSubCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteSubCost(event.target.value)} />
+            <input value={quoteSubCost} data-lead-field="quoteSubCost" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ quoteSubCost: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteSubCost(event.target.value)} />
           </label>
           <label>
             Other costs
-            <input value={quoteOtherCost} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteOtherCost(event.target.value)} />
+            <input value={quoteOtherCost} data-lead-field="quoteOtherCost" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ quoteOtherCost: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteOtherCost(event.target.value)} />
           </label>
           <label>
             Markup %
-            <input value={quoteMarkupPercent} inputMode="decimal" onBlur={saveNotes} onChange={(event) => setQuoteMarkupPercent(event.target.value)} />
+            <input value={quoteMarkupPercent} data-lead-field="quoteMarkupPercent" inputMode="decimal" onBlur={(event) => saveNotes({ quoteMarkupPercent: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteMarkupPercent(event.target.value)} />
           </label>
           <label>
             Customer quote price
-            <input value={quoteCustomerPrice} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setQuoteCustomerPrice(event.target.value)} />
+            <input value={quoteCustomerPrice} data-lead-field="quoteCustomerPrice" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ quoteCustomerPrice: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteCustomerPrice(event.target.value)} />
           </label>
           <label>
             Deposit %
-            <input value={quoteDepositPercent} inputMode="decimal" onBlur={saveNotes} onChange={(event) => setQuoteDepositPercent(event.target.value)} />
+            <input value={quoteDepositPercent} data-lead-field="quoteDepositPercent" inputMode="decimal" onBlur={(event) => saveNotes({ quoteDepositPercent: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setQuoteDepositPercent(event.target.value)} />
           </label>
           <label>
             Deposit target
@@ -2077,11 +2141,11 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           </label>
           <label>
             Revenue received
-            <input value={revenueReceived} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setRevenueReceived(event.target.value)} />
+            <input value={revenueReceived} data-lead-field="revenueReceived" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ revenueReceived: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setRevenueReceived(event.target.value)} />
           </label>
           <label>
             Expense total
-            <input value={expenseTotal} inputMode="decimal" placeholder="$" onBlur={saveNotes} onChange={(event) => setExpenseTotal(event.target.value)} />
+            <input value={expenseTotal} data-lead-field="expenseTotal" inputMode="decimal" placeholder="$" onBlur={(event) => saveNotes({ expenseTotal: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setExpenseTotal(event.target.value)} />
           </label>
         </div>
       </div>
@@ -2097,22 +2161,26 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <div className="lead-detail-grid">
           <label>
             Joist client name
-            <input value={joistClientName} onBlur={saveNotes} onChange={(event) => setJoistClientName(event.target.value)} />
+            <input value={joistClientName} data-lead-field="joistClientName" onBlur={(event) => saveNotes({ joistClientName: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setJoistClientName(event.target.value)} />
           </label>
           <label>
             Joist status
-            <input value={joistStatus} placeholder="Estimate drafted, invoice sent..." onBlur={saveNotes} onChange={(event) => setJoistStatus(event.target.value)} />
+            <input value={joistStatus} data-lead-field="joistStatus" placeholder="Estimate drafted, invoice sent..." onBlur={(event) => saveNotes({ joistStatus: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setJoistStatus(event.target.value)} />
           </label>
           <label>
             Joist estimate #
-            <input value={joistEstimateNumber} onBlur={saveNotes} onChange={(event) => setJoistEstimateNumber(event.target.value)} />
+            <input value={joistEstimateNumber} data-lead-field="joistEstimateNumber" onBlur={(event) => saveNotes({ joistEstimateNumber: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setJoistEstimateNumber(event.target.value)} />
           </label>
           <label>
             Joist invoice #
-            <input value={joistInvoiceNumber} onBlur={saveNotes} onChange={(event) => setJoistInvoiceNumber(event.target.value)} />
+            <input value={joistInvoiceNumber} data-lead-field="joistInvoiceNumber" onBlur={(event) => saveNotes({ joistInvoiceNumber: event.currentTarget.value }, event.currentTarget)} onChange={(event) => setJoistInvoiceNumber(event.target.value)} />
           </label>
         </div>
         <div className="lead-contact-actions joist-actions">
+          <button type="button" onClick={saveJoistInfo}>
+            <Save size={16} aria-hidden="true" />
+            Save Joist info
+          </button>
           <button type="button" onClick={copyJoistHandOff}>
             <Clipboard size={16} aria-hidden="true" />
             Copy for Joist
@@ -2138,7 +2206,8 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <span>Next step</span>
         <input
           value={nextStep}
-          onBlur={saveNotes}
+          data-lead-field="nextStep"
+          onBlur={(event) => saveNotes({ nextStep: event.currentTarget.value }, event.currentTarget)}
           onChange={(event) => setNextStep(event.target.value)}
         />
       </label>
@@ -2148,7 +2217,8 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <textarea
           rows="5"
           value={notes}
-          onBlur={saveNotes}
+          data-lead-field="notes"
+          onBlur={(event) => saveNotes({ notes: event.currentTarget.value }, event.currentTarget)}
           onChange={(event) => setNotes(event.target.value)}
         />
       </label>

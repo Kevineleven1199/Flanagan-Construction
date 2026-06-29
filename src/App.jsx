@@ -1200,30 +1200,46 @@ function App() {
     )
   }
 
-  const leadPayload = (statusOverride = 'Started') => {
+  const leadPayload = (statusOverride = 'Started', formOverride = form, selectedNeedsOverride = selectedNeeds) => {
     const activeGroup =
       siteContent.leadFunnel.groups.find((group) => group.id === selectedGroupId) ||
       siteContent.leadFunnel.groups[0]
-    const projectType = selectedNeeds.length ? selectedNeeds.join(', ') : activeGroup.label
+    const projectType = selectedNeedsOverride.length ? selectedNeedsOverride.join(', ') : activeGroup.label
     const summaryLines = [
-      selectedNeeds.length ? `Selected needs: ${selectedNeeds.join(', ')}` : `Selected lane: ${activeGroup.label}`,
-      form.address ? `Project address: ${form.address}` : '',
-      form.message ? `Notes: ${form.message}` : '',
+      selectedNeedsOverride.length ? `Selected needs: ${selectedNeedsOverride.join(', ')}` : `Selected lane: ${activeGroup.label}`,
+      formOverride.address ? `Project address: ${formOverride.address}` : '',
+      formOverride.message ? `Notes: ${formOverride.message}` : '',
     ].filter(Boolean)
 
     return {
-      ...form,
+      ...formOverride,
       id: leadIdRef.current,
       leadId: leadIdRef.current,
       leadKind: statusOverride === 'Started' ? 'Started funnel' : 'Final request',
       funnelGroup: activeGroup.label,
-      selectedNeeds,
+      selectedNeeds: selectedNeedsOverride,
       projectType,
       message: summaryLines.join('\n'),
       status: statusOverride,
-      priority: selectedNeeds.some((need) => /fix|bad|commercial|addition|foundation/i.test(need))
+      priority: selectedNeedsOverride.some((need) => /fix|bad|commercial|addition|foundation/i.test(need))
         ? 'Hot'
         : 'Warm',
+    }
+  }
+
+  const formValuesFromElement = (formElement) => {
+    if (!formElement) return form
+    const formData = new FormData(formElement)
+    return {
+      ...form,
+      name: String(formData.get('name') || form.name),
+      phone: String(formData.get('phone') || form.phone),
+      email: String(formData.get('email') || form.email),
+      address: String(formData.get('address') || form.address),
+      message: String(formData.get('message') || form.message),
+      company: String(formData.get('company') || form.company),
+      website: String(formData.get('website') || form.website),
+      fax: String(formData.get('fax') || form.fax),
     }
   }
 
@@ -1300,10 +1316,11 @@ function App() {
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (submitting) return
+    const submittedForm = formValuesFromElement(event.currentTarget)
     setSubmitting(true)
     setStatus('Sending your request...')
 
-    if (hasLeadHoneypot(form)) {
+    if (hasLeadHoneypot(submittedForm)) {
       setSubmitted(true)
       setStatus('Request received. We will reach out within one business day.')
       setSubmitting(false)
@@ -1312,7 +1329,7 @@ function App() {
 
     // Keep a local backup so a lead is never lost to a flaky network.
     const finalLead = {
-      ...leadPayload('New'),
+      ...leadPayload('New', submittedForm),
       receivedAt: new Date().toISOString(),
     }
     saveLocalLeadBackup(finalLead)
@@ -1326,7 +1343,7 @@ function App() {
       if (!response.ok) throw new Error(`Request failed: ${response.status}`)
       setSubmitted(true)
       setStatus('Request received. We will reach out within one business day.')
-      track('generate_lead', { projectType: finalLead.projectType, budget: form.budget })
+      track('generate_lead', { projectType: finalLead.projectType, budget: submittedForm.budget })
       window.setTimeout(() => {
         document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 60)

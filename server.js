@@ -383,6 +383,7 @@ function leadIdFor(lead, index = 0) {
 
 function normalizeLeadRecord(lead, index = 0, updates = {}) {
   const receivedAt = lead.receivedAt || lead.createdAt || new Date().toISOString()
+  const valueFor = (field, fallback = '') => (Object.hasOwn(updates, field) ? updates[field] : lead[field]) ?? fallback
   return {
     id: leadIdFor({ ...lead, receivedAt }, index),
     name: String(lead.name || 'Website lead'),
@@ -404,37 +405,78 @@ function normalizeLeadRecord(lead, index = 0, updates = {}) {
     leadKind: String(lead.leadKind || ''),
     source: String(lead.source || 'flanagan-construction-website'),
     receivedAt,
-    status: updates.status || lead.status || 'New',
-    priority: updates.priority || lead.priority || 'Warm',
-    estimateAmount: updates.estimateAmount || lead.estimateAmount || '',
-    paymentLink: updates.paymentLink || lead.paymentLink || '',
-    followUpAt: updates.followUpAt || lead.followUpAt || '',
-    lastContactedAt: updates.lastContactedAt || lead.lastContactedAt || '',
-    emailStage: updates.emailStage || lead.emailStage || '',
-    emailSubject: updates.emailSubject || lead.emailSubject || '',
-    emailBody: updates.emailBody || lead.emailBody || '',
-    campaignName: updates.campaignName || lead.campaignName || '',
-    campaignStep: updates.campaignStep || lead.campaignStep || '',
-    campaignNextAt: updates.campaignNextAt || lead.campaignNextAt || '',
-    campaignLastSentAt: updates.campaignLastSentAt || lead.campaignLastSentAt || '',
-    closeProbability: updates.closeProbability || lead.closeProbability || '',
-    quoteLaborCost: updates.quoteLaborCost || lead.quoteLaborCost || '',
-    quoteMaterialCost: updates.quoteMaterialCost || lead.quoteMaterialCost || '',
-    quoteSubCost: updates.quoteSubCost || lead.quoteSubCost || '',
-    quoteOtherCost: updates.quoteOtherCost || lead.quoteOtherCost || '',
-    quoteMarkupPercent: updates.quoteMarkupPercent || lead.quoteMarkupPercent || '',
-    quoteCustomerPrice: updates.quoteCustomerPrice || lead.quoteCustomerPrice || '',
-    quoteDepositPercent: updates.quoteDepositPercent || lead.quoteDepositPercent || '',
-    revenueReceived: updates.revenueReceived || lead.revenueReceived || '',
-    expenseTotal: updates.expenseTotal || lead.expenseTotal || '',
-    joistClientName: updates.joistClientName || lead.joistClientName || '',
-    joistEstimateNumber: updates.joistEstimateNumber || lead.joistEstimateNumber || '',
-    joistInvoiceNumber: updates.joistInvoiceNumber || lead.joistInvoiceNumber || '',
-    joistStatus: updates.joistStatus || lead.joistStatus || '',
-    nextStep: updates.nextStep || lead.nextStep || '',
-    notes: updates.notes || lead.notes || '',
-    updatedAt: updates.updatedAt || lead.updatedAt || '',
+    status: String(valueFor('status', 'New') || 'New'),
+    priority: String(valueFor('priority', 'Warm') || 'Warm'),
+    estimateAmount: String(valueFor('estimateAmount')),
+    paymentLink: String(valueFor('paymentLink')),
+    followUpAt: String(valueFor('followUpAt')),
+    lastContactedAt: String(valueFor('lastContactedAt')),
+    emailStage: String(valueFor('emailStage')),
+    emailSubject: String(valueFor('emailSubject')),
+    emailBody: String(valueFor('emailBody')),
+    campaignName: String(valueFor('campaignName')),
+    campaignStep: String(valueFor('campaignStep')),
+    campaignNextAt: String(valueFor('campaignNextAt')),
+    campaignLastSentAt: String(valueFor('campaignLastSentAt')),
+    closeProbability: String(valueFor('closeProbability')),
+    quoteLaborCost: String(valueFor('quoteLaborCost')),
+    quoteMaterialCost: String(valueFor('quoteMaterialCost')),
+    quoteSubCost: String(valueFor('quoteSubCost')),
+    quoteOtherCost: String(valueFor('quoteOtherCost')),
+    quoteMarkupPercent: String(valueFor('quoteMarkupPercent')),
+    quoteCustomerPrice: String(valueFor('quoteCustomerPrice')),
+    quoteDepositPercent: String(valueFor('quoteDepositPercent')),
+    revenueReceived: String(valueFor('revenueReceived')),
+    expenseTotal: String(valueFor('expenseTotal')),
+    joistClientName: String(valueFor('joistClientName')),
+    joistEstimateNumber: String(valueFor('joistEstimateNumber')),
+    joistInvoiceNumber: String(valueFor('joistInvoiceNumber')),
+    joistStatus: String(valueFor('joistStatus')),
+    nextStep: String(valueFor('nextStep')),
+    notes: String(valueFor('notes')),
+    updatedAt: String(valueFor('updatedAt')),
   }
+}
+
+function mergeLeadCrmPatch(current = {}, patch = {}) {
+  const writableFields = [
+    'status',
+    'priority',
+    'estimateAmount',
+    'paymentLink',
+    'followUpAt',
+    'lastContactedAt',
+    'emailStage',
+    'emailSubject',
+    'emailBody',
+    'campaignName',
+    'campaignStep',
+    'campaignNextAt',
+    'campaignLastSentAt',
+    'closeProbability',
+    'quoteLaborCost',
+    'quoteMaterialCost',
+    'quoteSubCost',
+    'quoteOtherCost',
+    'quoteMarkupPercent',
+    'quoteCustomerPrice',
+    'quoteDepositPercent',
+    'revenueReceived',
+    'expenseTotal',
+    'joistClientName',
+    'joistEstimateNumber',
+    'joistInvoiceNumber',
+    'joistStatus',
+    'nextStep',
+    'notes',
+    'updatedAt',
+  ]
+  const next = { ...current }
+  writableFields.forEach((field) => {
+    if (Object.hasOwn(patch, field)) next[field] = patch[field]
+  })
+  next.updatedAt = patch.updatedAt || new Date().toISOString()
+  return next
 }
 
 async function readLeadsWithCrm() {
@@ -541,39 +583,7 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
       const id = decodeURIComponent(match[1])
       const data = await readJsonBody(req, 100000)
       const crm = await readJsonFile(leadCrmPath, {})
-      crm[id] = {
-        ...(crm[id] || {}),
-        status: data.status,
-        priority: data.priority,
-        estimateAmount: data.estimateAmount,
-        paymentLink: data.paymentLink,
-        followUpAt: data.followUpAt,
-        lastContactedAt: data.lastContactedAt,
-        emailStage: data.emailStage,
-        emailSubject: data.emailSubject,
-        emailBody: data.emailBody,
-        campaignName: data.campaignName,
-        campaignStep: data.campaignStep,
-        campaignNextAt: data.campaignNextAt,
-        campaignLastSentAt: data.campaignLastSentAt,
-        closeProbability: data.closeProbability,
-        quoteLaborCost: data.quoteLaborCost,
-        quoteMaterialCost: data.quoteMaterialCost,
-        quoteSubCost: data.quoteSubCost,
-        quoteOtherCost: data.quoteOtherCost,
-        quoteMarkupPercent: data.quoteMarkupPercent,
-        quoteCustomerPrice: data.quoteCustomerPrice,
-        quoteDepositPercent: data.quoteDepositPercent,
-        revenueReceived: data.revenueReceived,
-        expenseTotal: data.expenseTotal,
-        joistClientName: data.joistClientName,
-        joistEstimateNumber: data.joistEstimateNumber,
-        joistInvoiceNumber: data.joistInvoiceNumber,
-        joistStatus: data.joistStatus,
-        nextStep: data.nextStep,
-        notes: data.notes,
-        updatedAt: data.updatedAt || new Date().toISOString(),
-      }
+      crm[id] = mergeLeadCrmPatch(crm[id], data)
       await writeJsonFile(leadCrmPath, crm)
       sendJson(res, 200, { ok: true, lead: crm[id] }, gzipOk)
     } catch (error) {
