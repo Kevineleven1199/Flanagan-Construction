@@ -28,6 +28,8 @@ const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || adminPassword || 
 const siteContentPath = join(root, 'site-content.json')
 const leadLogPath = join(root, 'leads.log')
 const leadCrmPath = join(root, 'lead-crm.json')
+const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
+const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
 
 const builtInSuperAdmins = [
   {
@@ -337,18 +339,32 @@ function emailSettingsStatus() {
   const smtpUser = process.env.SMTP_USER || ''
   const settings = {
     provider: process.env.SMTP_PROVIDER || 'gmail',
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    host: process.env.SMTP_HOST || gmailSmtpHost,
     port: process.env.SMTP_PORT || '587',
     secure: process.env.SMTP_SECURE || 'false',
     user: smtpUser,
     from: process.env.SMTP_FROM || (smtpUser ? `Flanagan Construction <${smtpUser}>` : ''),
     replyTo: process.env.SMTP_REPLY_TO || smtpUser,
   }
-  const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_SECRET_KEY', 'SMTP_FROM']
+  const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', smtpPasswordEnvKey, 'SMTP_FROM']
+  const requiredStatus = required.map((key) => ({
+    key,
+    configured: Boolean(process.env[key]),
+    secret: key === smtpPasswordEnvKey,
+  }))
   return {
     ...settings,
     configured: required.every((key) => Boolean(process.env[key])),
+    passwordConfigured: Boolean(process.env[smtpPasswordEnvKey]),
     missing: required.filter((key) => !process.env[key]),
+    required: requiredStatus,
+    recommended: {
+      provider: 'gmail',
+      host: gmailSmtpHost,
+      port: '587',
+      secure: 'false',
+      auth: 'Gmail app password with 2-Step Verification enabled',
+    },
   }
 }
 

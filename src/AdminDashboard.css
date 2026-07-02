@@ -2175,6 +2175,254 @@
   line-height: 1.4;
 }
 
+.email-setup-page {
+  max-width: 1380px;
+}
+
+.email-hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  border-color: rgba(18, 63, 109, 0.22);
+  background:
+    radial-gradient(circle at 8% 20%, rgba(72, 184, 240, 0.24), transparent 32%),
+    linear-gradient(135deg, #071827, #123f6d 58%, #101418);
+  color: #fff;
+}
+
+.email-hero-panel.ready {
+  background:
+    radial-gradient(circle at 10% 18%, rgba(242, 184, 75, 0.22), transparent 32%),
+    linear-gradient(135deg, #071827, #1d684c 62%, #101418);
+}
+
+.email-hero-panel h2,
+.email-hero-panel p {
+  margin: 0;
+}
+
+.email-hero-panel h2 {
+  max-width: 860px;
+  color: #fff;
+  font-size: clamp(2rem, 4vw, 3.35rem);
+  line-height: 0.98;
+}
+
+.email-hero-panel p {
+  max-width: 780px;
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  line-height: 1.55;
+}
+
+.email-hero-panel .admin-eyebrow {
+  color: #f2b84b;
+}
+
+.email-readiness-card {
+  display: grid;
+  min-width: 230px;
+  gap: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.09);
+  padding: 18px;
+  backdrop-filter: blur(14px);
+}
+
+.email-readiness-card span {
+  color: #f2b84b;
+  font-size: 2.35rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.email-readiness-card strong,
+.email-readiness-card small {
+  display: block;
+}
+
+.email-readiness-card small {
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.smtp-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.smtp-readiness-grid article {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(154, 103, 18, 0.2);
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #725012;
+  padding: 13px;
+}
+
+.smtp-readiness-grid article.ready {
+  border-color: rgba(31, 157, 107, 0.22);
+  background: #edf9f3;
+  color: #1d684c;
+}
+
+.smtp-readiness-grid strong,
+.smtp-readiness-grid span {
+  display: block;
+}
+
+.smtp-readiness-grid strong {
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.smtp-readiness-grid span {
+  margin-top: 2px;
+  color: currentColor;
+  font-size: 0.78rem;
+  font-weight: 850;
+  opacity: 0.78;
+}
+
+.email-step-grid,
+.env-builder-layout,
+.smtp-cheat-grid,
+.email-doc-links {
+  display: grid;
+  gap: 12px;
+}
+
+.email-step-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.email-step-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, #fff, #f8fbff);
+  padding: 15px;
+}
+
+.email-step-card > span {
+  display: inline-grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 8px;
+  background: #071827;
+  color: #f2b84b;
+  font-weight: 950;
+}
+
+.email-step-card h3,
+.smtp-cheat-panel h2 {
+  margin: 0;
+  color: #1c1f21;
+}
+
+.email-step-card p,
+.smtp-cheat-grid p,
+.env-preview-card p {
+  margin: 0;
+  color: #59636a;
+  line-height: 1.5;
+}
+
+.email-step-card a,
+.email-doc-links a {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 36px;
+  align-items: center;
+  gap: 7px;
+  border-radius: 8px;
+  background: #eef5fb;
+  color: #123f6d;
+  font-size: 0.84rem;
+  font-weight: 900;
+  padding: 0 10px;
+  text-decoration: none;
+}
+
+.env-builder-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.45fr);
+  align-items: start;
+}
+
+.env-preview-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(18, 63, 109, 0.14);
+  border-radius: 8px;
+  background: #071827;
+  color: #fff;
+  padding: 16px;
+}
+
+.env-preview-card .admin-eyebrow {
+  color: #f2b84b;
+}
+
+.env-preview-card pre {
+  overflow: auto;
+  max-height: 360px;
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.92);
+  padding: 13px;
+  white-space: pre-wrap;
+}
+
+.env-preview-card p {
+  color: rgba(255, 255, 255, 0.74);
+  font-weight: 750;
+}
+
+.smtp-cheat-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.36fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(238, 245, 251, 0.94));
+}
+
+.smtp-cheat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.smtp-cheat-grid article {
+  border: 1px solid rgba(18, 63, 109, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.smtp-cheat-grid strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #1c1f21;
+}
+
+.email-doc-links {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 /* Admin cockpit upgrade: faster triage, clearer hierarchy, less beige form fatigue. */
 .admin-shell {
   background:
@@ -2617,6 +2865,13 @@
   .crm-command-grid,
   .content-layout,
   .integration-grid,
+  .email-hero-panel,
+  .smtp-readiness-grid,
+  .email-step-grid,
+  .env-builder-layout,
+  .smtp-cheat-panel,
+  .smtp-cheat-grid,
+  .email-doc-links,
   .ads-hero-panel,
   .ads-link-grid,
   .ads-tutorial-grid,
@@ -2664,6 +2919,13 @@
     .quote-metric-grid,
     .crm-coach-steps,
     .campaign-grid,
+    .email-hero-panel,
+    .smtp-readiness-grid,
+    .email-step-grid,
+    .env-builder-layout,
+    .smtp-cheat-panel,
+    .smtp-cheat-grid,
+    .email-doc-links,
     .tracking-status-grid,
     .ads-link-grid,
     .ads-tutorial-grid,

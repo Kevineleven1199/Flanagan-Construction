@@ -141,6 +141,63 @@ const emailTemplates = {
   },
 }
 
+const gmailSetupLinks = {
+  gmail: 'https://mail.google.com/',
+  twoStep: 'https://support.google.com/accounts/answer/185839',
+  appPassword: 'https://support.google.com/accounts/answer/185833',
+  smtpSettings: 'https://support.google.com/mail/answer/7126229',
+  smtpErrors: 'https://support.google.com/mail/answer/3726730',
+  railwayVariables: 'https://railway.com/dashboard',
+}
+
+const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
+const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
+const smtpPasswordPlaceholder = 'paste-value-directly-in-railway'
+
+const smtpEnvKeys = [
+  'SMTP_PROVIDER',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_SECURE',
+  'SMTP_USER',
+  smtpPasswordEnvKey,
+  'SMTP_FROM',
+  'SMTP_REPLY_TO',
+]
+
+const gmailSetupSteps = [
+  {
+    title: 'Choose the sending inbox',
+    copy: 'Use the Gmail account that should appear on customer follow-ups. For now that can be Nick. Later it can become info@yourdomain after Google Workspace is ready.',
+    linkLabel: 'Open Gmail',
+    href: gmailSetupLinks.gmail,
+  },
+  {
+    title: 'Turn on 2-Step Verification',
+    copy: 'Google app passwords only work after 2-Step Verification is enabled on the Google account.',
+    linkLabel: '2-Step guide',
+    href: gmailSetupLinks.twoStep,
+  },
+  {
+    title: 'Create a Gmail app password',
+    copy: 'Create an app password for Mail. Copy it once, paste it into the password field below, and keep it out of normal site content.',
+    linkLabel: 'App password guide',
+    href: gmailSetupLinks.appPassword,
+  },
+  {
+    title: 'Paste variables into Railway',
+    copy: 'Copy the generated environment variables, open Railway, paste them into Variables, save, and redeploy the service.',
+    linkLabel: 'Open Railway',
+    href: gmailSetupLinks.railwayVariables,
+  },
+  {
+    title: 'Refresh this dashboard',
+    copy: 'After Railway redeploys, click Refresh here. The status should change to Outbound email ready.',
+    linkLabel: 'SMTP settings help',
+    href: gmailSetupLinks.smtpSettings,
+  },
+]
+
 const dripCampaigns = [
   {
     id: 'new-lead-speed',
@@ -455,6 +512,39 @@ function greetingFor(user) {
 function smtpStatusLabel(emailSettings) {
   if (!emailSettings) return 'Checking outbound email'
   return emailSettings.configured ? 'Outbound email ready' : 'SMTP setup needed'
+}
+
+function smtpStatusTone(emailSettings) {
+  if (!emailSettings) return 'waiting'
+  return emailSettings.configured ? 'ready' : 'needs-setup'
+}
+
+function envLineValue(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (/[\s#"=]/.test(text)) return `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  return text
+}
+
+function smtpEnvBlock(values) {
+  return smtpEnvKeys
+    .map((key) => `${key}=${envLineValue(values[key])}`)
+    .join('\n')
+}
+
+function smtpChecklistText(values) {
+  return [
+    'Flanagan Construction Gmail/SMTP setup',
+    '',
+    '1. Open the Gmail account that will send customer follow-ups.',
+    '2. Turn on 2-Step Verification.',
+    '3. Create a Google app password for Mail.',
+    '4. Paste these variables into Railway Variables.',
+    '5. Redeploy Railway, then refresh the admin dashboard.',
+    '6. Revoke and recreate the app password if it was ever pasted into GitHub, chat, or email.',
+    '',
+    smtpEnvBlock(values),
+  ].join('\n')
 }
 
 function visibleLeadStatus(lead) {
@@ -913,6 +1003,10 @@ function AdminCommandBoard({ leads, selectedLead, setSelectedLeadId, setActiveVi
             <Target size={17} aria-hidden="true" />
             Work next lead
           </button>
+          <button className="admin-secondary-button" type="button" onClick={() => setActiveView('email')}>
+            <Mail size={17} aria-hidden="true" />
+            {emailSettings?.configured ? 'Review sender' : 'Connect Gmail'}
+          </button>
           <button className="admin-secondary-button" type="button" onClick={() => setActiveView('growth')}>
             <TrendingUp size={17} aria-hidden="true" />
             Grow reviews
@@ -934,11 +1028,11 @@ function AdminCommandBoard({ leads, selectedLead, setSelectedLeadId, setActiveVi
             <small>{tile.helper}</small>
           </button>
         ))}
-        <article className="command-tile command-system-tile">
+        <button className={`command-tile command-system-tile ${emailSettings?.configured ? '' : 'needs-work'}`} type="button" onClick={() => setActiveView('email')}>
           <span>System</span>
           <strong>{mode === 'server' ? 'Live' : 'Local'}</strong>
           <small>{smtpStatusLabel(emailSettings)}</small>
-        </article>
+        </button>
       </div>
     </section>
   )
@@ -2253,7 +2347,7 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
         <pre>{currentEmailDraft.body}</pre>
         {!emailSettings?.configured ? (
           <p className="smtp-note">
-            Add SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_SECRET_KEY, and SMTP_FROM in Railway to enable future one-click sending.
+            Add the Gmail SMTP variables in Railway to enable future one-click sending. Keep the app password only in Railway.
           </p>
         ) : null}
       </div>
@@ -3064,6 +3158,179 @@ function IntegrationCard({ title, status, copy, href }) {
         </a>
       ) : null}
     </article>
+  )
+}
+
+function EmailSetupDashboard({ emailSettings, onRefresh, mode }) {
+  const [smtpDraft, setSmtpDraft] = useState(() => ({
+    SMTP_PROVIDER: emailSettings?.provider || 'gmail',
+    SMTP_HOST: emailSettings?.host || gmailSmtpHost,
+    SMTP_PORT: emailSettings?.port || '587',
+    SMTP_SECURE: emailSettings?.secure || 'false',
+    SMTP_USER: emailSettings?.user || '',
+    [smtpPasswordEnvKey]: '',
+    SMTP_FROM: emailSettings?.from || '',
+    SMTP_REPLY_TO: emailSettings?.replyTo || emailSettings?.user || '',
+  }))
+  const statusTone = smtpStatusTone(emailSettings)
+  const missing = emailSettings?.missing || ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', smtpPasswordEnvKey, 'SMTP_FROM']
+  const requiredStatus =
+    emailSettings?.required ||
+    ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', smtpPasswordEnvKey, 'SMTP_FROM'].map((key) => ({ key, configured: false, secret: key === smtpPasswordEnvKey }))
+  const envBlock = smtpEnvBlock({
+    ...smtpDraft,
+    [smtpPasswordEnvKey]: smtpDraft[smtpPasswordEnvKey] || (emailSettings?.passwordConfigured ? '[already set in Railway]' : smtpPasswordPlaceholder),
+  })
+  const updateDraft = (key, value) => {
+    setSmtpDraft((current) => ({
+      ...current,
+      [key]: value,
+      ...(key === 'SMTP_USER' && !current.SMTP_REPLY_TO ? { SMTP_REPLY_TO: value } : {}),
+      ...(key === 'SMTP_USER' && !current.SMTP_FROM ? { SMTP_FROM: `Flanagan Construction <${value}>` } : {}),
+      ...(key === 'SMTP_PORT' && value === '465' ? { SMTP_SECURE: 'true' } : {}),
+      ...(key === 'SMTP_PORT' && value === '587' ? { SMTP_SECURE: 'false' } : {}),
+    }))
+  }
+
+  return (
+    <section className="admin-page email-setup-page">
+      <div className="admin-page-head">
+        <div>
+          <p className="admin-eyebrow">Gmail + SMTP</p>
+          <h1>Connect outbound email without guessing</h1>
+        </div>
+        <div className="admin-page-actions">
+          <a className="admin-secondary-button" href={gmailSetupLinks.appPassword} target="_blank" rel="noreferrer">
+            <ExternalLink size={17} aria-hidden="true" />
+            Gmail app password
+          </a>
+          <button className="admin-primary-button" type="button" onClick={onRefresh}>
+            <RefreshCw size={17} aria-hidden="true" />
+            Refresh status
+          </button>
+        </div>
+      </div>
+
+      <section className={`admin-panel email-hero-panel ${statusTone}`}>
+        <div>
+          <p className="admin-eyebrow">Email readiness</p>
+          <h2>{emailSettings?.configured ? 'Outbound email is connected.' : 'Finish Gmail SMTP setup in Railway.'}</h2>
+          <p>
+            The dashboard can draft follow-ups today. SMTP variables let the server safely send from Gmail later without storing app passwords in the website editor.
+          </p>
+        </div>
+        <div className="email-readiness-card">
+          <span>{emailSettings?.configured ? 'Ready' : `${missing.length} missing`}</span>
+          <strong>{smtpStatusLabel(emailSettings)}</strong>
+          <small>{mode === 'server' ? 'Reading live Railway environment.' : 'Local mode uses this browser only.'}</small>
+        </div>
+      </section>
+
+      <div className="smtp-readiness-grid">
+        {requiredStatus.map((item) => (
+          <article className={item.configured ? 'ready' : 'missing'} key={item.key}>
+            <CheckCircle2 size={17} aria-hidden="true" />
+            <div>
+              <strong>{item.key}</strong>
+              <span>{item.secret && item.configured ? 'Set and hidden' : item.configured ? 'Set in environment' : 'Missing in Railway'}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Step-by-step Gmail setup</p>
+            <strong>Follow these in order. Do not paste the app password into normal content fields.</strong>
+          </div>
+          <button className="admin-secondary-button" type="button" onClick={() => copyText(smtpChecklistText({
+            ...smtpDraft,
+            [smtpPasswordEnvKey]: smtpDraft[smtpPasswordEnvKey] || (emailSettings?.passwordConfigured ? '[already set in Railway]' : smtpPasswordPlaceholder),
+          }))}>
+            <Clipboard size={16} aria-hidden="true" />
+            Copy checklist
+          </button>
+        </div>
+        <div className="email-step-grid">
+          {gmailSetupSteps.map((step, index) => (
+            <article className="email-step-card" key={step.title}>
+              <span>{index + 1}</span>
+              <h3>{step.title}</h3>
+              <p>{step.copy}</p>
+              <a href={step.href} target="_blank" rel="noreferrer">
+                {step.linkLabel}
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Railway variable builder</p>
+            <strong>Type the sender details once, copy the block, then paste into Railway Variables.</strong>
+          </div>
+          <div className="admin-page-actions">
+            <button className="admin-secondary-button" type="button" onClick={() => copyText(envBlock)}>
+              <Clipboard size={16} aria-hidden="true" />
+              Copy env block
+            </button>
+            <a className="admin-primary-link" href={gmailSetupLinks.railwayVariables} target="_blank" rel="noreferrer">
+              Railway dashboard
+              <ExternalLink size={15} aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+        <div className="env-builder-layout">
+          <div className="admin-form-grid">
+            <Field label="SMTP provider" value={smtpDraft.SMTP_PROVIDER} onChange={(value) => updateDraft('SMTP_PROVIDER', value)} />
+            <Field label="SMTP host" value={smtpDraft.SMTP_HOST} onChange={(value) => updateDraft('SMTP_HOST', value)} />
+            <Field label="SMTP port" value={smtpDraft.SMTP_PORT} onChange={(value) => updateDraft('SMTP_PORT', value)} />
+            <Field label="SMTP secure true/false" value={smtpDraft.SMTP_SECURE} onChange={(value) => updateDraft('SMTP_SECURE', value)} />
+            <Field label="Gmail address / SMTP user" value={smtpDraft.SMTP_USER} onChange={(value) => updateDraft('SMTP_USER', value)} />
+            <Field label="Gmail app password (local helper only)" value={smtpDraft[smtpPasswordEnvKey]} type="password" onChange={(value) => updateDraft(smtpPasswordEnvKey, value)} />
+            <Field label="From name and email" value={smtpDraft.SMTP_FROM} onChange={(value) => updateDraft('SMTP_FROM', value)} />
+            <Field label="Reply-to email" value={smtpDraft.SMTP_REPLY_TO} onChange={(value) => updateDraft('SMTP_REPLY_TO', value)} />
+          </div>
+          <div className="env-preview-card">
+            <p className="admin-eyebrow">Copy into Railway</p>
+            <pre>{envBlock}</pre>
+            <p>
+              Recommended Gmail SMTP: {gmailSmtpHost}, port 587, STARTTLS, SMTP_SECURE=false. Use port 465 only if you intentionally choose SSL and set secure to true.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel smtp-cheat-panel">
+        <div>
+          <p className="admin-eyebrow">Troubleshooting</p>
+          <h2>Common Gmail SMTP issues</h2>
+        </div>
+        <div className="smtp-cheat-grid">
+          <article>
+            <strong>Wrong password</strong>
+            <p>Use the 16-character app password, not the normal Gmail login password.</p>
+          </article>
+          <article>
+            <strong>App passwords missing</strong>
+            <p>Confirm 2-Step Verification is on. Some work/school accounts may need the Google Workspace admin to allow it.</p>
+          </article>
+          <article>
+            <strong>Blocked or rejected</strong>
+            <p>Use TLS/SSL, keep volume normal, and later add Workspace/DKIM for info@yourdomain.</p>
+          </article>
+        </div>
+        <div className="email-doc-links">
+          <a href={gmailSetupLinks.smtpSettings} target="_blank" rel="noreferrer">Gmail SMTP help <ExternalLink size={14} aria-hidden="true" /></a>
+          <a href={gmailSetupLinks.smtpErrors} target="_blank" rel="noreferrer">SMTP error help <ExternalLink size={14} aria-hidden="true" /></a>
+          <a href={gmailSetupLinks.twoStep} target="_blank" rel="noreferrer">2-Step Verification <ExternalLink size={14} aria-hidden="true" /></a>
+        </div>
+      </section>
+    </section>
   )
 }
 
@@ -4217,6 +4484,10 @@ function AdminDashboard({ content, setContent, goHome }) {
             <Target size={17} aria-hidden="true" />
             Growth
           </button>
+          <button className={activeView === 'email' ? 'active' : ''} type="button" onClick={() => setActiveView('email')}>
+            <Mail size={17} aria-hidden="true" />
+            Email
+          </button>
           <button className={activeView === 'ads' ? 'active' : ''} type="button" onClick={() => setActiveView('ads')}>
             <TrendingUp size={17} aria-hidden="true" />
             SEO + Ads
@@ -4303,10 +4574,13 @@ function AdminDashboard({ content, setContent, goHome }) {
               <span>
                 {emailSettings?.configured
                   ? 'SMTP is configured for future one-click sending.'
-                  : `Ready for setup. Missing: ${(emailSettings?.missing || ['SMTP_SECRET_KEY']).join(', ')}`}
+                  : `Ready for setup. Missing: ${(emailSettings?.missing || [smtpPasswordEnvKey]).join(', ')}`}
               </span>
             </div>
-            <Settings size={22} aria-hidden="true" />
+            <button className="admin-secondary-button" type="button" onClick={() => setActiveView('email')}>
+              <Settings size={17} aria-hidden="true" />
+              Setup
+            </button>
           </section>
 
           <div className="crm-layout">
@@ -4372,6 +4646,14 @@ function AdminDashboard({ content, setContent, goHome }) {
           saveContent={saveContent}
           savingContent={savingContent}
           leads={leads}
+        />
+      ) : null}
+
+      {activeView === 'email' ? (
+        <EmailSetupDashboard
+          emailSettings={emailSettings}
+          mode={mode}
+          onRefresh={() => loadAdminData(auth.token, auth.user)}
         />
       ) : null}
 

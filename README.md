@@ -94,15 +94,10 @@ back to browser storage if the Node API is not running.
 
 ### Outbound email prep
 
-The CRM is ready for Gmail SMTP settings. Add these Railway variables when you
-are ready to move from mailto drafts to server-sent email:
-
-- `SMTP_HOST=smtp.gmail.com`
-- `SMTP_PORT=587`
-- `SMTP_SECURE=false`
-- `SMTP_USER=<outbound mailbox>`
-- `SMTP_SECRET_KEY=<Gmail app password>`
-- `SMTP_FROM=Flanagan Construction <outbound mailbox>`
+The CRM is ready for Gmail SMTP settings. Use the admin dashboard's Email tab to
+build the Railway environment variables. Do not commit app passwords or copied
+env blocks to GitHub; paste secrets directly into Railway Variables and rotate
+them immediately if they are ever exposed.
 
 ### Joist and Square transition
 

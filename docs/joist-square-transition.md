@@ -90,15 +90,12 @@ Current:
 
 Railway SMTP variables prepared:
 
-- `SMTP_HOST=smtp.gmail.com`
-- `SMTP_PORT=587`
-- `SMTP_SECURE=false`
-- `SMTP_USER=<outbound mailbox>`
-- `SMTP_SECRET_KEY=<Gmail app password>`
-- `SMTP_FROM=Flanagan Construction <outbound mailbox>`
+- Use the admin dashboard Email tab to generate the Railway variable block.
+- Paste app-password secrets directly into Railway Variables only.
+- Never commit copied SMTP env blocks to GitHub.
 
 Future:
 
 - Set up Google Workspace.
-- Replace `SMTP_USER` and `SMTP_FROM` with `info@yourdomain.com`.
+- Replace the sender user/from values with `info@yourdomain.com`.
 - Add server-sent stage emails after SPF, DKIM, and DMARC are configured.
