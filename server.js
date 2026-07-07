@@ -16,6 +16,7 @@ import { appendFile, readFile, writeFile } from 'node:fs/promises'
 import { createHash, createHmac, pbkdf2Sync, randomUUID, timingSafeEqual } from 'node:crypto'
 import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import nodemailer from 'nodemailer'
 import { buildWebhookPayload } from './lead-delivery.js'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
@@ -380,6 +381,49 @@ function emailSettingsStatus() {
   }
 }
 
+function isTruthySetting(value) {
+  return /^(true|1|yes|ssl)$/i.test(String(value || '').trim())
+}
+
+function safeSmtpPassword(value) {
+  const password = String(value || '').trim()
+  if (!password) return ''
+  if (/already set|paste-value-directly|placeholder/i.test(password)) return ''
+  return password
+}
+
+function emailLooksValid(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
+}
+
+function effectiveSmtpSettings(overrides = {}) {
+  const smtpUser = String(overrides.SMTP_USER || process.env.SMTP_USER || '').trim()
+  const password = safeSmtpPassword(overrides[smtpPasswordEnvKey]) || process.env[smtpPasswordEnvKey] || ''
+  return {
+    provider: String(overrides.SMTP_PROVIDER || process.env.SMTP_PROVIDER || 'gmail').trim(),
+    host: String(overrides.SMTP_HOST || process.env.SMTP_HOST || gmailSmtpHost).trim(),
+    port: Number(overrides.SMTP_PORT || process.env.SMTP_PORT || 587),
+    secure: isTruthySetting(overrides.SMTP_SECURE ?? process.env.SMTP_SECURE ?? 'false'),
+    user: smtpUser,
+    pass: password,
+    from: String(overrides.SMTP_FROM || process.env.SMTP_FROM || (smtpUser ? `Flanagan Construction <${smtpUser}>` : '')).trim(),
+    replyTo: String(overrides.SMTP_REPLY_TO || process.env.SMTP_REPLY_TO || smtpUser).trim(),
+  }
+}
+
+function publicSmtpSettings(settings = {}) {
+  return {
+    provider: settings.provider,
+    host: settings.host,
+    port: String(settings.port || ''),
+    secure: String(Boolean(settings.secure)),
+    user: settings.user,
+    from: settings.from,
+    replyTo: settings.replyTo,
+    passwordConfigured: Boolean(settings.pass),
+  }
+}
+
 function publicConfigStatus() {
   return {
     googleMapsApiKey: publicGoogleMapsApiKey,
@@ -396,6 +440,85 @@ async function handleAdminEmailSettings(req, res, gzipOk) {
   }
 
   sendJson(res, 200, { ok: true, emailSettings: emailSettingsStatus() }, gzipOk)
+}
+
+const testEmailRateHits = new Map()
+
+async function handleAdminTestEmail(req, res, gzipOk) {
+  const user = requireAdmin(req, res, gzipOk)
+  if (!user) return
+
+  if (req.method !== 'POST') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'POST' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    return
+  }
+
+  const ip = clientIp(req)
+  const rateKey = `${ip}:${user.email || user.name || 'admin'}`
+  if (isBucketRateLimited(testEmailRateHits, rateKey, 5, 10 * 60 * 1000)) {
+    securityLog('test_email_rate_limited', req, { user: hashForLog(user.email || user.name) })
+    sendJson(res, 429, { ok: false, error: 'Too many test emails. Wait a few minutes and try again.' }, gzipOk)
+    return
+  }
+
+  try {
+    const data = await readJsonBody(req, 120000)
+    const settings = effectiveSmtpSettings(data.settings || data)
+    const to = String(data.to || settings.user || '').trim()
+
+    if (!emailLooksValid(to)) {
+      sendJson(res, 422, { ok: false, error: 'Enter a valid test recipient email address.' }, gzipOk)
+      return
+    }
+    if (!settings.host || !settings.port || !settings.user || !settings.pass || !settings.from) {
+      sendJson(res, 422, {
+        ok: false,
+        error: 'SMTP host, port, user, app password, and from address are required before sending a test.',
+        settings: publicSmtpSettings(settings),
+      }, gzipOk)
+      return
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: settings.host,
+      port: settings.port,
+      secure: settings.secure,
+      requireTLS: !settings.secure,
+      auth: {
+        user: settings.user,
+        pass: settings.pass,
+      },
+    })
+
+    const info = await transporter.sendMail({
+      from: settings.from,
+      to,
+      replyTo: settings.replyTo || undefined,
+      subject: 'Flanagan Construction SMTP test',
+      text: [
+        'This is a test email from the Flanagan Construction admin dashboard.',
+        '',
+        `Sent at: ${new Date().toISOString()}`,
+        `Sender: ${settings.from}`,
+        '',
+        'If this arrived, Gmail SMTP is ready for outbound customer follow-ups.',
+      ].join('\n'),
+    })
+
+    sendJson(res, 200, {
+      ok: true,
+      message: `Test email sent to ${to}.`,
+      messageId: info.messageId || '',
+      accepted: Array.isArray(info.accepted) ? info.accepted : [],
+      settings: publicSmtpSettings(settings),
+    }, gzipOk)
+  } catch (error) {
+    securityLog('test_email_failed', req, { user: hashForLog(user.email || user.name), error: String(error?.code || error?.name || 'smtp_error') })
+    const message = String(error?.response || error?.message || 'Test email failed.')
+      .replace(/AUTH PLAIN [A-Za-z0-9+/=]+/g, 'AUTH PLAIN [hidden]')
+      .replace(/pass(word)?=[^\s&]+/gi, 'password=[hidden]')
+    sendJson(res, 400, { ok: false, error: message }, gzipOk)
+  }
 }
 
 function fileHealth(filePath) {
@@ -1031,6 +1154,11 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/admin/email-settings') {
     await handleAdminEmailSettings(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/admin/test-email') {
+    await handleAdminTestEmail(req, res, gzipOk)
     return
   }
 

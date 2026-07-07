@@ -164,6 +164,7 @@ const smtpEnvKeys = [
   'SMTP_FROM',
   'SMTP_REPLY_TO',
 ]
+const smtpDraftStorageKey = 'flanagan-smtp-draft-v1'
 
 const gmailSetupSteps = [
   {
@@ -583,6 +584,53 @@ function smtpEnvBlock(values) {
   return smtpEnvKeys
     .map((key) => `${key}=${envLineValue(values[key])}`)
     .join('\n')
+}
+
+function smtpDraftFromSettings(emailSettings) {
+  const savedDraft = loadSavedSmtpDraft()
+  const draft = {
+    SMTP_PROVIDER: emailSettings?.provider || 'gmail',
+    SMTP_HOST: emailSettings?.host || gmailSmtpHost,
+    SMTP_PORT: emailSettings?.port || '587',
+    SMTP_SECURE: emailSettings?.secure || 'false',
+    SMTP_USER: emailSettings?.user || '',
+    [smtpPasswordEnvKey]: '',
+    SMTP_FROM: emailSettings?.from || (emailSettings?.user ? `Flanagan Construction <${emailSettings.user}>` : ''),
+    SMTP_REPLY_TO: emailSettings?.replyTo || emailSettings?.user || '',
+    ...savedDraft,
+    [smtpPasswordEnvKey]: '',
+  }
+  if (smtpFromNeedsAutofill(draft.SMTP_FROM) && draft.SMTP_USER) {
+    draft.SMTP_FROM = `Flanagan Construction <${draft.SMTP_USER}>`
+  }
+  return draft
+}
+
+function smtpFromNeedsAutofill(value) {
+  const text = String(value || '').trim()
+  return !text || /<\s*>|<n>|<null>|<undefined>/i.test(text)
+}
+
+function loadSavedSmtpDraft() {
+  try {
+    const stored = window.localStorage.getItem(smtpDraftStorageKey)
+    if (!stored) return {}
+    const parsed = JSON.parse(stored)
+    delete parsed[smtpPasswordEnvKey]
+    return parsed
+  } catch {
+    return {}
+  }
+}
+
+function saveSmtpDraft(draft) {
+  const safeDraft = smtpEnvKeys.reduce((nextDraft, key) => {
+    if (key !== smtpPasswordEnvKey) nextDraft[key] = draft[key] || ''
+    return nextDraft
+  }, {})
+  const savedAt = new Date().toISOString()
+  window.localStorage.setItem(smtpDraftStorageKey, JSON.stringify({ ...safeDraft, savedAt }))
+  return savedAt
 }
 
 function smtpChecklistText(values) {
@@ -3319,17 +3367,13 @@ function IntegrationCard({ title, status, copy, href }) {
   )
 }
 
-function EmailSetupDashboard({ emailSettings, onRefresh, mode }) {
-  const [smtpDraft, setSmtpDraft] = useState(() => ({
-    SMTP_PROVIDER: emailSettings?.provider || 'gmail',
-    SMTP_HOST: emailSettings?.host || gmailSmtpHost,
-    SMTP_PORT: emailSettings?.port || '587',
-    SMTP_SECURE: emailSettings?.secure || 'false',
-    SMTP_USER: emailSettings?.user || '',
-    [smtpPasswordEnvKey]: '',
-    SMTP_FROM: emailSettings?.from || '',
-    SMTP_REPLY_TO: emailSettings?.replyTo || emailSettings?.user || '',
-  }))
+function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
+  const [smtpDraft, setSmtpDraft] = useState(() => smtpDraftFromSettings(emailSettings))
+  const [testRecipient, setTestRecipient] = useState(() => smtpDraftFromSettings(emailSettings).SMTP_USER || emailSettings?.user || '')
+  const [emailActionMessage, setEmailActionMessage] = useState('')
+  const [emailActionTone, setEmailActionTone] = useState('ready')
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
   const statusTone = smtpStatusTone(emailSettings)
   const missing = emailSettings?.missing || ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', smtpPasswordEnvKey, 'SMTP_FROM']
   const requiredStatus =
@@ -3344,10 +3388,53 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode }) {
       ...current,
       [key]: value,
       ...(key === 'SMTP_USER' && !current.SMTP_REPLY_TO ? { SMTP_REPLY_TO: value } : {}),
-      ...(key === 'SMTP_USER' && !current.SMTP_FROM ? { SMTP_FROM: `Flanagan Construction <${value}>` } : {}),
+      ...(key === 'SMTP_USER' && smtpFromNeedsAutofill(current.SMTP_FROM) ? { SMTP_FROM: `Flanagan Construction <${value}>` } : {}),
       ...(key === 'SMTP_PORT' && value === '465' ? { SMTP_SECURE: 'true' } : {}),
       ...(key === 'SMTP_PORT' && value === '587' ? { SMTP_SECURE: 'false' } : {}),
     }))
+  }
+  const saveDraft = () => {
+    setSavingDraft(true)
+    setEmailActionMessage('')
+    try {
+      const savedAt = saveSmtpDraft(smtpDraft)
+      setEmailActionTone('ready')
+      setEmailActionMessage(`Saved email setup draft in this browser at ${formatDate(savedAt)}. Gmail app password was not saved.`)
+    } catch {
+      setEmailActionTone('needs-setup')
+      setEmailActionMessage('Could not save in this browser. Copy the env block before leaving this page.')
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+  const sendTestEmail = async () => {
+    if (mode !== 'server' || !token) {
+      setEmailActionTone('needs-setup')
+      setEmailActionMessage('Test email needs the live Railway admin server. Refresh and sign in again if needed.')
+      return
+    }
+    setTestingEmail(true)
+    setEmailActionTone('waiting')
+    setEmailActionMessage('Sending a test email...')
+    try {
+      const payload = await adminRequest('/api/admin/test-email', {
+        method: 'POST',
+        token,
+        body: {
+          to: testRecipient || smtpDraft.SMTP_USER,
+          settings: smtpDraft,
+        },
+        timeoutMs: 45000,
+      })
+      setEmailActionTone('ready')
+      setEmailActionMessage(payload.message || `Test email sent to ${testRecipient || smtpDraft.SMTP_USER}.`)
+      onRefresh()
+    } catch (error) {
+      setEmailActionTone('needs-setup')
+      setEmailActionMessage(error.message || 'Test email failed. Check the app password and Railway variables.')
+    } finally {
+      setTestingEmail(false)
+    }
   }
 
   return (
@@ -3362,6 +3449,14 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode }) {
             <ExternalLink size={17} aria-hidden="true" />
             Gmail app password
           </a>
+          <button className="admin-secondary-button" type="button" onClick={saveDraft} disabled={savingDraft}>
+            {savingDraft ? <RefreshCw size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
+            Save setup draft
+          </button>
+          <button className="admin-primary-button" type="button" onClick={sendTestEmail} disabled={testingEmail}>
+            {testingEmail ? <RefreshCw size={17} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
+            Send test email
+          </button>
           <button className="admin-primary-button" type="button" onClick={onRefresh}>
             <RefreshCw size={17} aria-hidden="true" />
             Refresh status
@@ -3381,6 +3476,40 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode }) {
           <span>{emailSettings?.configured ? 'Ready' : `${missing.length} missing`}</span>
           <strong>{smtpStatusLabel(emailSettings)}</strong>
           <small>{mode === 'server' ? 'Reading live Railway environment.' : 'Local mode uses this browser only.'}</small>
+        </div>
+      </section>
+
+      <section className={`admin-panel full-span-panel email-test-panel ${emailActionTone}`}>
+        <div>
+          <p className="admin-eyebrow">Save and test</p>
+          <h2>Prove the sender works before customer follow-ups depend on it.</h2>
+          <p>
+            Save keeps the sender fields in this browser for the office manager. The Gmail app password is used only for the test request or copied into Railway Variables.
+          </p>
+        </div>
+        <div className="email-test-controls">
+          <Field label="Send test email to" value={testRecipient} onChange={setTestRecipient} />
+          <div className="email-test-actions">
+            <button className="admin-secondary-button" type="button" onClick={saveDraft} disabled={savingDraft}>
+              {savingDraft ? <RefreshCw size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />}
+              Save draft
+            </button>
+            <button className="admin-primary-button" type="button" onClick={sendTestEmail} disabled={testingEmail}>
+              {testingEmail ? <RefreshCw size={17} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
+              Send test email
+            </button>
+          </div>
+          {emailActionMessage ? (
+            <p className="email-action-message" role="status">
+              {emailActionTone === 'ready' ? <CheckCircle2 size={16} aria-hidden="true" /> : <ShieldCheck size={16} aria-hidden="true" />}
+              {emailActionMessage}
+            </p>
+          ) : (
+            <p className="email-action-message muted">
+              <ShieldCheck size={16} aria-hidden="true" />
+              Passwords are not saved to site content. Paste the app password directly into Railway for permanent sending.
+            </p>
+          )}
         </div>
       </section>
 
@@ -3435,6 +3564,14 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode }) {
             <button className="admin-secondary-button" type="button" onClick={() => copyText(envBlock)}>
               <Clipboard size={16} aria-hidden="true" />
               Copy env block
+            </button>
+            <button className="admin-secondary-button" type="button" onClick={saveDraft} disabled={savingDraft}>
+              {savingDraft ? <RefreshCw size={16} aria-hidden="true" /> : <Save size={16} aria-hidden="true" />}
+              Save draft
+            </button>
+            <button className="admin-primary-button" type="button" onClick={sendTestEmail} disabled={testingEmail}>
+              {testingEmail ? <RefreshCw size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+              Test email
             </button>
             <a className="admin-primary-link" href={gmailSetupLinks.railwayVariables} target="_blank" rel="noreferrer">
               Railway dashboard
@@ -4843,6 +4980,7 @@ function AdminDashboard({ content, setContent, goHome }) {
         <EmailSetupDashboard
           emailSettings={emailSettings}
           mode={mode}
+          token={auth.token}
           onRefresh={() => loadAdminData(auth.token, auth.user)}
         />
       ) : null}

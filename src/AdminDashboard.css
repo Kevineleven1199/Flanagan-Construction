@@ -2292,6 +2292,97 @@
   opacity: 0.78;
 }
 
+.email-test-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.88fr) minmax(320px, 0.58fr);
+  gap: 18px;
+  align-items: center;
+  border-color: rgba(18, 63, 109, 0.18);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(242, 184, 75, 0.16), transparent 30%),
+    linear-gradient(135deg, #fff, #f7fbff);
+}
+
+.email-test-panel.ready {
+  border-color: rgba(31, 157, 107, 0.24);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(31, 157, 107, 0.14), transparent 30%),
+    linear-gradient(135deg, #fff, #f6fffb);
+}
+
+.email-test-panel.needs-setup {
+  border-color: rgba(154, 103, 18, 0.24);
+  background:
+    radial-gradient(circle at 10% 10%, rgba(242, 184, 75, 0.18), transparent 30%),
+    linear-gradient(135deg, #fff, #fff8e6);
+}
+
+.email-test-panel h2,
+.email-test-panel p {
+  margin: 0;
+}
+
+.email-test-panel h2 {
+  color: #1c1f21;
+  font-size: clamp(1.5rem, 2.6vw, 2.45rem);
+  line-height: 1.02;
+}
+
+.email-test-panel p:not(.admin-eyebrow):not(.email-action-message) {
+  max-width: 760px;
+  margin-top: 10px;
+  color: #59636a;
+  line-height: 1.55;
+}
+
+.email-test-controls {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 46px rgba(18, 63, 109, 0.08);
+  padding: 14px;
+}
+
+.email-test-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.email-action-message {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px solid rgba(31, 157, 107, 0.2);
+  border-radius: 8px;
+  background: #edf9f3;
+  color: #1d684c;
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.email-test-panel.needs-setup .email-action-message {
+  border-color: rgba(154, 103, 18, 0.24);
+  background: #fff8e6;
+  color: #725012;
+}
+
+.email-test-panel.waiting .email-action-message {
+  border-color: rgba(18, 63, 109, 0.18);
+  background: #eef5fb;
+  color: #123f6d;
+}
+
+.email-action-message.muted {
+  border-color: rgba(18, 63, 109, 0.12);
+  background: #f7fbff;
+  color: #59636a;
+}
+
 .email-step-grid,
 .env-builder-layout,
 .smtp-cheat-grid,
@@ -3058,6 +3149,7 @@
   .content-layout,
   .integration-grid,
   .email-hero-panel,
+  .email-test-panel,
   .smtp-readiness-grid,
   .email-step-grid,
   .env-builder-layout,
@@ -3112,6 +3204,7 @@
     .crm-coach-steps,
     .campaign-grid,
     .email-hero-panel,
+    .email-test-panel,
     .smtp-readiness-grid,
     .email-step-grid,
     .env-builder-layout,
@@ -3135,6 +3228,10 @@
 
   .lead-row,
   .crm-priority-list button {
+    grid-template-columns: 1fr;
+  }
+
+  .email-test-actions {
     grid-template-columns: 1fr;
   }
 
