@@ -206,6 +206,43 @@
   padding: clamp(16px, 2vw, 22px);
 }
 
+.admin-remember-login {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background: #f7fbff;
+  color: #1c1f21;
+  cursor: pointer;
+  padding: 11px 12px;
+}
+
+.admin-remember-login input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #123f6d;
+}
+
+.admin-remember-login strong,
+.admin-remember-login small {
+  display: block;
+}
+
+.admin-remember-login strong {
+  font-size: 0.88rem;
+}
+
+.admin-remember-login small {
+  margin-top: 3px;
+  color: #657078;
+  font-size: 0.76rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
 .admin-metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

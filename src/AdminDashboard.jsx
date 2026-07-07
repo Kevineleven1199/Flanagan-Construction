@@ -153,6 +153,7 @@ const gmailSetupLinks = {
 const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
 const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
 const smtpPasswordPlaceholder = 'paste-value-directly-in-railway'
+const ADMIN_REMEMBER_STORAGE_KEY = `${ADMIN_SESSION_KEY}-remembered`
 
 const smtpEnvKeys = [
   'SMTP_PROVIDER',
@@ -337,19 +338,30 @@ const estimateProfiles = {
 
 function readSessionAuth() {
   try {
-    const stored = window.sessionStorage.getItem(ADMIN_SESSION_KEY)
+    const stored = window.sessionStorage.getItem(ADMIN_SESSION_KEY) || window.localStorage.getItem(ADMIN_REMEMBER_STORAGE_KEY)
     if (!stored) return { token: '', user: null, expiresAt: '' }
-    if (stored.startsWith('{')) return JSON.parse(stored)
-    return { token: stored, user: null, expiresAt: '' }
+    const auth = stored.startsWith('{') ? JSON.parse(stored) : { token: stored, user: null, expiresAt: '' }
+    if (auth.expiresAt && new Date(auth.expiresAt).getTime() <= Date.now()) {
+      writeSessionAuth(null)
+      return { token: '', user: null, expiresAt: '' }
+    }
+    return auth
   } catch {
     return { token: '', user: null, expiresAt: '' }
   }
 }
 
-function writeSessionAuth(auth) {
+function writeSessionAuth(auth, remember = false) {
   try {
-    if (auth?.token) window.sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(auth))
-    else window.sessionStorage.removeItem(ADMIN_SESSION_KEY)
+    if (auth?.token) {
+      const storedAuth = { ...auth, remember: Boolean(remember || auth.remember) }
+      window.sessionStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(storedAuth))
+      if (storedAuth.remember) window.localStorage.setItem(ADMIN_REMEMBER_STORAGE_KEY, JSON.stringify(storedAuth))
+      else window.localStorage.removeItem(ADMIN_REMEMBER_STORAGE_KEY)
+    } else {
+      window.sessionStorage.removeItem(ADMIN_SESSION_KEY)
+      window.localStorage.removeItem(ADMIN_REMEMBER_STORAGE_KEY)
+    }
   } catch {
     // Storage can be unavailable in private browsing.
   }
@@ -973,6 +985,8 @@ function AdminLogin({
   setEmail,
   password,
   setPassword,
+  rememberLogin,
+  setRememberLogin,
   loginTrap,
   setLoginTrap,
   loading,
@@ -1030,6 +1044,17 @@ function AdminLogin({
             onChange={(event) => setPassword(event.target.value)}
             required
           />
+        </label>
+        <label className="admin-remember-login">
+          <input
+            type="checkbox"
+            checked={rememberLogin}
+            onChange={(event) => setRememberLogin(event.target.checked)}
+          />
+          <span>
+            <strong>Keep me signed in on this device</strong>
+            <small>Use this only on Nick or Kevin's own computer. Sign out clears it.</small>
+          </span>
         </label>
         <button className="admin-primary-button" type="submit" disabled={loading}>
           {loading ? <RefreshCw size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}
@@ -4398,6 +4423,7 @@ function AdminDashboard({ content, setContent, goHome }) {
   const [auth, setAuth] = useState(readSessionAuth)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberLogin, setRememberLogin] = useState(true)
   const [loginTrap, setLoginTrap] = useState({ website: '', confirmEmail: '' })
   const [mode, setMode] = useState('checking')
   const [unlocked, setUnlocked] = useState(false)
@@ -4441,11 +4467,18 @@ function AdminDashboard({ content, setContent, goHome }) {
       setMode('server')
       setUnlocked(true)
       if (!silent) setMessage(`Welcome back, ${adminFirstName(sessionUser)}. Your assistant is ready.`)
-      const nextSession = { token, user: sessionUser || auth.user, expiresAt: auth.expiresAt || '' }
+      const storedSession = readSessionAuth()
+      const nextSession = {
+        token,
+        user: sessionUser || storedSession.user || auth.user,
+        expiresAt: storedSession.expiresAt || auth.expiresAt || '',
+        remember: Boolean(storedSession.remember || auth.remember),
+      }
       setAuth((current) => ({ ...current, ...nextSession }))
-      writeSessionAuth(nextSession)
+      writeSessionAuth(nextSession, nextSession.remember)
     } catch (error) {
       if (error.status === 401) {
+        writeSessionAuth(null)
         setMode('locked')
         setUnlocked(false)
         setEmail('')
@@ -4718,15 +4751,16 @@ function AdminDashboard({ content, setContent, goHome }) {
     try {
       const payload = await adminRequest('/api/admin/login', {
         method: 'POST',
-        body: { email, password, ...loginTrap },
+        body: { email, password, remember: rememberLogin, ...loginTrap },
       })
       const nextAuth = {
         token: payload.token,
         user: payload.user,
         expiresAt: payload.expiresAt,
+        remember: Boolean(payload.remember || rememberLogin),
       }
       setAuth(nextAuth)
-      writeSessionAuth(nextAuth)
+      writeSessionAuth(nextAuth, nextAuth.remember)
       setPassword('')
       setLoginTrap({ website: '', confirmEmail: '' })
       await loadAdminData(payload.token, payload.user)
@@ -4756,6 +4790,8 @@ function AdminDashboard({ content, setContent, goHome }) {
         setEmail={setEmail}
         password={password}
         setPassword={setPassword}
+        rememberLogin={rememberLogin}
+        setRememberLogin={setRememberLogin}
         loginTrap={loginTrap}
         setLoginTrap={setLoginTrap}
         loading={loading}

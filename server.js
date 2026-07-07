@@ -213,12 +213,13 @@ function verifyPassword(password, storedHash) {
   return timingSafeStringEquals(actual, expectedHash)
 }
 
-function signAdminToken(user) {
+function signAdminToken(user, remember = false) {
   const issuedAt = Math.floor(Date.now() / 1000)
-  const expiresAt = issuedAt + 12 * 60 * 60
+  const expiresAt = issuedAt + (remember ? 30 * 24 * 60 * 60 : 12 * 60 * 60)
   const payload = base64UrlJson({
     email: user.email,
     role: user.role || 'super_admin',
+    remember: Boolean(remember),
     iat: issuedAt,
     exp: expiresAt,
   })
@@ -306,6 +307,7 @@ async function handleAdminLogin(req, res, gzipOk) {
     const data = await readJsonBody(req, 100000)
     const email = String(data.email || '').toLowerCase().trim()
     const password = String(data.password || '')
+    const remember = Boolean(data.remember)
     const ip = clientIp(req)
 
     const tooManyIpAttempts = isBucketRateLimited(adminLoginRateHits, `admin-login-ip:${ip}`, 36, 15 * 60 * 1000)
@@ -331,7 +333,7 @@ async function handleAdminLogin(req, res, gzipOk) {
       return
     }
 
-    const session = signAdminToken(user)
+    const session = signAdminToken(user, remember)
     sendJson(
       res,
       200,
@@ -339,6 +341,7 @@ async function handleAdminLogin(req, res, gzipOk) {
         ok: true,
         token: session.token,
         expiresAt: session.expiresAt,
+        remember,
         user: publicAdminUser(user),
       },
       gzipOk,
