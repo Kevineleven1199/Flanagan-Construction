@@ -41,3 +41,91 @@ a {
   background: #f2b84b;
   color: #161616;
 }
+
+.app-error-boundary {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(242, 184, 75, 0.22), transparent 30%),
+    linear-gradient(135deg, #071827, #123f6d 62%, #101418);
+  color: #fff;
+  padding: 24px;
+}
+
+.app-error-boundary section {
+  display: grid;
+  width: min(100%, 520px);
+  gap: 12px;
+  border: 1px solid rgba(242, 184, 75, 0.26);
+  border-radius: 8px;
+  background: rgba(7, 24, 39, 0.82);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+  padding: clamp(22px, 4vw, 34px);
+}
+
+.app-error-mark {
+  width: 54px;
+  height: 54px;
+  border: 2px solid rgba(242, 184, 75, 0.72);
+  border-radius: 12px;
+  background: url('/brand-mark.svg') center/cover no-repeat;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+}
+
+.app-error-boundary p,
+.app-error-boundary h1,
+.app-error-boundary span {
+  margin: 0;
+}
+
+.app-error-boundary p {
+  color: #f2b84b;
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.app-error-boundary h1 {
+  color: #fff;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  line-height: 0.98;
+}
+
+.app-error-boundary span {
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 750;
+}
+
+.app-error-boundary div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.app-error-boundary button,
+.app-error-boundary a {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 900;
+  padding: 0 14px;
+  text-decoration: none;
+}
+
+.app-error-boundary button {
+  border: 0;
+  background: #f2b84b;
+  color: #101418;
+  cursor: pointer;
+}
+
+.app-error-boundary a {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}

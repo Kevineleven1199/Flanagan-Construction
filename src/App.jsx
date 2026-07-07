@@ -206,6 +206,23 @@ function googleMapsApiKey() {
   return import.meta.env.VITE_GOOGLE_MAPS_API_KEY || window.__GOOGLE_MAPS_API_KEY__ || ''
 }
 
+async function postJsonWithTimeout(path, payload, timeoutMs = 12000) {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    })
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+    return response
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
 function loadGooglePlaces() {
   if (typeof window === 'undefined') return Promise.resolve(false)
   if (window.google?.maps?.places?.Autocomplete) return Promise.resolve(true)
@@ -1053,11 +1070,12 @@ function App() {
       const params = new URLSearchParams(window.location.search)
       if (params.has('nosplash')) return false
       if (params.has('splash')) return true
-      return true
+      return window.sessionStorage.getItem('flanagan-splash-seen') !== 'true'
     } catch {
       return true
     }
   })
+  const [online, setOnline] = useState(() => navigator.onLine)
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -1098,6 +1116,11 @@ function App() {
   }, [routePath, siteContent])
 
   const dismissSplash = useCallback(() => {
+    try {
+      window.sessionStorage.setItem('flanagan-splash-seen', 'true')
+    } catch {
+      // Session storage can be unavailable.
+    }
     setShowSplash(false)
   }, [])
 
@@ -1135,6 +1158,16 @@ function App() {
     const timeout = window.setTimeout(dismissSplash, 2300)
     return () => window.clearTimeout(timeout)
   }, [dismissSplash, showSplash])
+
+  useEffect(() => {
+    const updateOnline = () => setOnline(navigator.onLine)
+    window.addEventListener('online', updateOnline)
+    window.addEventListener('offline', updateOnline)
+    return () => {
+      window.removeEventListener('online', updateOnline)
+      window.removeEventListener('offline', updateOnline)
+    }
+  }, [])
 
   useEffect(() => {
     const root = document.documentElement
@@ -1381,11 +1414,7 @@ function App() {
       saveLocalLeadBackup(draft)
 
       try {
-        await fetch('/api/lead-draft', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(draft),
-        })
+        await postJsonWithTimeout('/api/lead-draft', draft, 8000)
       } catch {
         // Static hosting can still keep the local backup.
       } finally {
@@ -1444,12 +1473,7 @@ function App() {
     saveLocalLeadBackup(finalLead)
 
     try {
-      const response = await fetch('/api/lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finalLead),
-      })
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+      await postJsonWithTimeout('/api/lead', finalLead, 14000)
       setSubmitted(true)
       setStatus('Request received. We will reach out within one business day.')
       sendLeadConversion(siteContent.integrations || {}, finalLead)
@@ -1507,6 +1531,11 @@ function App() {
       <a className="skip-link" href="#top">
         Skip to content
       </a>
+      {!online ? (
+        <div className="connection-banner" role="status">
+          You appear offline. Your request is still backed up in this browser, and email fallback will open if sending fails.
+        </div>
+      ) : null}
       <SiteHeader
         business={business}
         menuOpen={menuOpen}

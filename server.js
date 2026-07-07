@@ -30,6 +30,7 @@ const leadLogPath = join(root, 'leads.log')
 const leadCrmPath = join(root, 'lead-crm.json')
 const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
 const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
+const serverStartedAt = new Date()
 
 const builtInSuperAdmins = [
   {
@@ -163,7 +164,16 @@ function send(res, status, headers, body, gzip = false) {
 }
 
 function sendJson(res, status, payload, gzip = false) {
-  send(res, status, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(payload), gzip)
+  send(
+    res,
+    status,
+    {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
+    JSON.stringify(payload),
+    gzip,
+  )
 }
 
 function base64UrlEncode(value) {
@@ -377,6 +387,92 @@ async function handleAdminEmailSettings(req, res, gzipOk) {
   }
 
   sendJson(res, 200, { ok: true, emailSettings: emailSettingsStatus() }, gzipOk)
+}
+
+function fileHealth(filePath) {
+  try {
+    const stats = statSync(filePath)
+    return {
+      exists: true,
+      bytes: stats.size,
+      updatedAt: stats.mtime.toISOString(),
+    }
+  } catch {
+    return {
+      exists: false,
+      bytes: 0,
+      updatedAt: '',
+    }
+  }
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let value = Number(bytes)
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  return `${value >= 10 || unitIndex === 0 ? Math.round(value) : value.toFixed(1)} ${units[unitIndex]}`
+}
+
+async function handleAdminSystemHealth(req, res, gzipOk) {
+  if (!requireAdmin(req, res, gzipOk)) return
+
+  if (req.method !== 'GET') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    return
+  }
+
+  const memory = process.memoryUsage()
+  const leads = await readLeadsWithCrm()
+  const contentFile = fileHealth(siteContentPath)
+  const leadLogFile = fileHealth(leadLogPath)
+  const leadCrmFile = fileHealth(leadCrmPath)
+  const distFile = fileHealth(join(distDir, 'index.html'))
+  const health = {
+    status: distFile.exists ? 'ok' : 'needs-build',
+    mode: process.env.NODE_ENV || 'production',
+    node: process.version,
+    startedAt: serverStartedAt.toISOString(),
+    uptimeSeconds: Math.round(process.uptime()),
+    memory: {
+      rssMb: Math.round(memory.rss / 1024 / 1024),
+      heapUsedMb: Math.round(memory.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(memory.heapTotal / 1024 / 1024),
+    },
+    files: {
+      dist: distFile,
+      content: contentFile,
+      leadLog: leadLogFile,
+      leadCrm: leadCrmFile,
+    },
+    storage: {
+      content: formatBytes(contentFile.bytes),
+      leadLog: formatBytes(leadLogFile.bytes),
+      leadCrm: formatBytes(leadCrmFile.bytes),
+    },
+    counts: {
+      leads: leads.length,
+      openLeads: leads.filter((lead) => !['Won', 'Lost'].includes(lead.status)).length,
+      startedForms: leads.filter((lead) => lead.status === 'Started').length,
+    },
+    integrations: {
+      emailConfigured: emailSettingsStatus().configured,
+      leadWebhookConfigured: Boolean(leadWebhookUrl),
+      googlePlacesConfigured: Boolean(process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY),
+    },
+    checks: [
+      { id: 'build', label: 'Production build', ok: distFile.exists, detail: distFile.exists ? 'dist/index.html is present' : 'Run npm run build before start' },
+      { id: 'content', label: 'Site content storage', ok: contentFile.exists, detail: contentFile.exists ? `Updated ${contentFile.updatedAt}` : 'Using default content until saved' },
+      { id: 'crm', label: 'Lead CRM storage', ok: leadLogFile.exists || leadCrmFile.exists, detail: `${leads.length} lead records available` },
+      { id: 'email', label: 'Outbound email', ok: emailSettingsStatus().configured, detail: emailSettingsStatus().configured ? 'SMTP variables are configured' : 'Use Email tab to finish setup' },
+    ],
+  }
+
+  sendJson(res, 200, { ok: true, health }, gzipOk)
 }
 
 async function readJsonFile(filePath, fallback) {
@@ -897,7 +993,11 @@ const server = http.createServer(async (req, res) => {
 
   // Health check for Railway / uptime monitors.
   if (pathname === '/health' || pathname === '/healthz') {
-    sendJson(res, 200, { status: 'ok' })
+    sendJson(res, 200, {
+      status: 'ok',
+      uptimeSeconds: Math.round(process.uptime()),
+      startedAt: serverStartedAt.toISOString(),
+    })
     return
   }
 
@@ -913,6 +1013,11 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/admin/email-settings') {
     await handleAdminEmailSettings(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/admin/system-health') {
+    await handleAdminSystemHealth(req, res, gzipOk)
     return
   }
 

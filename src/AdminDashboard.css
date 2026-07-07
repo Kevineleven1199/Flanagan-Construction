@@ -2500,6 +2500,195 @@
   line-height: 1.45;
 }
 
+.system-health-panel {
+  display: grid;
+  gap: 12px;
+  max-width: 1380px;
+  margin: 14px auto 0;
+  border: 1px solid rgba(18, 63, 109, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 16px 44px rgba(28, 31, 33, 0.055);
+  padding: clamp(13px, 2vw, 18px);
+}
+
+.system-health-panel.ready {
+  border-color: rgba(31, 157, 107, 0.22);
+  background:
+    linear-gradient(135deg, rgba(237, 249, 243, 0.96), rgba(255, 255, 255, 0.94));
+}
+
+.system-health-panel.warning,
+.system-health-panel.waiting {
+  border-color: rgba(154, 103, 18, 0.24);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 230, 0.96), rgba(255, 255, 255, 0.94));
+}
+
+.system-health-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.system-health-head strong {
+  display: block;
+  color: #1c1f21;
+  font-size: 1.1rem;
+}
+
+.system-health-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.system-health-head button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(18, 63, 109, 0.14);
+  border-radius: 8px;
+  background: #eef5fb;
+  color: #123f6d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  padding: 0 11px;
+}
+
+.system-health-head button:disabled {
+  opacity: 0.62;
+  cursor: progress;
+}
+
+.system-health-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.system-health-grid article,
+.system-health-grid button {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(18, 63, 109, 0.1);
+  border-radius: 8px;
+  background: #fff;
+  color: #1c1f21;
+  padding: 11px;
+  text-align: left;
+}
+
+.system-health-grid button {
+  cursor: pointer;
+  font: inherit;
+}
+
+.system-health-grid .attention {
+  border-color: rgba(154, 103, 18, 0.24);
+  background: #fff8e6;
+}
+
+.system-health-grid .healthy {
+  border-color: rgba(31, 157, 107, 0.16);
+}
+
+.system-health-grid span,
+.system-health-grid small {
+  color: #59636a;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.system-health-grid strong {
+  overflow: hidden;
+  color: #1c1f21;
+  font-size: 1.08rem;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-health-brief {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.42fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  border-color: rgba(18, 63, 109, 0.16);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(238, 245, 251, 0.94));
+}
+
+.assistant-health-brief h2,
+.assistant-health-brief p {
+  margin: 0;
+}
+
+.assistant-health-brief h2 {
+  color: #1c1f21;
+  font-size: clamp(1.4rem, 2.6vw, 2.2rem);
+  line-height: 1.05;
+}
+
+.assistant-health-brief p {
+  margin-top: 8px;
+  color: #59636a;
+  line-height: 1.5;
+}
+
+.assistant-health-checks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.assistant-health-checks span {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 8px;
+  border: 1px solid rgba(154, 103, 18, 0.18);
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #725012;
+  padding: 10px;
+}
+
+.assistant-health-checks span.done {
+  border-color: rgba(31, 157, 107, 0.18);
+  background: #edf9f3;
+  color: #1d684c;
+}
+
+.assistant-health-checks svg {
+  grid-row: span 2;
+  margin-top: 2px;
+}
+
+.assistant-health-checks strong,
+.assistant-health-checks small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assistant-health-checks strong {
+  color: inherit;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.assistant-health-checks small {
+  color: currentColor;
+  font-weight: 800;
+  line-height: 1.25;
+  opacity: 0.76;
+}
+
 .command-board-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2847,9 +3036,12 @@
 
 @media (max-width: 900px) {
   .admin-command-board,
+  .system-health-grid,
   .manual-lead-form,
   .pipeline-lane-grid,
-  .command-tile-grid {
+  .command-tile-grid,
+  .assistant-health-brief,
+  .assistant-health-checks {
     grid-template-columns: 1fr;
   }
 
@@ -3062,7 +3254,9 @@
   .admin-page-actions,
   .lead-contact-actions,
   .panel-title-row,
-  .repeater-actions {
+  .repeater-actions,
+  .system-health-head,
+  .system-health-actions {
     align-items: stretch;
     flex-direction: column;
   }

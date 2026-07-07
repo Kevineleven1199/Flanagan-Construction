@@ -354,26 +354,48 @@ function writeSessionAuth(auth) {
   }
 }
 
-async function adminRequest(path, { method = 'GET', token = '', body } = {}) {
+async function adminRequest(path, { method = 'GET', token = '', body, timeoutMs = 16000, retries } = {}) {
   const headers = { Accept: 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
   if (body) headers['Content-Type'] = 'application/json'
+  const maxRetries = retries ?? (method === 'GET' ? 1 : 0)
 
-  const response = await fetch(path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
 
-  const payload = await response.json().catch(() => ({}))
+    try {
+      const response = await fetch(path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
 
-  if (!response.ok) {
-    const error = new Error(payload.error || `Request failed: ${response.status}`)
-    error.status = response.status
-    throw error
+      const payload = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        const error = new Error(payload.error || `Request failed: ${response.status}`)
+        error.status = response.status
+        if (attempt < maxRetries && response.status >= 500) continue
+        throw error
+      }
+
+      return payload
+    } catch (error) {
+      if (attempt < maxRetries && (error.name === 'AbortError' || !error.status)) continue
+      if (error.name === 'AbortError') {
+        const timeoutError = new Error('The admin server took too long to respond. Please refresh and try again.')
+        timeoutError.status = 0
+        throw timeoutError
+      }
+      throw error
+    } finally {
+      window.clearTimeout(timeout)
+    }
   }
 
-  return payload
+  throw new Error('Admin request failed.')
 }
 
 function formatDate(value) {
@@ -386,6 +408,37 @@ function formatDate(value) {
     hour: 'numeric',
     minute: '2-digit',
   }).format(date)
+}
+
+function formatShortDate(value) {
+  if (!value) return 'Not saved yet'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Not saved yet'
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
+function formatDuration(seconds) {
+  const total = Number(seconds) || 0
+  if (total < 60) return `${Math.max(0, Math.round(total))}s`
+  const minutes = Math.floor(total / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (hours < 24) return `${hours}h ${remainingMinutes}m`
+  const days = Math.floor(hours / 24)
+  return `${days}d ${hours % 24}h`
+}
+
+function systemHealthTone(systemHealth, emailSettings) {
+  if (!systemHealth) return 'waiting'
+  if (systemHealth.status !== 'ok') return 'warning'
+  if (!emailSettings?.configured) return 'warning'
+  return 'ready'
 }
 
 function formatMoney(value) {
@@ -972,9 +1025,10 @@ function PipelineStats({ leads }) {
   )
 }
 
-function AdminCommandBoard({ leads, selectedLead, setSelectedLeadId, setActiveView, emailSettings, mode }) {
+function AdminCommandBoard({ leads, selectedLead, setSelectedLeadId, setActiveView, emailSettings, mode, systemHealth }) {
   const stats = leadCommandStats(leads)
   const focusLead = selectedLead || stats.topLead
+  const healthTone = systemHealthTone(systemHealth, emailSettings)
   const commandTiles = [
     { label: 'Call first', value: stats.needsCall.length, helper: 'New or untouched leads', lead: stats.needsCall[0] },
     { label: 'Due now', value: stats.dueNow.length, helper: 'Follow-ups waiting', lead: stats.dueNow[0] },
@@ -1028,11 +1082,91 @@ function AdminCommandBoard({ leads, selectedLead, setSelectedLeadId, setActiveVi
             <small>{tile.helper}</small>
           </button>
         ))}
-        <button className={`command-tile command-system-tile ${emailSettings?.configured ? '' : 'needs-work'}`} type="button" onClick={() => setActiveView('email')}>
+        <button className={`command-tile command-system-tile ${healthTone === 'ready' ? '' : 'needs-work'}`} type="button" onClick={() => setActiveView(healthTone === 'ready' ? 'assistant' : 'email')}>
           <span>System</span>
-          <strong>{mode === 'server' ? 'Live' : 'Local'}</strong>
-          <small>{smtpStatusLabel(emailSettings)}</small>
+          <strong>{mode === 'server' ? systemHealth?.status || 'Live' : 'Local'}</strong>
+          <small>{systemHealth ? `API up ${formatDuration(systemHealth.uptimeSeconds)}` : smtpStatusLabel(emailSettings)}</small>
         </button>
+      </div>
+    </section>
+  )
+}
+
+function SystemHealthPanel({ systemHealth, emailSettings, loading, lastLoadedAt, mode, onRefresh, setActiveView }) {
+  const tone = systemHealthTone(systemHealth, emailSettings)
+  const diagnostics = JSON.stringify(
+    {
+      mode,
+      emailConfigured: Boolean(emailSettings?.configured),
+      lastLoadedAt,
+      health: systemHealth,
+    },
+    null,
+    2,
+  )
+  const cards = [
+    {
+      label: 'API',
+      value: mode === 'server' ? systemHealth?.status || 'Live' : 'Local',
+      detail: systemHealth ? `Up ${formatDuration(systemHealth.uptimeSeconds)}` : loading ? 'Checking' : 'Browser fallback',
+      ok: mode === 'server' && systemHealth?.status === 'ok',
+    },
+    {
+      label: 'Leads',
+      value: String(systemHealth?.counts?.leads ?? 0),
+      detail: `${systemHealth?.counts?.openLeads ?? 0} open / ${systemHealth?.counts?.startedForms ?? 0} started`,
+      ok: Boolean(systemHealth),
+    },
+    {
+      label: 'Storage',
+      value: systemHealth?.storage?.leadLog || 'Local',
+      detail: `Content ${systemHealth?.storage?.content || 'default'}`,
+      ok: Boolean(systemHealth?.files?.dist?.exists),
+    },
+    {
+      label: 'Email',
+      value: emailSettings?.configured ? 'Ready' : 'Setup',
+      detail: emailSettings?.configured ? 'SMTP configured' : 'Open Email tab',
+      ok: Boolean(emailSettings?.configured),
+      action: () => setActiveView('email'),
+    },
+    {
+      label: 'Updated',
+      value: lastLoadedAt ? formatShortDate(lastLoadedAt) : 'Now',
+      detail: systemHealth?.memory ? `${systemHealth.memory.rssMb} MB server memory` : 'Refresh for live status',
+      ok: true,
+    },
+  ]
+
+  return (
+    <section className={`system-health-panel ${tone}`} aria-label="System health">
+      <div className="system-health-head">
+        <div>
+          <p className="admin-eyebrow">Operations health</p>
+          <strong>{tone === 'ready' ? 'Business system healthy' : 'Needs setup or attention'}</strong>
+        </div>
+        <div className="system-health-actions">
+          <button type="button" onClick={onRefresh} disabled={loading}>
+            <RefreshCw size={16} aria-hidden="true" />
+            {loading ? 'Refreshing' : 'Refresh'}
+          </button>
+          <button type="button" onClick={() => copyText(diagnostics)}>
+            <Clipboard size={16} aria-hidden="true" />
+            Copy diagnostics
+          </button>
+        </div>
+      </div>
+      <div className="system-health-grid">
+        {cards.map((card) => {
+          const Element = card.action ? 'button' : 'article'
+          return (
+            <Element className={card.ok ? 'healthy' : 'attention'} key={card.label} type={card.action ? 'button' : undefined} onClick={card.action}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              <small>{card.detail}</small>
+            </Element>
+          )
+        })}
       </div>
     </section>
   )
@@ -1523,7 +1657,7 @@ function AiEstimatePanel({ lead, updateLead, onApplyEstimate, compact = false })
   )
 }
 
-function WorkdayAssistant({ user, leads, selectedLead, setSelectedLeadId, setActiveView, updateLead, emailSettings }) {
+function WorkdayAssistant({ user, leads, selectedLead, setSelectedLeadId, setActiveView, updateLead, emailSettings, systemHealth, mode }) {
   const stats = workdayStats(leads)
   const priorityLeads = [...stats.openLeads].sort((a, b) => leadSortScore(b) - leadSortScore(a)).slice(0, 5)
   const assistantLead = selectedLead || priorityLeads[0] || leads[0]
@@ -1597,6 +1731,30 @@ function WorkdayAssistant({ user, leads, selectedLead, setSelectedLeadId, setAct
           <strong>{smtpStatusLabel(emailSettings)}</strong>
         </article>
       </div>
+
+      <section className="admin-panel assistant-health-brief">
+        <div>
+          <p className="admin-eyebrow">Reliability brief</p>
+          <h2>{systemHealthTone(systemHealth, emailSettings) === 'ready' ? 'Everything important is online.' : 'A few setup items need attention.'}</h2>
+          <p>
+            {systemHealth
+              ? `Server up ${formatDuration(systemHealth.uptimeSeconds)}. ${systemHealth.counts?.startedForms || 0} started form leads are saved for follow-up.`
+              : 'Live system details will appear after the admin API connects.'}
+          </p>
+        </div>
+        <div className="assistant-health-checks">
+          {(systemHealth?.checks || [
+            { id: 'server', label: 'Admin API', ok: mode === 'server', detail: mode === 'server' ? 'Connected' : 'Local fallback' },
+            { id: 'email', label: 'Outbound email', ok: emailSettings?.configured, detail: smtpStatusLabel(emailSettings) },
+          ]).map((check) => (
+            <span className={check.ok ? 'done' : ''} key={check.id}>
+              <CheckCircle2 size={15} aria-hidden="true" />
+              <strong>{check.label}</strong>
+              <small>{check.detail}</small>
+            </span>
+          ))}
+        </div>
+      </section>
 
       <div className="assistant-layout">
         <section className="admin-panel assistant-queue">
@@ -4110,6 +4268,8 @@ function AdminDashboard({ content, setContent, goHome }) {
   const [message, setMessage] = useState('')
   const [leads, setLeads] = useState([])
   const [emailSettings, setEmailSettings] = useState(null)
+  const [systemHealth, setSystemHealth] = useState(null)
+  const [lastLoadedAt, setLastLoadedAt] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   const [priorityFilter, setPriorityFilter] = useState('All')
@@ -4118,15 +4278,19 @@ function AdminDashboard({ content, setContent, goHome }) {
   const [draft, setDraft] = useState(() => cloneSiteContent(content))
   const [savingContent, setSavingContent] = useState(false)
 
-  const loadAdminData = async (token = auth.token, sessionUser = auth.user) => {
-    setLoading(true)
-    setMessage('')
+  const loadAdminData = async (token = auth.token, sessionUser = auth.user, options = {}) => {
+    const silent = Boolean(options.silent)
+    if (!silent) {
+      setLoading(true)
+      setMessage('')
+    }
 
     try {
-      const [leadPayload, contentPayload, emailPayload] = await Promise.all([
+      const [leadPayload, contentPayload, emailPayload, healthPayload] = await Promise.all([
         adminRequest('/api/admin/leads', { token }),
         adminRequest('/api/admin/content', { token }),
         adminRequest('/api/admin/email-settings', { token }),
+        adminRequest('/api/admin/system-health', { token }),
       ])
       const nextLeads = (leadPayload.leads || []).map(normalizeLead)
       const nextContent = mergeSiteContent(defaultSiteContent, contentPayload.content || {})
@@ -4134,10 +4298,12 @@ function AdminDashboard({ content, setContent, goHome }) {
       setDraft(nextContent)
       setContent(nextContent)
       setEmailSettings(emailPayload.emailSettings || null)
+      setSystemHealth(healthPayload.health || null)
+      setLastLoadedAt(new Date().toISOString())
       saveStoredContent(nextContent)
       setMode('server')
       setUnlocked(true)
-      setMessage(`Welcome back, ${adminFirstName(sessionUser)}. Your assistant is ready.`)
+      if (!silent) setMessage(`Welcome back, ${adminFirstName(sessionUser)}. Your assistant is ready.`)
       const nextSession = { token, user: sessionUser || auth.user, expiresAt: auth.expiresAt || '' }
       setAuth((current) => ({ ...current, ...nextSession }))
       writeSessionAuth(nextSession)
@@ -4152,15 +4318,17 @@ function AdminDashboard({ content, setContent, goHome }) {
         setMode('setup')
         setUnlocked(true)
         setLeads(loadStoredLeads())
-        setMessage(error.message || 'Admin setup needs ADMIN_PASSWORD or ADMIN_USERS_JSON.')
+        setSystemHealth(null)
+        if (!silent) setMessage(error.message || 'Admin setup needs ADMIN_PASSWORD or ADMIN_USERS_JSON.')
       } else {
         setMode('local')
         setUnlocked(true)
         setLeads(loadStoredLeads())
-        setMessage('Local admin mode.')
+        setSystemHealth(null)
+        if (!silent) setMessage('Local admin mode.')
       }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -4169,6 +4337,15 @@ function AdminDashboard({ content, setContent, goHome }) {
     loadAdminData(auth.token, auth.user)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!unlocked || mode !== 'server' || !auth.token) return undefined
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') loadAdminData(auth.token, auth.user, { silent: true })
+    }, 60000)
+    return () => window.clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlocked, mode, auth.token])
 
   const filteredLeads = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -4526,6 +4703,17 @@ function AdminDashboard({ content, setContent, goHome }) {
         setActiveView={setActiveView}
         emailSettings={emailSettings}
         mode={mode}
+        systemHealth={systemHealth}
+      />
+
+      <SystemHealthPanel
+        systemHealth={systemHealth}
+        emailSettings={emailSettings}
+        loading={loading}
+        lastLoadedAt={lastLoadedAt}
+        mode={mode}
+        onRefresh={() => loadAdminData(auth.token, auth.user)}
+        setActiveView={setActiveView}
       />
 
       {activeView === 'assistant' ? (
@@ -4537,6 +4725,8 @@ function AdminDashboard({ content, setContent, goHome }) {
           setActiveView={setActiveView}
           updateLead={updateLead}
           emailSettings={emailSettings}
+          systemHealth={systemHealth}
+          mode={mode}
         />
       ) : null}
 
