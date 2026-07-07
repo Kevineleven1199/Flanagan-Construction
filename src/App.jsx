@@ -186,6 +186,25 @@ const heroProjectCards = [
     image: projectVisuals[2].image,
   },
 ]
+const addressFallbackCities = [
+  'Wilmington, DE',
+  'Newark, DE',
+  'New Castle, DE',
+  'Middletown, DE',
+  'Bear, DE',
+  'Hockessin, DE',
+  'Pike Creek, DE',
+  'Claymont, DE',
+  'Elsmere, DE',
+  'Newport, DE',
+  'Glasgow, DE',
+  'Christiana, DE',
+  'Delaware City, DE',
+  'Townsend, DE',
+  'Odessa, DE',
+  'Wilmington Manor, DE',
+]
+const newCastleCountyPattern = /\b(new castle|wilmington|newark|middletown|bear|hockessin|pike creek|claymont|elsmere|newport|glasgow|christiana|delaware city|townsend|odessa|wilmington manor|de|delaware)\b/i
 
 function visualForText(text, fallback = projectVisuals[0].image) {
   const visual = projectVisuals.find((item) => item.match.test(String(text || '')))
@@ -203,7 +222,31 @@ function isTypingTarget(target) {
 }
 
 function googleMapsApiKey() {
-  return import.meta.env.VITE_GOOGLE_MAPS_API_KEY || window.__GOOGLE_MAPS_API_KEY__ || ''
+  return (
+    import.meta.env.VITE_GOOGLE_MAPS_API_KEY ||
+    window.__GOOGLE_MAPS_API_KEY__ ||
+    window.__flanaganPublicConfig?.googleMapsApiKey ||
+    ''
+  )
+}
+
+function loadPublicConfig() {
+  if (typeof window === 'undefined') return Promise.resolve({})
+  if (window.__flanaganPublicConfig) return Promise.resolve(window.__flanaganPublicConfig)
+  if (window.__flanaganPublicConfigPromise) return window.__flanaganPublicConfigPromise
+
+  window.__flanaganPublicConfigPromise = fetch('/api/public-config', {
+    headers: { Accept: 'application/json' },
+  })
+    .then((response) => (response.ok ? response.json() : {}))
+    .then((payload) => {
+      const config = payload?.config || {}
+      window.__flanaganPublicConfig = config
+      return config
+    })
+    .catch(() => ({}))
+
+  return window.__flanaganPublicConfigPromise
 }
 
 async function postJsonWithTimeout(path, payload, timeoutMs = 12000) {
@@ -225,30 +268,41 @@ async function postJsonWithTimeout(path, payload, timeoutMs = 12000) {
 
 function loadGooglePlaces() {
   if (typeof window === 'undefined') return Promise.resolve(false)
-  if (window.google?.maps?.places?.Autocomplete) return Promise.resolve(true)
+  if (window.google?.maps?.places?.AutocompleteService) return Promise.resolve(true)
   if (window.__flanaganGooglePlacesPromise) return window.__flanaganGooglePlacesPromise
 
-  const key = googleMapsApiKey()
-  if (!key) return Promise.resolve(false)
-
   window.__flanaganGooglePlacesPromise = new Promise((resolve) => {
-    const existing = document.querySelector('script[data-flanagan-google-places="true"]')
-    const finish = () => resolve(Boolean(window.google?.maps?.places?.Autocomplete))
+    const start = async () => {
+      let key = googleMapsApiKey()
+      if (!key) {
+        const config = await loadPublicConfig()
+        key = config.googleMapsApiKey || ''
+      }
+      if (!key) {
+        resolve(false)
+        return
+      }
 
-    if (existing) {
-      existing.addEventListener('load', finish, { once: true })
-      existing.addEventListener('error', () => resolve(false), { once: true })
-      return
+      const existing = document.querySelector('script[data-flanagan-google-places="true"]')
+      const finish = () => resolve(Boolean(window.google?.maps?.places?.AutocompleteService))
+
+      if (existing) {
+        existing.addEventListener('load', finish, { once: true })
+        existing.addEventListener('error', () => resolve(false), { once: true })
+        return
+      }
+
+      const script = document.createElement('script')
+      script.async = true
+      script.defer = true
+      script.dataset.flanaganGooglePlaces = 'true'
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places`
+      script.addEventListener('load', finish, { once: true })
+      script.addEventListener('error', () => resolve(false), { once: true })
+      document.head.appendChild(script)
     }
 
-    const script = document.createElement('script')
-    script.async = true
-    script.defer = true
-    script.dataset.flanaganGooglePlaces = 'true'
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=places`
-    script.addEventListener('load', finish, { once: true })
-    script.addEventListener('error', () => resolve(false), { once: true })
-    document.head.appendChild(script)
+    start()
   })
 
   return window.__flanaganGooglePlacesPromise
@@ -258,6 +312,69 @@ function addressComponent(place, type, useShortName = false) {
   const component = place?.address_components?.find((item) => item.types?.includes(type))
   if (!component) return ''
   return useShortName ? component.short_name || component.long_name || '' : component.long_name || component.short_name || ''
+}
+
+function newPlacesSessionToken() {
+  const Token = window.google?.maps?.places?.AutocompleteSessionToken
+  return Token ? new Token() : null
+}
+
+function formatPhoneInput(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 10)
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+function normalizeEmailInput(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function formatNameInput(value) {
+  return String(value || '')
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase())
+}
+
+function titleCaseName(value) {
+  return formatNameInput(value).trim().replace(/\s+/g, ' ')
+}
+
+function addressFallbackSuggestions(value) {
+  const query = String(value || '').trim()
+  if (query.length < 3) return []
+  const lower = query.toLowerCase()
+  const looksOutOfArea = /\b(fl|florida|pa|pennsylvania|nj|new jersey|md|maryland)\b/i.test(query)
+  const cityMatches = addressFallbackCities.filter(
+    (city) => city.toLowerCase().includes(lower) || lower.includes(city.split(',')[0].toLowerCase()),
+  )
+  const matchingCities = (cityMatches.length || looksOutOfArea ? cityMatches : addressFallbackCities.slice(0, 5))
+    .slice(0, 4)
+    .map((city) => ({
+      id: `city-${city}`,
+      label: lower.includes(city.split(',')[0].toLowerCase()) ? query : `${query}, ${city}`,
+      detail: 'Use this with a New Castle County town',
+      source: 'fallback',
+      city: city.replace(/, DE$/i, ''),
+      state: 'DE',
+    }))
+  return [
+    ...matchingCities,
+    {
+      id: 'typed-address',
+      label: query,
+      detail: newCastleCountyPattern.test(query)
+        ? 'Use this typed address'
+        : 'Use typed address - we will confirm service area',
+      source: 'typed',
+    },
+  ]
+}
+
+function addressNeedsServiceCheck(form) {
+  const address = String(form?.address || '')
+  if (!address.trim()) return false
+  if (form?.addressState && !/^DE$/i.test(form.addressState)) return true
+  return /\b(fl|florida|pa|pennsylvania|nj|new jersey|md|maryland)\b/i.test(address)
 }
 
 function SplashIntro({ business, heroImage, onDone }) {
@@ -380,63 +497,192 @@ function LeadPanel({
   onAddressSelect = () => {},
 }) {
   const addressInputRef = useRef(null)
+  const addressListRef = useRef(null)
   const [addressAssist, setAddressAssist] = useState('manual')
+  const [addressFocused, setAddressFocused] = useState(false)
+  const [addressSuggestions, setAddressSuggestions] = useState([])
+  const [activeAddressIndex, setActiveAddressIndex] = useState(0)
+  const googleServicesRef = useRef({ autocomplete: null, places: null, token: null })
   const simpleNeeds = leadFunnel.simpleNeeds?.length
     ? leadFunnel.simpleNeeds
     : [...new Set(leadFunnel.groups.flatMap((group) => group.needs))].slice(0, 14)
 
   useEffect(() => {
-    let autocomplete
-    let listener
     let cancelled = false
 
     loadGooglePlaces().then((ready) => {
       if (cancelled) return
-      const input = addressInputRef.current
-      if (!ready || !input || !window.google?.maps?.places?.Autocomplete) {
+      if (!ready || !window.google?.maps?.places?.AutocompleteService) {
         setAddressAssist('manual')
         return
       }
 
-      const bounds = new window.google.maps.LatLngBounds(
-        new window.google.maps.LatLng(39.29, -75.84),
-        new window.google.maps.LatLng(39.84, -75.35),
-      )
-
-      autocomplete = new window.google.maps.places.Autocomplete(input, {
-        bounds,
-        componentRestrictions: { country: 'us' },
-        fields: ['formatted_address', 'place_id', 'geometry', 'address_components'],
-        strictBounds: false,
-        types: ['address'],
-      })
-
-      listener = autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace()
-        const location = place?.geometry?.location
-        onAddressSelect({
-          address: place?.formatted_address || input.value,
-          addressPlaceId: place?.place_id || '',
-          addressLat: location?.lat ? String(location.lat()) : '',
-          addressLng: location?.lng ? String(location.lng()) : '',
-          addressCity:
-            addressComponent(place, 'locality') ||
-            addressComponent(place, 'postal_town') ||
-            addressComponent(place, 'sublocality_level_1'),
-          addressState: addressComponent(place, 'administrative_area_level_1', true),
-          addressPostalCode: addressComponent(place, 'postal_code'),
-        })
-      })
-
+      googleServicesRef.current = {
+        autocomplete: new window.google.maps.places.AutocompleteService(),
+        places: new window.google.maps.places.PlacesService(document.createElement('div')),
+        token: newPlacesSessionToken(),
+      }
       setAddressAssist('google')
     })
 
     return () => {
       cancelled = true
-      if (listener?.remove) listener.remove()
-      if (autocomplete) window.google?.maps?.event?.clearInstanceListeners?.(autocomplete)
     }
-  }, [onAddressSelect])
+  }, [])
+
+  useEffect(() => {
+    const query = form.address.trim()
+    let ignore = false
+    const timeout = window.setTimeout(() => {
+      const updateSuggestions = (nextSuggestions) => {
+        if (ignore) return
+        setActiveAddressIndex(0)
+        setAddressSuggestions(nextSuggestions)
+      }
+
+      if (!addressFocused || query.length < 3) {
+        updateSuggestions([])
+        return
+      }
+
+      if (addressAssist !== 'google' || !googleServicesRef.current.autocomplete) {
+        updateSuggestions(addressFallbackSuggestions(query))
+        return
+      }
+
+      googleServicesRef.current.autocomplete.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'us' },
+          bounds: new window.google.maps.LatLngBounds(
+            new window.google.maps.LatLng(39.29, -75.84),
+            new window.google.maps.LatLng(39.84, -75.35),
+          ),
+          sessionToken: googleServicesRef.current.token,
+          types: ['address'],
+        },
+        (predictions, serviceStatus) => {
+          if (ignore) return
+          if (serviceStatus !== window.google.maps.places.PlacesServiceStatus.OK || !predictions?.length) {
+            updateSuggestions(addressFallbackSuggestions(query))
+            return
+          }
+          updateSuggestions([
+            ...predictions.slice(0, 5).map((prediction) => ({
+              id: prediction.place_id,
+              label: prediction.structured_formatting?.main_text || prediction.description,
+              detail: prediction.structured_formatting?.secondary_text || prediction.description,
+              description: prediction.description,
+              placeId: prediction.place_id,
+              source: 'google',
+            })),
+            {
+              id: 'typed-address',
+              label: query,
+              detail: 'Use typed address instead',
+              source: 'typed',
+            },
+          ])
+        },
+      )
+    }, 180)
+
+    return () => {
+      ignore = true
+      window.clearTimeout(timeout)
+    }
+  }, [addressAssist, addressFocused, form.address])
+
+  const clearAddressMeta = () => {
+    if (form.addressPlaceId || form.addressLat || form.addressLng || form.addressCity || form.addressState || form.addressPostalCode) {
+      onAddressSelect({
+        addressPlaceId: '',
+        addressLat: '',
+        addressLng: '',
+        addressCity: '',
+        addressState: '',
+        addressPostalCode: '',
+      })
+    }
+  }
+
+  const selectAddressSuggestion = (suggestion) => {
+    if (!suggestion) return
+    if (suggestion.source === 'google' && suggestion.placeId && googleServicesRef.current.places) {
+      googleServicesRef.current.places.getDetails(
+        {
+          placeId: suggestion.placeId,
+          fields: ['formatted_address', 'place_id', 'geometry', 'address_components'],
+          sessionToken: googleServicesRef.current.token,
+        },
+        (place, serviceStatus) => {
+          if (serviceStatus !== window.google.maps.places.PlacesServiceStatus.OK || !place) {
+            onAddressSelect({ address: suggestion.description || suggestion.label })
+            return
+          }
+          const location = place?.geometry?.location
+          onAddressSelect({
+            address: place?.formatted_address || suggestion.description || suggestion.label,
+            addressPlaceId: place?.place_id || '',
+            addressLat: location?.lat ? String(location.lat()) : '',
+            addressLng: location?.lng ? String(location.lng()) : '',
+            addressCity:
+              addressComponent(place, 'locality') ||
+              addressComponent(place, 'postal_town') ||
+              addressComponent(place, 'sublocality_level_1'),
+            addressState: addressComponent(place, 'administrative_area_level_1', true),
+            addressPostalCode: addressComponent(place, 'postal_code'),
+          })
+          googleServicesRef.current.token = window.google?.maps?.places?.AutocompleteSessionToken
+            ? new window.google.maps.places.AutocompleteSessionToken()
+            : null
+        },
+      )
+    } else {
+      onAddressSelect({
+        address: suggestion.label,
+        addressPlaceId: '',
+        addressLat: '',
+        addressLng: '',
+        addressCity: suggestion.city || '',
+        addressState: suggestion.state || '',
+        addressPostalCode: '',
+      })
+    }
+    setAddressSuggestions([])
+    setAddressFocused(false)
+    window.setTimeout(() => addressInputRef.current?.blur(), 0)
+  }
+
+  const handleAddressKeyDown = (event) => {
+    if (!addressSuggestions.length) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setActiveAddressIndex((current) => (current + 1) % addressSuggestions.length)
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setActiveAddressIndex((current) => (current - 1 + addressSuggestions.length) % addressSuggestions.length)
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      selectAddressSuggestion(addressSuggestions[activeAddressIndex])
+    }
+    if (event.key === 'Escape') {
+      setAddressSuggestions([])
+    }
+  }
+
+  const hasContact = form.phone.replace(/\D/g, '').length >= 7 && /\S+@\S+\.\S+/.test(form.email)
+  const hasAddress = Boolean(form.address.trim())
+  const hasNeed = selectedNeeds.length > 0
+  const serviceCheckNeeded = addressNeedsServiceCheck(form)
+  const addressSelected = Boolean(form.addressPlaceId || form.addressCity || form.addressPostalCode)
+  const addressHelperText = addressSelected
+    ? 'Address selected. Location details are saved with the lead.'
+    : addressAssist === 'google'
+      ? 'Start typing and pick the matching address when it appears.'
+      : 'Start typing. We will suggest local towns and confirm the exact address.'
 
   if (submitted) {
     const firstName = form.name ? form.name.trim().split(' ')[0] : ''
@@ -528,52 +774,154 @@ function LeadPanel({
             <input
               name="phone"
               value={form.phone}
-              onChange={handleChange}
+              onChange={(event) => {
+                handleChange({ target: { name: 'phone', value: formatPhoneInput(event.target.value) } })
+              }}
               autoComplete="tel"
               inputMode="tel"
+              placeholder="(302) 555-0123"
               required
             />
           </label>
           <label>
             Email
-            <input name="email" type="email" value={form.email} onChange={handleChange} autoComplete="email" required />
+            <input
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              onBlur={(event) => {
+                handleChange({ target: { name: 'email', value: normalizeEmailInput(event.target.value) } })
+              }}
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              required
+            />
           </label>
         </div>
 
         <label>
           Name
-          <input name="name" value={form.name} onChange={handleChange} autoComplete="name" required />
-        </label>
-
-        <label className="address-field">
-          Project address
           <input
-            ref={addressInputRef}
-            name="address"
-            value={form.address}
+            name="name"
+            value={form.name}
             onChange={(event) => {
-              handleChange(event)
-              if (form.addressPlaceId || form.addressLat || form.addressLng) {
-                onAddressSelect({
-                  addressPlaceId: '',
-                  addressLat: '',
-                  addressLng: '',
-                  addressCity: '',
-                  addressState: '',
-                  addressPostalCode: '',
-                })
-              }
+              handleChange({ target: { name: 'name', value: formatNameInput(event.target.value) } })
             }}
-            autoComplete="street-address"
-            placeholder="Start typing the job address"
+            onBlur={(event) => {
+              handleChange({ target: { name: 'name', value: titleCaseName(event.target.value) } })
+            }}
+            autoComplete="name"
+            placeholder="First and last name"
             required
           />
-          <span className="address-helper">
-            {addressAssist === 'google'
-              ? 'Pick the matching address when it appears.'
-              : 'Type the job address so we know where to schedule.'}
-          </span>
         </label>
+
+        <div className="address-field">
+          <div className="address-label-row">
+            <label htmlFor="project-address">Project address</label>
+            {form.address ? (
+              <button
+                className="address-clear"
+                type="button"
+                onClick={() => {
+                  onAddressSelect({
+                    address: '',
+                    addressPlaceId: '',
+                    addressLat: '',
+                    addressLng: '',
+                    addressCity: '',
+                    addressState: '',
+                    addressPostalCode: '',
+                  })
+                  setAddressSuggestions([])
+                  window.setTimeout(() => addressInputRef.current?.focus(), 0)
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+          <div className="address-input-wrap">
+            <input
+              id="project-address"
+              ref={addressInputRef}
+              name="address"
+              value={form.address}
+              onChange={(event) => {
+                handleChange(event)
+                clearAddressMeta()
+              }}
+              onFocus={() => setAddressFocused(true)}
+              onBlur={() => window.setTimeout(() => setAddressFocused(false), 140)}
+              onKeyDown={handleAddressKeyDown}
+              aria-autocomplete="list"
+              aria-controls="address-suggestions"
+              aria-expanded={addressSuggestions.length > 0}
+              autoComplete="street-address"
+              placeholder="Start typing the job address"
+              required
+            />
+            {addressSuggestions.length ? (
+              <div
+                className="address-suggestions"
+                id="address-suggestions"
+                role="listbox"
+                ref={addressListRef}
+                aria-label="Address suggestions"
+              >
+                {addressSuggestions.map((suggestion, index) => (
+                  <button
+                    className={[
+                      'address-suggestion',
+                      index === activeAddressIndex ? 'active' : '',
+                      suggestion.source === 'typed' ? 'typed' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    key={suggestion.id}
+                    type="button"
+                    role="option"
+                    aria-selected={index === activeAddressIndex}
+                    onMouseEnter={() => setActiveAddressIndex(index)}
+                    onMouseDown={(event) => {
+                      event.preventDefault()
+                      selectAddressSuggestion(suggestion)
+                    }}
+                  >
+                    <MapPin size={17} aria-hidden="true" />
+                    <span>
+                      <strong>{suggestion.label}</strong>
+                      <small>{suggestion.detail}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <span className="address-helper">{addressHelperText}</span>
+          {serviceCheckNeeded ? (
+            <span className="address-warning">
+              This looks outside New Castle County. You can still send it and the office will confirm.
+            </span>
+          ) : null}
+        </div>
+
+        <div className="form-progress-steps" aria-label="Request progress">
+          <span className={hasContact ? 'done' : ''}>
+            <CheckCircle2 size={14} aria-hidden="true" />
+            Contact
+          </span>
+          <span className={hasAddress ? 'done' : ''}>
+            <MapPin size={14} aria-hidden="true" />
+            Address
+          </span>
+          <span className={hasNeed ? 'done' : ''}>
+            <CheckCircle2 size={14} aria-hidden="true" />
+            Work type
+          </span>
+        </div>
 
         <div className="funnel-save-note" aria-live="polite">
           <CheckCircle2 size={16} aria-hidden="true" />

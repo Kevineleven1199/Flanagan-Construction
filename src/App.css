@@ -1022,7 +1022,7 @@ footer {
 
 .lead-panel {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   background:
@@ -1116,7 +1116,36 @@ textarea:focus {
 }
 
 .address-field {
+  display: grid;
+  gap: 8px;
+}
+
+.address-input-wrap {
   position: relative;
+}
+
+.address-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.address-label-row label {
+  display: block;
+  gap: 0;
+}
+
+.address-clear {
+  border: 1px solid rgba(18, 63, 109, 0.16);
+  border-radius: 999px;
+  background: #f7fbff;
+  color: var(--brand-blue);
+  cursor: pointer;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
 }
 
 .address-helper {
@@ -1124,6 +1153,95 @@ textarea:focus {
   font-size: 0.75rem;
   font-weight: 750;
   line-height: 1.35;
+}
+
+.address-warning {
+  display: inline-flex;
+  border: 1px solid rgba(174, 64, 46, 0.28);
+  border-radius: 8px;
+  background: #fff4ef;
+  color: #8b3326;
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.address-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: 6px;
+  max-height: 286px;
+  overflow: auto;
+  border: 1px solid rgba(18, 63, 109, 0.18);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 24px 66px rgba(7, 24, 39, 0.24);
+  padding: 8px;
+}
+
+.address-suggestion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  border: 1px solid #e0e4e6;
+  border-radius: 8px;
+  background: #fff;
+  color: #1c1f21;
+  cursor: pointer;
+  padding: 10px;
+  text-align: left;
+  font: inherit;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.address-suggestion svg {
+  color: var(--brand-blue);
+}
+
+.address-suggestion span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.address-suggestion strong,
+.address-suggestion small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address-suggestion strong {
+  color: #1c1f21;
+  font-size: 0.84rem;
+}
+
+.address-suggestion small {
+  color: #667078;
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.address-suggestion.active,
+.address-suggestion:hover {
+  border-color: rgba(242, 184, 75, 0.75);
+  background: #fff8e7;
+  box-shadow: 0 10px 22px rgba(18, 63, 109, 0.1);
+  transform: translateY(-1px);
+}
+
+.address-suggestion.typed {
+  border-style: dashed;
 }
 
 .pac-container {
@@ -1158,6 +1276,34 @@ textarea:focus {
   padding: 10px 12px;
   font-size: 0.86rem;
   font-weight: 850;
+}
+
+.form-progress-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.form-progress-steps span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #dfe4e6;
+  border-radius: 999px;
+  background: #fff;
+  color: #687075;
+  padding: 0 9px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.form-progress-steps span.done {
+  border-color: rgba(27, 118, 83, 0.26);
+  background: #edf9f3;
+  color: #1f6d50;
 }
 
 .funnel-roadmap {
@@ -5534,6 +5680,16 @@ body.paint-cursor-active :where(input, textarea, select) {
 @media (max-width: 720px) {
   .paint-cursor {
     display: none;
+  }
+
+  .address-suggestions {
+    position: static;
+    max-height: 230px;
+    margin-top: 6px;
+  }
+
+  .form-progress-steps {
+    grid-template-columns: 1fr;
   }
 
   body.paint-cursor-active,

@@ -30,6 +30,8 @@ const leadLogPath = join(root, 'leads.log')
 const leadCrmPath = join(root, 'lead-crm.json')
 const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
 const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
+const publicGoogleMapsApiKey =
+  process.env.PUBLIC_GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_BROWSER_KEY || ''
 const serverStartedAt = new Date()
 
 const builtInSuperAdmins = [
@@ -378,6 +380,13 @@ function emailSettingsStatus() {
   }
 }
 
+function publicConfigStatus() {
+  return {
+    googleMapsApiKey: publicGoogleMapsApiKey,
+    googlePlacesConfigured: Boolean(publicGoogleMapsApiKey),
+  }
+}
+
 async function handleAdminEmailSettings(req, res, gzipOk) {
   if (!requireAdmin(req, res, gzipOk)) return
 
@@ -462,7 +471,7 @@ async function handleAdminSystemHealth(req, res, gzipOk) {
     integrations: {
       emailConfigured: emailSettingsStatus().configured,
       leadWebhookConfigured: Boolean(leadWebhookUrl),
-      googlePlacesConfigured: Boolean(process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY),
+      googlePlacesConfigured: Boolean(publicGoogleMapsApiKey),
     },
     checks: [
       { id: 'build', label: 'Production build', ok: distFile.exists, detail: distFile.exists ? 'dist/index.html is present' : 'Run npm run build before start' },
@@ -1003,6 +1012,15 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname === '/api/site-content') {
     await handleSiteContent(req, res, gzipOk)
+    return
+  }
+
+  if (pathname === '/api/public-config') {
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, config: publicConfigStatus() }, gzipOk)
+    } else {
+      send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    }
     return
   }
 
