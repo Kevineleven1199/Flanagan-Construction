@@ -651,9 +651,25 @@ function normalizeLeadRecord(lead, index = 0, updates = {}) {
     funnelGroup: String(lead.funnelGroup || ''),
     leadKind: String(lead.leadKind || ''),
     source: String(lead.source || 'flanagan-construction-website'),
+    sourcePath: String(lead.sourcePath || ''),
+    sourcePage: String(lead.sourcePage || ''),
+    landingPage: String(lead.landingPage || ''),
+    serviceRoute: String(lead.serviceRoute || ''),
+    utmSource: String(lead.utmSource || ''),
+    utmMedium: String(lead.utmMedium || ''),
+    utmCampaign: String(lead.utmCampaign || ''),
+    utmTerm: String(lead.utmTerm || ''),
+    utmContent: String(lead.utmContent || ''),
+    gclid: String(lead.gclid || ''),
+    gbraid: String(lead.gbraid || ''),
+    wbraid: String(lead.wbraid || ''),
     receivedAt,
     status: String(valueFor('status', 'New') || 'New'),
     priority: String(valueFor('priority', 'Warm') || 'Warm'),
+    leadScore: String(valueFor('leadScore', lead.leadScore || '')),
+    leadScoreReason: String(valueFor('leadScoreReason', lead.leadScoreReason || '')),
+    intakeQuality: String(valueFor('intakeQuality', lead.intakeQuality || '')),
+    recommendedStage: String(valueFor('recommendedStage', lead.recommendedStage || '')),
     estimateAmount: String(valueFor('estimateAmount')),
     paymentLink: String(valueFor('paymentLink')),
     followUpAt: String(valueFor('followUpAt')),
@@ -689,6 +705,10 @@ function mergeLeadCrmPatch(current = {}, patch = {}) {
   const writableFields = [
     'status',
     'priority',
+    'leadScore',
+    'leadScoreReason',
+    'intakeQuality',
+    'recommendedStage',
     'estimateAmount',
     'paymentLink',
     'followUpAt',
@@ -795,6 +815,7 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
         sendJson(res, 422, { ok: false, error: 'Phone or email is required to create an office lead.' }, gzipOk)
         return
       }
+      const scoring = scoreLeadData(data, data.status || 'New')
 
       const lead = normalizeLeadRecord({
         ...data,
@@ -804,7 +825,13 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
         leadKind: String(data.leadKind || 'Office-entered lead'),
         receivedAt: data.receivedAt || new Date().toISOString(),
         status: data.status || 'New',
-        priority: data.priority || 'Warm',
+        priority: data.priority || scoring.priority,
+        leadScore: data.leadScore || String(scoring.score),
+        leadScoreReason: data.leadScoreReason || scoring.reasons.join('; '),
+        intakeQuality: data.intakeQuality || scoring.quality,
+        recommendedStage: data.recommendedStage || scoring.recommendedStage,
+        closeProbability: data.closeProbability || String(scoring.closeProbability),
+        nextStep: data.nextStep || scoring.nextStep,
       })
 
       await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
@@ -812,6 +839,11 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
       crm[lead.id] = {
         status: lead.status,
         priority: lead.priority,
+        leadScore: lead.leadScore,
+        leadScoreReason: lead.leadScoreReason,
+        intakeQuality: lead.intakeQuality,
+        recommendedStage: lead.recommendedStage,
+        closeProbability: lead.closeProbability,
         nextStep: lead.nextStep,
         notes: lead.notes,
         updatedAt: new Date().toISOString(),
@@ -922,6 +954,7 @@ function clientIp(req) {
 const rateWindowMs = 10 * 60 * 1000
 const rateMax = 6
 const rateHits = new Map()
+const draftRateHits = new Map()
 const adminLoginRateHits = new Map()
 const leadTrapFields = ['company', 'website', 'fax']
 const adminTrapFields = ['website', 'confirmEmail', 'company', 'fax', 'nickname']
@@ -944,6 +977,10 @@ function isRateLimited(ip) {
   return isBucketRateLimited(rateHits, ip, rateMax, rateWindowMs)
 }
 
+function isDraftRateLimited(ip) {
+  return isBucketRateLimited(draftRateHits, ip, 30, rateWindowMs)
+}
+
 function filledTrapFields(data, fields) {
   return fields.filter((field) => String(data?.[field] || '').trim())
 }
@@ -954,6 +991,124 @@ function hashForLog(value) {
 
 function securityLog(event, req, details = {}) {
   console.warn('[SECURITY]', JSON.stringify({ event, ipHash: hashForLog(clientIp(req)), ...details }))
+}
+
+function cleanLeadString(value) {
+  return String(value || '').trim()
+}
+
+function selectedNeedsFromData(data = {}) {
+  return Array.isArray(data.selectedNeeds)
+    ? data.selectedNeeds.map((item) => cleanLeadString(item)).filter(Boolean)
+    : []
+}
+
+function leadSearchText(data = {}) {
+  return [
+    data.name,
+    data.address,
+    data.addressCity,
+    data.projectType,
+    data.funnelGroup,
+    data.serviceRoute,
+    data.message,
+    ...selectedNeedsFromData(data),
+  ].join(' ')
+}
+
+function sourceMetaFromLeadData(data = {}) {
+  return {
+    sourcePath: cleanLeadString(data.sourcePath),
+    sourcePage: cleanLeadString(data.sourcePage),
+    landingPage: cleanLeadString(data.landingPage),
+    serviceRoute: cleanLeadString(data.serviceRoute),
+    utmSource: cleanLeadString(data.utmSource),
+    utmMedium: cleanLeadString(data.utmMedium),
+    utmCampaign: cleanLeadString(data.utmCampaign),
+    utmTerm: cleanLeadString(data.utmTerm),
+    utmContent: cleanLeadString(data.utmContent),
+    gclid: cleanLeadString(data.gclid),
+    gbraid: cleanLeadString(data.gbraid),
+    wbraid: cleanLeadString(data.wbraid),
+  }
+}
+
+function scoreLeadData(data = {}, status = 'New') {
+  const text = leadSearchText(data)
+  const selectedNeeds = selectedNeedsFromData(data)
+  const reasons = []
+  let score = status === 'Started' ? 18 : 28
+
+  if (cleanLeadString(data.phone).replace(/\D/g, '').length >= 7) {
+    score += 16
+    reasons.push('phone captured')
+  }
+  if (emailLooksValid(data.email)) {
+    score += 10
+    reasons.push('email captured')
+  }
+  if (cleanLeadString(data.name)) score += 6
+  if (cleanLeadString(data.address)) {
+    score += 15
+    reasons.push('job address')
+  }
+  if (data.addressPlaceId || data.addressCity || data.addressPostalCode) score += 5
+  if (selectedNeeds.length) {
+    score += Math.min(14, 7 + selectedNeeds.length * 2)
+    reasons.push('work type selected')
+  }
+  if (/kitchen|bath|concrete|driveway|sidewalk|roof|siding|window/i.test(text)) {
+    score += 12
+    reasons.push('top service')
+  }
+  if (/leak|water|damage|fix|bad|ceiling|unsafe|broken|urgent|asap|commercial/i.test(text)) {
+    score += 9
+    reasons.push('urgent or high-value clue')
+  }
+  if (data.gclid || data.gbraid || data.wbraid || data.utmCampaign) {
+    score += 5
+    reasons.push('tracked campaign')
+  }
+  if (data.addressState && !/^DE$/i.test(cleanLeadString(data.addressState))) {
+    score -= 15
+    reasons.push('service area check')
+  }
+  if (/\b(fl|florida|pa|pennsylvania|nj|new jersey|md|maryland)\b/i.test(cleanLeadString(data.address))) {
+    score -= 12
+    reasons.push('possible out-of-area address')
+  }
+
+  const clampedScore = Math.max(8, Math.min(100, Math.round(score)))
+  const priority = clampedScore >= 76 ? 'Hot' : clampedScore >= 52 ? 'Warm' : clampedScore >= 34 ? 'Normal' : 'Low'
+  const closeProbability = Math.max(12, Math.min(90, Math.round(clampedScore * 0.78)))
+  const quality = clampedScore >= 78 ? 'High intent' : clampedScore >= 55 ? 'Good lead' : 'Needs office follow-up'
+  let nextStep = 'Call or text to confirm scope, address, photos, and best estimate time.'
+
+  if (status === 'Started') {
+    nextStep = cleanLeadString(data.address)
+      ? 'Started form: call/text within 15 minutes, confirm scope, and finish the request.'
+      : 'Started form: call/text within 15 minutes and collect the project address.'
+  } else if (!cleanLeadString(data.address)) {
+    nextStep = 'Collect the job address before scheduling or pricing.'
+  } else if (!selectedNeeds.length && !cleanLeadString(data.projectType)) {
+    nextStep = 'Classify the work type, ask for photos, and schedule the estimate path.'
+  } else if (/kitchen|bath/i.test(text)) {
+    nextStep = 'Call, ask for photos/measurements, and schedule the kitchen or bath estimate.'
+  } else if (/concrete|driveway|sidewalk/i.test(text)) {
+    nextStep = 'Confirm access, drainage, square footage, and schedule the concrete estimate.'
+  } else if (/roof|siding|window/i.test(text)) {
+    nextStep = 'Confirm exterior issue, leak risk, photos, and schedule the exterior estimate.'
+  }
+
+  return {
+    score: clampedScore,
+    priority,
+    quality,
+    closeProbability,
+    recommendedStage: status === 'Started' ? 'New' : 'Contacted',
+    nextStep,
+    reasons: reasons.length ? reasons : ['basic request'],
+  }
 }
 
 async function handleLead(req, res, gzipOk) {
@@ -997,6 +1152,8 @@ async function handleLead(req, res, gzipOk) {
       return
     }
 
+    const scoring = scoreLeadData(data, 'New')
+    const sourceMeta = sourceMetaFromLeadData(data)
     const lead = {
       id: String(data.leadId || data.id || randomUUID()),
       name,
@@ -1017,12 +1174,18 @@ async function handleLead(req, res, gzipOk) {
       funnelGroup: String(data.funnelGroup || '').trim(),
       leadKind: String(data.leadKind || 'Final request').trim(),
       source: 'flanagan-construction-website',
+      ...sourceMeta,
       receivedAt: new Date().toISOString(),
       status: 'New',
-      priority: String(data.priority || 'Warm'),
-      nextStep: '',
+      priority: String(data.priority || scoring.priority),
+      leadScore: String(scoring.score),
+      leadScoreReason: scoring.reasons.join('; '),
+      intakeQuality: scoring.quality,
+      recommendedStage: scoring.recommendedStage,
+      closeProbability: String(scoring.closeProbability),
+      nextStep: String(data.nextStep || scoring.nextStep),
       notes: '',
-      ip,
+      ipHash: hashForLog(ip),
     }
 
     // Always surface the lead in the deploy logs so it is never silently lost.
@@ -1060,6 +1223,12 @@ async function handleLead(req, res, gzipOk) {
 }
 
 async function handleLeadDraft(req, res, gzipOk) {
+  const ip = clientIp(req)
+  if (isDraftRateLimited(ip)) {
+    sendJson(res, 429, { ok: false, error: 'Too many saved drafts. Please try again later.' }, gzipOk)
+    return
+  }
+
   let data
   try {
     data = await readJsonBody(req, 100000)
@@ -1082,6 +1251,8 @@ async function handleLeadDraft(req, res, gzipOk) {
     return
   }
 
+  const scoring = scoreLeadData(data, 'Started')
+  const sourceMeta = sourceMetaFromLeadData(data)
   const lead = {
     id: String(data.leadId || data.id || randomUUID()),
     name: String(data.name || '').trim() || 'Started website request',
@@ -1102,12 +1273,18 @@ async function handleLeadDraft(req, res, gzipOk) {
     funnelGroup: String(data.funnelGroup || '').trim(),
     leadKind: 'Started funnel',
     source: 'flanagan-construction-started-funnel',
+    ...sourceMeta,
     receivedAt: new Date().toISOString(),
     status: 'Started',
-    priority: String(data.priority || 'Warm'),
-    nextStep: '',
+    priority: String(data.priority || scoring.priority),
+    leadScore: String(scoring.score),
+    leadScoreReason: scoring.reasons.join('; '),
+    intakeQuality: scoring.quality,
+    recommendedStage: scoring.recommendedStage,
+    closeProbability: String(scoring.closeProbability),
+    nextStep: String(data.nextStep || scoring.nextStep),
     notes: '',
-    ip: clientIp(req),
+    ipHash: hashForLog(ip),
   }
 
   console.log('[LEAD_DRAFT]', JSON.stringify(lead))

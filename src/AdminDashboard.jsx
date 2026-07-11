@@ -871,8 +871,9 @@ function leadSortScore(lead) {
     Lost: 0,
   }[lead.status] ?? 50
   const priorityScore = { Hot: 18, Warm: 10, Normal: 4, Low: 0 }[lead.priority] ?? 6
+  const scoreBonus = Math.min(18, leadScoreValue(lead) / 5.5)
   const ageHours = Math.max(0, (Date.now() - new Date(lead.receivedAt || Date.now()).getTime()) / 36e5)
-  return statusScore + priorityScore + Math.min(14, ageHours / 6)
+  return statusScore + priorityScore + scoreBonus + Math.min(14, ageHours / 6)
 }
 
 function workdayStats(leads) {
@@ -963,6 +964,148 @@ function followUpScore(lead) {
     ? Math.max(0, (Date.now() - new Date(lead.lastContactedAt).getTime()) / 36e5)
     : 36
   return leadSortScore(lead) + dueBonus + Math.min(30, staleHours / 4)
+}
+
+function isStaleEstimateLead(lead) {
+  if (!['Estimate Sent', 'Follow Up'].includes(lead.status)) return false
+  const touchedAt = new Date(lead.lastContactedAt || lead.updatedAt || lead.receivedAt || new Date().toISOString()).getTime()
+  return Date.now() - touchedAt > 48 * 60 * 60 * 1000
+}
+
+function clampPercent(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value) || 0)))
+}
+
+function leadScoreValue(lead = {}) {
+  const stored = Number(lead.leadScore)
+  if (Number.isFinite(stored) && stored > 0) return clampPercent(stored)
+  let score = 22
+  const text = [
+    lead.projectType,
+    lead.funnelGroup,
+    lead.serviceRoute,
+    lead.message,
+    lead.address,
+    ...(lead.selectedNeeds || []),
+  ].join(' ')
+
+  if (String(lead.phone || '').replace(/\D/g, '').length >= 7) score += 16
+  if (/\S+@\S+\.\S+/.test(String(lead.email || ''))) score += 10
+  if (String(lead.name || '').trim()) score += 6
+  if (String(lead.address || '').trim()) score += 15
+  if (lead.addressPlaceId || lead.addressCity || lead.addressPostalCode) score += 5
+  if (lead.selectedNeeds?.length) score += Math.min(14, 7 + lead.selectedNeeds.length * 2)
+  if (/kitchen|bath|concrete|driveway|sidewalk|roof|siding|window/i.test(text)) score += 12
+  if (/leak|water|damage|fix|bad|ceiling|unsafe|broken|urgent|asap|commercial/i.test(text)) score += 8
+  if (lead.gclid || lead.gbraid || lead.wbraid || lead.utmCampaign) score += 5
+  return clampPercent(score)
+}
+
+function leadScoreTone(score) {
+  if (score >= 76) return 'hot'
+  if (score >= 54) return 'warm'
+  if (score >= 34) return 'normal'
+  return 'low'
+}
+
+function priorityForScore(score) {
+  if (score >= 76) return 'Hot'
+  if (score >= 54) return 'Warm'
+  if (score >= 34) return 'Normal'
+  return 'Low'
+}
+
+function closeProbabilityForLead(lead) {
+  const stored = Number(lead.closeProbability)
+  if (Number.isFinite(stored) && stored > 0) return clampPercent(stored)
+  return Math.max(12, Math.min(90, Math.round(leadScoreValue(lead) * 0.78)))
+}
+
+function nextFollowUpForLead(lead) {
+  if (isClosedLead(lead)) return ''
+  if (lead.followUpAt || lead.campaignNextAt) return lead.followUpAt || lead.campaignNextAt
+  if (leadScoreValue(lead) >= 76 && needsFirstCall(lead)) {
+    return new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  }
+  return nextBusinessMorningIso(1)
+}
+
+function leadQualityPlan(lead = {}) {
+  const score = leadScoreValue(lead)
+  const text = [lead.projectType, lead.funnelGroup, lead.serviceRoute, lead.message, ...(lead.selectedNeeds || [])].join(' ')
+  const missing = [
+    !lead.phone ? 'phone' : '',
+    !lead.email ? 'email' : '',
+    !lead.address ? 'job address' : '',
+    !lead.selectedNeeds?.length && !lead.projectType ? 'work type' : '',
+    !lead.followUpAt && !lead.campaignNextAt ? 'follow-up date' : '',
+  ].filter(Boolean)
+  let nextBestAction = lead.nextStep || 'Call or text, confirm scope, ask for photos, and schedule the estimate path.'
+
+  if (lead.status === 'Started') {
+    nextBestAction = lead.address
+      ? 'Recover started form: call/text now, confirm scope, and finish intake.'
+      : 'Recover started form: call/text now and collect the project address.'
+  } else if (!lead.address) {
+    nextBestAction = 'Collect the job address before scheduling or pricing.'
+  } else if (/kitchen|bath/i.test(text)) {
+    nextBestAction = 'Ask for photos, rough layout goals, material expectations, and schedule kitchen/bath estimate.'
+  } else if (/concrete|driveway|sidewalk/i.test(text)) {
+    nextBestAction = 'Confirm access, drainage, dimensions, and schedule the concrete estimate.'
+  } else if (/roof|siding|window/i.test(text)) {
+    nextBestAction = 'Confirm leak/damage risk, ask for exterior photos, and schedule exterior estimate.'
+  } else if (lead.status === 'Estimate Sent') {
+    nextBestAction = 'Follow up on estimate questions, decision timing, and next payment step.'
+  }
+
+  const reasons = [
+    lead.leadScoreReason || '',
+    lead.gclid || lead.gbraid || lead.wbraid ? 'Google Ads click' : '',
+    lead.utmCampaign ? `Campaign: ${lead.utmCampaign}` : '',
+    missing.length ? `Missing: ${missing.join(', ')}` : 'Intake basics complete',
+  ].filter(Boolean)
+
+  return {
+    score,
+    tone: leadScoreTone(score),
+    closeProbability: closeProbabilityForLead(lead),
+    missing,
+    reasons,
+    nextBestAction,
+  }
+}
+
+function campaignForLeadAutomation(lead) {
+  if (['Estimate Sent', 'Follow Up'].includes(lead.status)) {
+    return dripCampaigns.find((campaign) => campaign.id === 'estimate-recovery') || dripCampaigns[0]
+  }
+  if (['Complete', 'Receipt Sent', 'Won'].includes(lead.status)) {
+    return dripCampaigns.find((campaign) => campaign.id === 'post-job-review-referral') || dripCampaigns[0]
+  }
+  return dripCampaigns.find((campaign) => campaign.id === 'new-lead-speed') || dripCampaigns[0]
+}
+
+function automationPatchForLead(lead = {}) {
+  const plan = leadQualityPlan(lead)
+  const campaign = campaignForLeadAutomation(lead)
+  const draft = campaignDraftFor(lead, campaign)
+  const followUpAt = nextFollowUpForLead(lead)
+  return {
+    priority: priorityForScore(plan.score),
+    leadScore: String(plan.score),
+    leadScoreReason: plan.reasons.join('; '),
+    intakeQuality: plan.score >= 76 ? 'High intent' : plan.score >= 54 ? 'Good lead' : 'Needs office follow-up',
+    closeProbability: String(plan.closeProbability),
+    recommendedStage: lead.status === 'Started' ? 'New' : lead.status || 'New',
+    followUpAt,
+    campaignName: lead.campaignName || campaign.name,
+    campaignStep: lead.campaignStep || '1',
+    campaignNextAt: lead.campaignNextAt || followUpAt,
+    emailStage: lead.emailStage || campaign.name,
+    emailSubject: lead.emailSubject || draft.subject,
+    emailBody: lead.emailBody || draft.body,
+    nextStep: plan.nextBestAction,
+  }
 }
 
 function Field({ label, value, onChange, textarea = false, type = 'text', rows = 3 }) {
@@ -1388,12 +1531,23 @@ function LeadReadinessChecklist({ lead }) {
     { label: 'Follow-up date', done: Boolean(lead.followUpAt || lead.campaignNextAt) },
     { label: 'Joist status', done: Boolean(lead.joistEstimateNumber || lead.joistStatus) },
   ]
+  const doneCount = checks.filter((check) => check.done).length
+  const readiness = Math.round((doneCount / checks.length) * 100)
+  const nextMissing = checks.find((check) => !check.done)?.label || 'Ready for estimate workflow'
+  const plan = leadQualityPlan(lead)
 
   return (
     <div className="lead-readiness-card">
-      <div>
-        <p className="admin-eyebrow">Lead readiness</p>
-        <strong>What the office should collect before Nick prices it.</strong>
+      <div className="readiness-head">
+        <div>
+          <p className="admin-eyebrow">Lead readiness</p>
+          <strong>What the office should collect before Nick prices it.</strong>
+          <small>Next missing item: {nextMissing}</small>
+        </div>
+        <div className="readiness-meter" style={{ '--readiness': `${readiness}%` }}>
+          <span>{readiness}%</span>
+          <small>Score {plan.score}</small>
+        </div>
       </div>
       <div className="readiness-grid">
         {checks.map((check) => (
@@ -1404,6 +1558,133 @@ function LeadReadinessChecklist({ lead }) {
         ))}
       </div>
     </div>
+  )
+}
+
+function LeadScorePanel({ lead, onPrime, onStage }) {
+  const plan = leadQualityPlan(lead)
+  return (
+    <section className={`lead-score-panel score-${plan.tone}`}>
+      <div className="lead-score-gauge" style={{ '--score': `${plan.score}%` }}>
+        <span>{plan.score}</span>
+        <small>{plan.closeProbability}% close</small>
+      </div>
+      <div className="lead-close-plan">
+        <p className="admin-eyebrow">Close plan</p>
+        <h3>{plan.nextBestAction}</h3>
+        <div>
+          {plan.reasons.slice(0, 3).map((reason) => (
+            <span key={reason}>{reason}</span>
+          ))}
+        </div>
+      </div>
+      <div className="lead-score-actions">
+        <button className="admin-primary-button" type="button" onClick={onPrime}>
+          <WandSparkles size={16} aria-hidden="true" />
+          Prime next action
+        </button>
+        {!['Contacted', 'Estimate Scheduled', 'Estimate Sent', 'Won'].includes(lead.status) ? (
+          <button className="admin-secondary-button" type="button" onClick={() => onStage('Contacted')}>
+            <Phone size={16} aria-hidden="true" />
+            Mark contacted
+          </button>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+function AutomationPlumbingPanel({ leads, selectedLead, setSelectedLeadId, updateLead }) {
+  const openLeads = leads.filter((lead) => !isClosedLead(lead))
+  const primableLeads = openLeads.filter(
+    (lead) => !lead.nextStep || !lead.followUpAt || !lead.leadScore || !lead.campaignName,
+  )
+  const hotUnworked = openLeads.filter((lead) => leadScoreValue(lead) >= 76 && needsFirstCall(lead))
+  const staleEstimates = openLeads.filter(isStaleEstimateLead)
+  const noFollowUp = openLeads.filter((lead) => !lead.followUpAt && !lead.campaignNextAt)
+  const joistQueue = openLeads.filter(needsJoistWork)
+  const topOpenLead = [...openLeads].sort((a, b) => followUpScore(b) - followUpScore(a))[0] || null
+  const bestLead = selectedLead && !isClosedLead(selectedLead) ? selectedLead : topOpenLead
+  const riskQueue = [...new Set([...hotUnworked, ...staleEstimates, ...noFollowUp, ...joistQueue])]
+    .sort((a, b) => followUpScore(b) - followUpScore(a))
+    .slice(0, 5)
+
+  const primeSelected = () => {
+    const lead = selectedLead || bestLead
+    if (!lead) return
+    updateLead(lead.id, automationPatchForLead(lead))
+  }
+
+  const primeTopBatch = () => {
+    primableLeads.slice(0, 12).forEach((lead) => {
+      updateLead(lead.id, automationPatchForLead(lead))
+    })
+  }
+
+  return (
+    <section className="admin-panel automation-plumbing-panel">
+      <div className="automation-head">
+        <div>
+          <p className="admin-eyebrow">Automation plumbing</p>
+          <h2>Keep every lead moving toward estimate, deposit, and close.</h2>
+          <span>Scores, follow-up dates, drips, Joist handoffs, and next steps are checked here.</span>
+        </div>
+        <div className="automation-actions">
+          <button className="admin-primary-button" type="button" onClick={primeSelected} disabled={!bestLead}>
+            <WandSparkles size={17} aria-hidden="true" />
+            Prime selected
+          </button>
+          <button className="admin-secondary-button" type="button" onClick={primeTopBatch} disabled={!primableLeads.length}>
+            <RefreshCw size={17} aria-hidden="true" />
+            Prime top {Math.min(12, primableLeads.length)}
+          </button>
+        </div>
+      </div>
+
+      <div className="automation-metric-grid">
+        <article>
+          <strong>{hotUnworked.length}</strong>
+          <span>hot unworked</span>
+        </article>
+        <article>
+          <strong>{noFollowUp.length}</strong>
+          <span>missing follow-up</span>
+        </article>
+        <article>
+          <strong>{staleEstimates.length}</strong>
+          <span>stale estimates</span>
+        </article>
+        <article>
+          <strong>{joistQueue.length}</strong>
+          <span>Joist cleanup</span>
+        </article>
+      </div>
+
+      <div className="automation-risk-list">
+        {riskQueue.length ? riskQueue.map((lead) => {
+          const plan = leadQualityPlan(lead)
+          return (
+            <button type="button" key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
+              <span className={`lead-row-score score-${plan.tone}`}>
+                <strong>{plan.score}</strong>
+                <small>score</small>
+              </span>
+              <span>
+                <strong>{lead.name || 'Website lead'}</strong>
+                <small>{plan.nextBestAction}</small>
+              </span>
+              <em>{dueLabel(lead.followUpAt || lead.campaignNextAt)}</em>
+            </button>
+          )
+        }) : (
+          <div className="admin-empty compact-empty">
+            <CheckCircle2 size={22} aria-hidden="true" />
+            <strong>Pipeline plumbing looks clean.</strong>
+            <span>New gaps will appear here when leads need a call, date, drip, or Joist cleanup.</span>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -1475,16 +1756,22 @@ function CrmCommandCenter({ leads, selectedLead, setSelectedLeadId, updateLead, 
             <span className="crm-pill">{stats.openLeads.length} open</span>
           </div>
           <div className="crm-priority-list">
-            {followQueue.length ? followQueue.map((lead) => (
-              <button type="button" key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
-                <span className={`lead-priority priority-${lead.priority.toLowerCase()}`}>{lead.priority}</span>
-                <span>
-                  <strong>{lead.name || 'Website lead'}</strong>
-                  <small>{visibleLeadStatus(lead)} / {dueLabel(lead.followUpAt || lead.campaignNextAt)}</small>
-                </span>
-                <em>{lead.campaignName || 'No drip'}</em>
-              </button>
-            )) : (
+            {followQueue.length ? followQueue.map((lead) => {
+              const score = leadScoreValue(lead)
+              return (
+                <button type="button" key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
+                  <span className={`lead-row-score score-${leadScoreTone(score)}`}>
+                    <strong>{score}</strong>
+                    <small>score</small>
+                  </span>
+                  <span>
+                    <strong>{lead.name || 'Website lead'}</strong>
+                    <small>{visibleLeadStatus(lead)} / {dueLabel(lead.followUpAt || lead.campaignNextAt)}</small>
+                  </span>
+                  <em>{lead.campaignName || 'No drip'}</em>
+                </button>
+              )
+            }) : (
               <div className="admin-empty compact-empty">
                 <strong>Clear for now.</strong>
                 <span>New leads, estimate follow-ups, and active campaigns will appear here.</span>
@@ -1914,26 +2201,33 @@ function LeadList({ leads, selectedLeadId, setSelectedLeadId }) {
 
   return (
     <div className="admin-lead-list">
-      {leads.map((lead) => (
-        <button
-          className={lead.id === selectedLeadId ? 'lead-row active' : 'lead-row'}
-          key={lead.id}
-          type="button"
-          onClick={() => setSelectedLeadId(lead.id)}
-        >
-          <span className={`lead-priority priority-${lead.priority.toLowerCase()}`}>{lead.priority}</span>
-          <span className="lead-row-main">
-            <strong>{lead.name}</strong>
-            <small>
-              {lead.projectType} / {lead.budget}
-            </small>
-          </span>
-          <span className="lead-row-meta">
-            <span>{lead.status}</span>
-            <small>{formatDate(lead.receivedAt)}</small>
-          </span>
-        </button>
-      ))}
+      {leads.map((lead) => {
+        const score = leadScoreValue(lead)
+        return (
+          <button
+            className={lead.id === selectedLeadId ? 'lead-row active' : 'lead-row'}
+            key={lead.id}
+            type="button"
+            onClick={() => setSelectedLeadId(lead.id)}
+          >
+            <span className={`lead-priority priority-${lead.priority.toLowerCase()}`}>{lead.priority}</span>
+            <span className="lead-row-main">
+              <strong>{lead.name}</strong>
+              <small>
+                {lead.projectType} / {lead.budget}
+              </small>
+            </span>
+            <span className={`lead-row-score score-${leadScoreTone(score)}`}>
+              <strong>{score}</strong>
+              <small>score</small>
+            </span>
+            <span className="lead-row-meta">
+              <span>{lead.status}</span>
+              <small>{dueLabel(lead.followUpAt || lead.campaignNextAt) || formatDate(lead.receivedAt)}</small>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -2201,6 +2495,13 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     })
   }
 
+  const primeAutomation = () => {
+    const patch = automationPatchForLead(workingLead)
+    if (patch.nextStep) setNextStep(patch.nextStep)
+    if (patch.followUpAt) setFollowUpAt(toDateTimeInputValue(patch.followUpAt))
+    updateLead(lead.id, patch)
+  }
+
   const mapsUrl = lead.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.address)}` : ''
 
   return (
@@ -2295,6 +2596,8 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           Estimate sent
         </button>
       </div>
+
+      <LeadScorePanel lead={workingLead} onPrime={primeAutomation} onStage={applyStage} />
 
       <LeadReadinessChecklist lead={workingLead} />
 
@@ -4545,9 +4848,11 @@ function AdminDashboard({ content, setContent, goHome }) {
 
   const updateLead = async (id, patch) => {
     const normalizedPatch = { ...patch, updatedAt: new Date().toISOString() }
-    const nextLeads = leads.map((lead) => (lead.id === id ? normalizeLead({ ...lead, ...normalizedPatch }) : lead))
-    setLeads(nextLeads)
-    saveStoredLeads(nextLeads)
+    setLeads((currentLeads) => {
+      const nextLeads = currentLeads.map((lead) => (lead.id === id ? normalizeLead({ ...lead, ...normalizedPatch }) : lead))
+      saveStoredLeads(nextLeads)
+      return nextLeads
+    })
 
     if (mode !== 'server') return
 
@@ -4921,6 +5226,13 @@ function AdminDashboard({ content, setContent, goHome }) {
           <ManualLeadPanel createLead={createLead} />
 
           <PipelineBoard leads={leads} setSelectedLeadId={setSelectedLeadId} />
+
+          <AutomationPlumbingPanel
+            leads={leads}
+            selectedLead={selectedLead}
+            setSelectedLeadId={setSelectedLeadId}
+            updateLead={updateLead}
+          />
 
           <CrmCommandCenter
             leads={leads}

@@ -323,6 +323,32 @@ const heroProjectCards = [
     image: projectVisuals[2].image,
   },
 ]
+const serviceFocusConfigs = [
+  {
+    match: /kitchen|bath/i,
+    label: 'Kitchen and bath fast lane',
+    cta: 'Select kitchen/bath',
+    submit: 'Send kitchen/bath request',
+    needs: ['Kitchen', 'Bathroom'],
+    note: 'Great for remodels, tile, layout fixes, ventilation, and repairs from old work.',
+  },
+  {
+    match: /concrete|driveway|sidewalk|paver|patio/i,
+    label: 'Concrete fast lane',
+    cta: 'Select concrete',
+    submit: 'Send concrete request',
+    needs: ['Concrete'],
+    note: 'Great for driveways, sidewalks, repairs, pavers, patios, drainage, and access notes.',
+  },
+  {
+    match: /roof|siding|window|exterior/i,
+    label: 'Exterior fast lane',
+    cta: 'Select exterior work',
+    submit: 'Send exterior request',
+    needs: ['Roofing', 'Siding', 'Windows'],
+    note: 'Great for roof leaks, siding, windows, doors, gutters, flashing, and exterior repairs.',
+  },
+]
 const addressFallbackCities = [
   'Wilmington, DE',
   'Newark, DE',
@@ -346,6 +372,93 @@ const newCastleCountyPattern = /\b(new castle|wilmington|newark|middletown|bear|
 function visualForText(text, fallback = projectVisuals[0].image) {
   const visual = projectVisuals.find((item) => item.match.test(String(text || '')))
   return visual?.image || fallback
+}
+
+function serviceFocusForPage(activeServicePage) {
+  if (!activeServicePage) return null
+  const haystack = [
+    activeServicePage.slug,
+    activeServicePage.serviceType,
+    activeServicePage.heroTitle,
+    activeServicePage.heroLede,
+  ].join(' ')
+  return serviceFocusConfigs.find((config) => config.match.test(haystack)) || null
+}
+
+function orderNeedsForFocus(needs, focusNeeds = []) {
+  const uniqueNeeds = [...new Set(needs)]
+  const focus = focusNeeds.filter((need) => uniqueNeeds.includes(need))
+  return [...focus, ...uniqueNeeds.filter((need) => !focus.includes(need))]
+}
+
+function leadTrackingFields(activeServicePage) {
+  if (typeof window === 'undefined') return {}
+  const params = new URLSearchParams(window.location.search || '')
+  const value = (key) => params.get(key) || ''
+  return {
+    sourcePath: window.location.pathname || '/',
+    sourcePage: document.title || '',
+    landingPage: activeServicePage?.slug || 'home',
+    serviceRoute: activeServicePage?.serviceType || '',
+    utmSource: value('utm_source'),
+    utmMedium: value('utm_medium'),
+    utmCampaign: value('utm_campaign'),
+    utmTerm: value('utm_term'),
+    utmContent: value('utm_content'),
+    gclid: value('gclid'),
+    gbraid: value('gbraid'),
+    wbraid: value('wbraid'),
+  }
+}
+
+function scoreLeadForFunnel(form, selectedNeeds = [], activeServicePage = null) {
+  const text = [
+    form?.message,
+    form?.projectType,
+    form?.address,
+    activeServicePage?.serviceType,
+    ...selectedNeeds,
+  ].join(' ')
+  const reasons = []
+  let score = 24
+
+  if (String(form?.phone || '').replace(/\D/g, '').length >= 7) {
+    score += 16
+    reasons.push('phone')
+  }
+  if (/\S+@\S+\.\S+/.test(String(form?.email || ''))) {
+    score += 11
+    reasons.push('email')
+  }
+  if (String(form?.name || '').trim()) score += 6
+  if (String(form?.address || '').trim()) {
+    score += 16
+    reasons.push('address')
+  }
+  if (form?.addressPlaceId || form?.addressCity || form?.addressPostalCode) score += 5
+  if (selectedNeeds.length) {
+    score += Math.min(14, 7 + selectedNeeds.length * 2)
+    reasons.push('work type')
+  }
+  if (/kitchen|bath|concrete|driveway|sidewalk|roof|siding|window/i.test(text)) {
+    score += 12
+    reasons.push('top service')
+  }
+  if (/leak|water|damage|fix|bad|ceiling|unsafe|broken|urgent|asap/i.test(text)) {
+    score += 8
+    reasons.push('urgent repair')
+  }
+  if (addressNeedsServiceCheck(form)) {
+    score -= 15
+    reasons.push('service area check')
+  }
+
+  const clampedScore = Math.max(10, Math.min(100, Math.round(score)))
+  return {
+    score: clampedScore,
+    quality: clampedScore >= 78 ? 'High intent' : clampedScore >= 55 ? 'Good lead' : 'Needs office follow-up',
+    reason: reasons.join(', ') || 'basic request',
+  }
 }
 
 function prefersReducedMotion() {
@@ -632,6 +745,7 @@ function LeadPanel({
   draftSaving,
   lastSavedAt,
   onAddressSelect = () => {},
+  activeServicePage = null,
 }) {
   const addressInputRef = useRef(null)
   const addressListRef = useRef(null)
@@ -640,9 +754,16 @@ function LeadPanel({
   const [addressSuggestions, setAddressSuggestions] = useState([])
   const [activeAddressIndex, setActiveAddressIndex] = useState(0)
   const googleServicesRef = useRef({ autocomplete: null, places: null, token: null })
-  const simpleNeeds = leadFunnel.simpleNeeds?.length
+  const baseSimpleNeeds = leadFunnel.simpleNeeds?.length
     ? leadFunnel.simpleNeeds
     : [...new Set(leadFunnel.groups.flatMap((group) => group.needs))].slice(0, 14)
+  const serviceFocus = serviceFocusForPage(activeServicePage)
+  const focusNeeds = serviceFocus?.needs?.filter((need) => baseSimpleNeeds.includes(need)) || []
+  const simpleNeeds = orderNeedsForFocus(baseSimpleNeeds, focusNeeds)
+  const focusNeedsSelected = focusNeeds.length > 0 && focusNeeds.every((need) => selectedNeeds.includes(need))
+  const selectFocusNeeds = () => {
+    focusNeeds.filter((need) => !selectedNeeds.includes(need)).forEach((need) => toggleNeed(need))
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -1069,6 +1190,19 @@ function LeadPanel({
               : leadFunnel.contactNudge}
         </div>
 
+        {serviceFocus ? (
+          <div className="lead-focus-card">
+            <span className="lead-focus-photo" style={{ backgroundImage: cssUrl(visualForText(serviceFocus.label)) }} aria-hidden="true"></span>
+            <div>
+              <strong>{serviceFocus.label}</strong>
+              <small>{serviceFocus.note}</small>
+            </div>
+            <button type="button" onClick={selectFocusNeeds} disabled={focusNeedsSelected}>
+              {focusNeedsSelected ? 'Selected' : serviceFocus.cta}
+            </button>
+          </div>
+        ) : null}
+
         <fieldset className="funnel-needs">
           <legend>What do you want help with?</legend>
           <div className="need-chip-grid">
@@ -1118,7 +1252,7 @@ function LeadPanel({
         </label>
 
         <button className="submit-button" type="submit" disabled={submitting}>
-          {submitting ? 'Sending...' : 'Send project request'}
+          {submitting ? 'Sending...' : serviceFocus?.submit || 'Send project request'}
           <Mail size={18} aria-hidden="true" />
         </button>
         <p className="form-note" aria-live="polite">
@@ -1412,11 +1546,20 @@ function HomePage({
   const heroTitlePrefix = activeServicePage?.heroTitle || hero.titlePrefix
   const heroHighlight = activeServicePage?.heroHighlight || hero.highlight
   const heroLede = activeServicePage?.heroLede || hero.lede
+  const [loadHeroVideo, setLoadHeroVideo] = useState(false)
+
+  useEffect(() => {
+    if (!heroVideo || prefersReducedMotion()) return undefined
+    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches) return undefined
+    if (typeof navigator !== 'undefined' && navigator.connection?.saveData) return undefined
+    const timer = window.setTimeout(() => setLoadHeroVideo(true), 950)
+    return () => window.clearTimeout(timer)
+  }, [heroVideo, images.hero])
 
   return (
     <>
       <section id="top" className="hero-section simple-home-hero" style={{ '--hero-photo': cssUrl(images.hero) }}>
-        {heroVideo ? (
+        {heroVideo && loadHeroVideo ? (
           <video
             className="hero-video"
             src={heroVideo}
@@ -1498,6 +1641,7 @@ function HomePage({
           draftSaving={draftSaving}
           lastSavedAt={lastSavedAt}
           onAddressSelect={onAddressSelect}
+          activeServicePage={activeServicePage}
         />
       </section>
 
@@ -1945,12 +2089,14 @@ function App() {
     const activeGroup =
       siteContent.leadFunnel.groups.find((group) => group.id === selectedGroupId) ||
       siteContent.leadFunnel.groups[0]
+    const activeServicePage = findServiceLandingPage(siteContent, routePath)
     const projectType = selectedNeedsOverride.length ? selectedNeedsOverride.join(', ') : activeGroup.label
     const summaryLines = [
       selectedNeedsOverride.length ? `Selected needs: ${selectedNeedsOverride.join(', ')}` : `Selected lane: ${activeGroup.label}`,
       formOverride.address ? `Project address: ${formOverride.address}` : '',
       formOverride.message ? `Notes: ${formOverride.message}` : '',
     ].filter(Boolean)
+    const leadScore = scoreLeadForFunnel(formOverride, selectedNeedsOverride, activeServicePage)
 
     return {
       ...formOverride,
@@ -1962,9 +2108,17 @@ function App() {
       projectType,
       message: summaryLines.join('\n'),
       status: statusOverride,
+      ...leadTrackingFields(activeServicePage),
+      leadScore: String(leadScore.score),
+      leadScoreReason: leadScore.reason,
+      intakeQuality: leadScore.quality,
       priority: selectedNeedsOverride.some((need) => /fix|bad|commercial|addition|foundation/i.test(need))
         ? 'Hot'
-        : 'Warm',
+        : leadScore.score >= 74
+          ? 'Hot'
+          : leadScore.score >= 48
+            ? 'Warm'
+            : 'Normal',
     }
   }
 
@@ -2045,6 +2199,7 @@ function App() {
     form.company,
     form.website,
     form.fax,
+    routePath,
     selectedGroupId,
     selectedNeeds,
     submitted,
