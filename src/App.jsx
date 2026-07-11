@@ -113,14 +113,150 @@ function setCanonicalUrl(value) {
   if (element) element.setAttribute('href', value)
 }
 
+function normalizePathname(routePath = '/') {
+  const path = String(routePath || '/').split('?')[0].replace(/^\/+/, '').replace(/\/+$/, '')
+  return path || ''
+}
+
+function serviceLandingPages(content = defaultSiteContent) {
+  return content.localSeo?.servicePages?.length
+    ? content.localSeo.servicePages
+    : defaultSiteContent.localSeo.servicePages
+}
+
+function findServiceLandingPage(content = defaultSiteContent, routePath = '/') {
+  const slug = normalizePathname(routePath)
+  if (!slug || slug === 'admin' || slug === 'our-work') return null
+  return serviceLandingPages(content).find((page) => page.slug === slug) || null
+}
+
+function setManagedJsonLd(data) {
+  if (typeof document === 'undefined') return
+  const id = 'flanagan-managed-jsonld'
+  let script = document.getElementById(id)
+  if (!data) {
+    script?.remove()
+    return
+  }
+  if (!script) {
+    script = document.createElement('script')
+    script.id = id
+    script.type = 'application/ld+json'
+    document.head.appendChild(script)
+  }
+  script.textContent = JSON.stringify(data)
+}
+
+function applyManagedStructuredData(content, routePath, pageUrl, title, description) {
+  if (typeof document === 'undefined') return
+  if (routePath.startsWith('/admin')) {
+    setManagedJsonLd(null)
+    return
+  }
+
+  const baseUrl = 'https://flanaganconstructionde.com'
+  const activeServicePage = findServiceLandingPage(content, routePath)
+  const business = content.business || defaultSiteContent.business
+  const locations = content.serviceLocations?.places?.length
+    ? content.serviceLocations.places
+    : defaultSiteContent.serviceLocations.places
+  const graph = [
+    {
+      '@type': 'WebSite',
+      '@id': `${baseUrl}/#website`,
+      url: `${baseUrl}/`,
+      name: business.name,
+      inLanguage: 'en-US',
+      publisher: { '@id': `${baseUrl}/#business` },
+    },
+    {
+      '@type': 'WebPage',
+      '@id': `${pageUrl}#webpage`,
+      url: pageUrl,
+      name: title,
+      description,
+      inLanguage: 'en-US',
+      isPartOf: { '@id': `${baseUrl}/#website` },
+      about: { '@id': `${baseUrl}/#business` },
+      primaryImageOfPage: content.seo?.ogImage || defaultSiteContent.seo.ogImage,
+    },
+  ]
+
+  if (activeServicePage) {
+    graph.push(
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${pageUrl}#breadcrumbs`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: `${baseUrl}/` },
+          { '@type': 'ListItem', position: 2, name: activeServicePage.serviceType, item: pageUrl },
+        ],
+      },
+      {
+        '@type': 'Service',
+        '@id': `${pageUrl}#service`,
+        name: activeServicePage.serviceType,
+        serviceType: activeServicePage.serviceType,
+        description: activeServicePage.summary || description,
+        provider: { '@id': `${baseUrl}/#business` },
+        areaServed: [
+          { '@type': 'AdministrativeArea', name: 'New Castle County, Delaware' },
+          ...(activeServicePage.focusTowns || locations.slice(0, 8)).map((name) => ({
+            '@type': 'City',
+            name: `${name}, Delaware`,
+          })),
+        ],
+        offers: {
+          '@type': 'Offer',
+          availability: 'https://schema.org/InStock',
+          price: '0',
+          priceCurrency: 'USD',
+          description: 'Free estimate request',
+          url: pageUrl,
+        },
+      },
+    )
+  } else {
+    graph.push({
+      '@type': 'ItemList',
+      '@id': `${pageUrl}#top-services`,
+      name: 'Top New Castle County remodeling services',
+      itemListElement: (content.localSeo?.priorityServices || defaultSiteContent.localSeo.priorityServices).map(
+        (service, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: service.title,
+          url: `${baseUrl}/${service.slug}`,
+        }),
+      ),
+    })
+  }
+
+  setManagedJsonLd({ '@context': 'https://schema.org', '@graph': graph })
+}
+
 function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
   const seo = content.seo || defaultSiteContent.seo
   const baseUrl = 'https://flanaganconstructionde.com'
   const isAdmin = routePath.startsWith('/admin')
   const isWork = routePath.startsWith('/our-work')
-  const title = isAdmin ? 'Flanagan Admin' : isWork ? seo.ourWorkTitle : seo.homeTitle
-  const description = isAdmin ? 'Private Flanagan Construction admin dashboard.' : isWork ? seo.ourWorkDescription : seo.homeDescription
-  const url = `${baseUrl}${isWork ? '/our-work' : '/'}`
+  const activeServicePage = findServiceLandingPage(content, routePath)
+  const title = isAdmin
+    ? 'Flanagan Admin'
+    : activeServicePage
+      ? activeServicePage.seoTitle
+      : isWork
+        ? seo.ourWorkTitle
+        : seo.homeTitle
+  const description = isAdmin
+    ? 'Private Flanagan Construction admin dashboard.'
+    : activeServicePage
+      ? activeServicePage.seoDescription
+      : isWork
+        ? seo.ourWorkDescription
+        : seo.homeDescription
+  const path = activeServicePage ? `/${activeServicePage.slug}` : isWork ? '/our-work' : '/'
+  const url = `${baseUrl}${path}`
 
   document.title = title
   setMetaAttribute('meta[name="description"]', 'content', description)
@@ -134,6 +270,7 @@ function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
   setMetaAttribute('meta[name="twitter:description"]', 'content', description)
   setMetaAttribute('meta[name="twitter:image"]', 'content', seo.ogImage || defaultSiteContent.seo.ogImage)
   setCanonicalUrl(url)
+  applyManagedStructuredData(content, routePath, url, title, description)
 }
 
 const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
@@ -1141,6 +1278,103 @@ function SimpleServicesSection({ business, gallery, goSection, quickBand, servic
   )
 }
 
+function LocalLeadSection({ activeServicePage, business, goPath, goSection, localSeo, serviceLocations }) {
+  const priorityServices = localSeo?.priorityServices?.length
+    ? localSeo.priorityServices
+    : defaultSiteContent.localSeo.priorityServices
+  const places = serviceLocations?.places?.length
+    ? serviceLocations.places
+    : defaultSiteContent.serviceLocations.places
+  const featuredPlaces = activeServicePage?.focusTowns?.length ? activeServicePage.focusTowns : places.slice(0, 18)
+  const handlePageClick = (slug) => (event) => {
+    if (!goPath) return
+    event.preventDefault()
+    goPath(`/${slug}`)
+  }
+  const title = activeServicePage
+    ? `${activeServicePage.serviceType} across New Castle County`
+    : localSeo?.title || defaultSiteContent.localSeo.title
+  const copy = activeServicePage?.summary || localSeo?.copy || defaultSiteContent.localSeo.copy
+
+  return (
+    <section
+      className={`local-lead-section${activeServicePage ? ' local-service-page' : ''}`}
+      id="service-area"
+      aria-label="New Castle County service area"
+    >
+      <div className="local-lead-copy" data-reveal="lift">
+        <p className="eyebrow">{localSeo?.eyebrow || 'Local contractor help'}</p>
+        <h2>{title}</h2>
+        <p>{copy}</p>
+        <div className="local-conversion-steps" aria-label="How the estimate process works">
+          {(localSeo?.conversionSteps || defaultSiteContent.localSeo.conversionSteps).map((step, index) => (
+            <span key={step}>
+              <strong>{String(index + 1).padStart(2, '0')}</strong>
+              {step}
+            </span>
+          ))}
+        </div>
+        <div className="local-actions">
+          <button className="primary-action button-link" type="button" onClick={() => goSection('estimate')}>
+            Start a local estimate
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+          <a className="secondary-action" href={phoneHrefFor(business.phone)} onClick={() => track('phone_click', { location: 'local_seo_section' })}>
+            <Phone size={18} aria-hidden="true" />
+            Call {business.phone}
+          </a>
+        </div>
+      </div>
+
+      <div className="local-intent-panel" data-reveal="card">
+        <div className="local-intent-head">
+          <span>{activeServicePage ? 'Current landing page' : 'Best-fit searches'}</span>
+          <strong>{localSeo?.promise || defaultSiteContent.localSeo.promise}</strong>
+        </div>
+        <div className="local-intent-grid">
+          {priorityServices.map((service, index) => {
+            const isActive = activeServicePage?.slug === service.slug
+            return (
+              <article className={`local-intent-card${isActive ? ' is-active' : ''}`} key={service.slug}>
+                <span className="local-rank">0{index + 1}</span>
+                <h3>
+                  <a href={`/${service.slug}`} onClick={handlePageClick(service.slug)}>
+                    {service.title}
+                  </a>
+                </h3>
+                <p>{service.copy}</p>
+                <small>{service.searchLabel}</small>
+                <div className="local-town-line" aria-label={`${service.title} service towns`}>
+                  {service.towns.map((town) => (
+                    <span key={town}>{town}</span>
+                  ))}
+                </div>
+                <button className="text-action button-link" type="button" onClick={() => goSection('estimate')}>
+                  {service.cta}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>
+              </article>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="local-county-strip" data-reveal="lift">
+        <div>
+          <MapPin size={18} aria-hidden="true" />
+          <strong>{serviceLocations?.title || defaultSiteContent.serviceLocations.title}</strong>
+          <p>{serviceLocations?.copy || defaultSiteContent.serviceLocations.copy}</p>
+        </div>
+        <div className="location-chip-grid">
+          {featuredPlaces.map((place) => (
+            <span key={place}>{place}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function HomePage({
   content,
   form,
@@ -1156,6 +1390,8 @@ function HomePage({
   draftSaving,
   lastSavedAt,
   onAddressSelect,
+  goPath,
+  routePath,
 }) {
   const {
     business,
@@ -1165,11 +1401,17 @@ function HomePage({
     heroCredibility,
     images,
     leadFunnel,
+    localSeo,
     quickBand,
     services,
     servicesIntro,
+    serviceLocations,
   } = content
   const heroVideo = images.heroVideo || defaultSiteContent.images.heroVideo
+  const activeServicePage = findServiceLandingPage(content, routePath)
+  const heroTitlePrefix = activeServicePage?.heroTitle || hero.titlePrefix
+  const heroHighlight = activeServicePage?.heroHighlight || hero.highlight
+  const heroLede = activeServicePage?.heroLede || hero.lede
 
   return (
     <>
@@ -1196,15 +1438,15 @@ function HomePage({
             <span className="eyebrow-rule" aria-hidden="true"></span>
           </p>
           <h1>
-            <span className="hero-title-piece hero-title-one">{hero.titlePrefix}</span>{' '}
+            <span className="hero-title-piece hero-title-one">{heroTitlePrefix}</span>{' '}
             <span className="hl">
-              {hero.highlight}
+              {heroHighlight}
               <svg className="swoosh" viewBox="0 0 320 26" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M6 18 Q 160 30 314 9" stroke="#f2b84b" strokeWidth="6" fill="none" strokeLinecap="round" />
               </svg>
             </span>
           </h1>
-          <p className="hero-lede">{hero.lede}</p>
+          <p className="hero-lede">{heroLede}</p>
           <div className="hero-actions">
             <a
               className="primary-action"
@@ -1266,6 +1508,14 @@ function HomePage({
         quickBand={quickBand}
         services={services}
         servicesIntro={servicesIntro}
+      />
+      <LocalLeadSection
+        activeServicePage={activeServicePage}
+        business={business}
+        goPath={goPath}
+        goSection={goSection}
+        localSeo={localSeo}
+        serviceLocations={serviceLocations}
       />
     </>
   )
@@ -1664,7 +1914,8 @@ function App() {
     const scrollToSection = () => {
       document.getElementById(id)?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
     }
-    if (window.location.pathname !== '/') {
+    const isHomeLikeRoute = window.location.pathname === '/' || findServiceLandingPage(siteContent, window.location.pathname)
+    if (!isHomeLikeRoute) {
       window.history.pushState({}, '', '/')
       setRoutePath('/')
       window.setTimeout(scrollToSection, 80)
@@ -1911,6 +2162,8 @@ function App() {
           draftSaving={draftSaving}
           lastSavedAt={lastSavedAt}
           onAddressSelect={handleAddressSelect}
+          goPath={goPath}
+          routePath={routePath}
         />
       )}
 

@@ -1,12 +1,13 @@
 export const defaultSiteContent = {
-  contentVersion: 10,
+  contentVersion: 11,
 
   business: {
     name: 'Flanagan Construction',
     location: 'New Castle County, Delaware',
     phone: '(302) 565-5724',
     email: 'quotes@flanaganconstructionde.com',
-    serviceArea: 'All of New Castle County, including Newark, Wilmington, Middletown, Bear, Pike Creek, Hockessin, and nearby Delaware communities',
+    serviceArea:
+      'All of New Castle County, including Wilmington, Newark, Middletown, Bear, Pike Creek, Hockessin, Claymont, New Castle, Townsend, Odessa, and Delaware City.',
   },
 
   hero: {
@@ -151,6 +152,93 @@ export const defaultSiteContent = {
       'The important stuff with contractors: license and insurance, clear scope, realistic timing, trade coordination, cleanup, and someone who calls you back.',
   },
 
+  localSeo: {
+    eyebrow: 'Local contractor help',
+    title: 'New Castle County homeowners need clear answers, not a runaround.',
+    copy:
+      'Most calls start the same way: a kitchen needs a better layout, a bathroom has old work hiding problems, a driveway is cracking, or the roof and siding need attention before water gets in. Start with the address and work type so our office can route it fast.',
+    promise:
+      'Local, licensed, insured, plain-spoken, and focused on the work homeowners search for most.',
+    conversionSteps: [
+      'Send the address and project type',
+      'Office follows up with the right next step',
+      'Scope, estimate, schedule, and follow-up stay organized',
+    ],
+    priorityServices: [
+      {
+        title: 'Kitchen & bathroom remodeling',
+        slug: 'kitchen-bathroom-remodeling-new-castle-county-de',
+        searchLabel: 'Kitchen remodels, bathroom remodels, tile, layout, ventilation',
+        copy:
+          'For homeowners comparing kitchen remodelers, bathroom contractors, tile work, shower updates, vanities, layout fixes, and repairs from old or bad work.',
+        cta: 'Kitchen or bath estimate',
+        towns: ['Wilmington', 'Newark', 'Middletown', 'Bear', 'Pike Creek', 'Hockessin'],
+      },
+      {
+        title: 'Concrete driveways & sidewalks',
+        slug: 'concrete-driveways-sidewalks-new-castle-county-de',
+        searchLabel: 'Driveways, sidewalks, repairs, pavers, patios, drainage',
+        copy:
+          'For cracked concrete, new driveways, sidewalk repairs, paver and patio planning, retaining walls, drainage notes, and outdoor work that needs clean access.',
+        cta: 'Concrete estimate',
+        towns: ['New Castle', 'Newark', 'Bear', 'Glasgow', 'Townsend', 'Odessa'],
+      },
+      {
+        title: 'Roofing, siding & windows',
+        slug: 'roofing-siding-windows-new-castle-county-de',
+        searchLabel: 'Roof leaks, siding repairs, windows, doors, gutters',
+        copy:
+          'For roof leaks, siding damage, window replacement, exterior doors, gutters, trim, flashing, and exterior repairs that protect the house.',
+        cta: 'Exterior estimate',
+        towns: ['Wilmington', 'Claymont', 'Elsmere', 'Newport', 'Delaware City', 'Hockessin'],
+      },
+    ],
+    servicePages: [
+      {
+        slug: 'kitchen-bathroom-remodeling-new-castle-county-de',
+        seoTitle: 'Kitchen & Bathroom Remodeling New Castle County DE | Flanagan Construction',
+        seoDescription:
+          'Kitchen and bathroom remodeling in New Castle County, DE. Tile, showers, vanities, layout fixes, ventilation, plumbing coordination, and repair work. Start a free estimate.',
+        heroTitle: 'Kitchen and bathroom remodeling in',
+        heroHighlight: 'New Castle County.',
+        heroLede:
+          'Tell us the address, phone, email, and what you want changed. We handle kitchen remodels, bathroom remodels, tile, layout fixes, ventilation, and repair work when old work needs to be made right.',
+        summary:
+          'Good kitchen and bath work comes down to planning, prep, waterproofing, ventilation, trade coordination, and clean communication. Start with a quick request and our office will follow up.',
+        serviceType: 'Kitchen and bathroom remodeling',
+        focusTowns: ['Wilmington', 'Newark', 'Middletown', 'Bear', 'Pike Creek', 'Hockessin'],
+      },
+      {
+        slug: 'concrete-driveways-sidewalks-new-castle-county-de',
+        seoTitle: 'Concrete Driveways & Sidewalks New Castle County DE | Flanagan Construction',
+        seoDescription:
+          'Concrete driveways, sidewalks, repairs, pavers, patios, retaining walls, and drainage coordination across New Castle County, DE. Request a clear estimate.',
+        heroTitle: 'Concrete driveways and sidewalks in',
+        heroHighlight: 'New Castle County.',
+        heroLede:
+          'Tell us the address and what concrete work you need. We help with driveways, sidewalks, repairs, pavers, patios, retaining walls, drainage notes, and outdoor access.',
+        summary:
+          'Concrete work needs good prep, water control, clear access, and realistic scheduling. Send the location first so we can understand the jobsite and the right next step.',
+        serviceType: 'Concrete driveway and sidewalk contractor',
+        focusTowns: ['New Castle', 'Newark', 'Bear', 'Glasgow', 'Townsend', 'Odessa'],
+      },
+      {
+        slug: 'roofing-siding-windows-new-castle-county-de',
+        seoTitle: 'Roofing, Siding & Windows New Castle County DE | Flanagan Construction',
+        seoDescription:
+          'Roofing, siding, windows, doors, gutters, gutter guards, and exterior repairs in New Castle County, DE. Start a fast estimate request.',
+        heroTitle: 'Roofing, siding, and windows in',
+        heroHighlight: 'New Castle County.',
+        heroLede:
+          'Tell us the address and the exterior issue. We handle roof leaks, siding, windows, doors, gutters, gutter guards, trim, flashing, and repairs that protect the house.',
+        summary:
+          'Exterior work is about stopping water, protecting the home, and explaining the scope before price. Start the request and we will route it to the right next step.',
+        serviceType: 'Roofing siding and window contractor',
+        focusTowns: ['Wilmington', 'Claymont', 'Elsmere', 'Newport', 'Delaware City', 'Hockessin'],
+      },
+    ],
+  },
+
   services: [
     {
       title: '#1 Kitchen & Bathroom Remodeling',
@@ -274,9 +362,9 @@ export const defaultSiteContent = {
 
   serviceLocations: {
     eyebrow: 'Service locations',
-    title: 'Serving New Castle County homes, from Wilmington to Townsend.',
+    title: 'Serving New Castle County homes from Wilmington to Townsend.',
     copy:
-      'If you are in New Castle County, start the request and we will confirm scheduling, access, and the right next step.',
+      'If the job is in New Castle County, start the request and we will confirm scheduling, access, and the right next step.',
     places: [
       'Arden',
       'Ardencroft',
@@ -284,8 +372,9 @@ export const defaultSiteContent = {
       'Bear',
       'Bellefonte',
       'Brookside',
+      'Centreville',
+      'Christiana',
       'Claymont',
-      'Clayton',
       'Delaware City',
       'Edgemoor',
       'Elsmere',
@@ -300,12 +389,10 @@ export const defaultSiteContent = {
       'Odessa',
       'Pike Creek',
       'Pike Creek Valley',
-      'Smyrna',
       'St. Georges',
       'Townsend',
       'Wilmington',
       'Wilmington Manor',
-      'Christiana',
       'Marshallton',
       'Minquadale',
       'Montchanin',
@@ -477,14 +564,14 @@ export const defaultSiteContent = {
   },
 
   seo: {
-    homeTitle: 'New Castle County Remodeling Contractor | Flanagan Construction',
+    homeTitle: 'New Castle County Remodeling Contractor | Kitchens, Concrete, Roofing',
     homeDescription:
-      'Flanagan Construction handles kitchen and bath remodeling, concrete driveways and sidewalks, roofing, siding, windows, decks, and repairs across New Castle County, Delaware.',
+      'Flanagan Construction helps New Castle County homeowners with kitchen and bath remodeling, concrete driveways and sidewalks, roofing, siding, windows, decks, and repairs. Start a free estimate.',
     ourWorkTitle: 'Our Work | Flanagan Construction New Castle County',
     ourWorkDescription:
       'See recent kitchens, baths, concrete, roofing, siding, windows, decks, and repair projects from Flanagan Construction around New Castle County, Delaware.',
     keywords:
-      'remodeling contractor New Castle County DE, kitchen remodel Delaware, bathroom remodel Delaware, concrete driveway Delaware, roofing siding windows Delaware, deck contractor New Castle County',
+      'remodeling contractor New Castle County DE, kitchen remodel New Castle County, bathroom remodel Wilmington DE, concrete driveway Newark DE, sidewalk repair New Castle County, roofing siding windows Delaware, deck contractor New Castle County',
     ogImage: 'https://flanaganconstructionde.com/og.png',
   },
 
