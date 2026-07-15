@@ -12,9 +12,9 @@
 import http from 'node:http'
 import zlib from 'node:zlib'
 import { createReadStream, existsSync, statSync } from 'node:fs'
-import { appendFile, readFile, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash, createHmac, pbkdf2Sync, randomUUID, timingSafeEqual } from 'node:crypto'
-import { extname, join, normalize, resolve } from 'node:path'
+import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import nodemailer from 'nodemailer'
 import { buildWebhookPayload } from './lead-delivery.js'
@@ -26,11 +26,13 @@ const host = '0.0.0.0'
 const leadWebhookUrl = process.env.LEAD_WEBHOOK_URL || ''
 const adminPassword = process.env.ADMIN_PASSWORD || ''
 const adminSessionSecret = process.env.ADMIN_SESSION_SECRET || adminPassword || randomUUID()
-const siteContentPath = join(root, 'site-content.json')
-const leadLogPath = join(root, 'leads.log')
-const leadCrmPath = join(root, 'lead-crm.json')
+const dataDir = resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || root)
+const siteContentPath = join(dataDir, 'site-content.json')
+const leadLogPath = join(dataDir, 'leads.log')
+const leadCrmPath = join(dataDir, 'lead-crm.json')
 const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
 const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
+const leadNotifyTo = process.env.LEAD_NOTIFY_TO || process.env.SMTP_REPLY_TO || process.env.SMTP_USER || ''
 const publicGoogleMapsApiKey =
   process.env.PUBLIC_GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_BROWSER_KEY || ''
 const serverStartedAt = new Date()
@@ -73,9 +75,20 @@ function loadAdminUsers() {
 const adminUsers = loadAdminUsers()
 
 // The canonical domain baked into index.html / robots / sitemap at build time.
-// At request time it is rewritten to the actual serving origin (see withOrigin)
-// so canonical + Open Graph URLs are correct on the Railway URL or a custom domain.
-const canonicalBase = 'https://flanaganconstructionde.com'
+// Robots/sitemap are rewritten to the serving origin for technical correctness,
+// but HTML keeps canonical/Open Graph URLs branded. Only share-image asset URLs
+// are rewritten so previews can still fetch images from the current host.
+const canonicalBase = 'https://www.flanaganconstructionllc.com'
+const shareAssetPaths = [
+  'og.png',
+  'brand-mark.svg',
+  'favicon.svg',
+  'apple-touch-icon.png',
+  'icon-192.png',
+  'icon-512.png',
+  'flanagan-construction-qr.svg',
+  'flanagan-construction-qr.png',
+]
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -361,6 +374,7 @@ function emailSettingsStatus() {
     user: smtpUser,
     from: process.env.SMTP_FROM || (smtpUser ? `Flanagan Construction <${smtpUser}>` : ''),
     replyTo: process.env.SMTP_REPLY_TO || smtpUser,
+    leadNotifyTo: leadNotifyTo || process.env.SMTP_REPLY_TO || smtpUser,
   }
   const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', smtpPasswordEnvKey, 'SMTP_FROM']
   const requiredStatus = required.map((key) => ({
@@ -434,6 +448,58 @@ function publicConfigStatus() {
   }
 }
 
+function leadNotificationText(lead = {}) {
+  return [
+    'New Flanagan Construction website request',
+    '',
+    `Name: ${lead.name || 'Not provided'}`,
+    `Phone: ${lead.phone || 'Not provided'}`,
+    `Email: ${lead.email || 'Not provided'}`,
+    `Address: ${lead.address || 'Not provided'}`,
+    `Project: ${lead.projectType || lead.funnelGroup || 'Not provided'}`,
+    `Priority: ${lead.priority || 'Normal'}`,
+    `Score: ${lead.leadScore || 'Not scored'}`,
+    `Next step: ${lead.nextStep || 'Call/text and confirm scope.'}`,
+    '',
+    lead.message ? `Notes:\n${lead.message}` : 'Notes: none',
+    '',
+    `Received: ${lead.receivedAt || new Date().toISOString()}`,
+    `Lead ID: ${lead.id || ''}`,
+  ].join('\n')
+}
+
+async function notifyLeadByEmail(lead) {
+  const settings = effectiveSmtpSettings()
+  const to = String(leadNotifyTo || settings.replyTo || settings.user || '').trim()
+  if (!emailSettingsStatus().configured || !emailLooksValid(to)) return
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.host,
+      port: settings.port,
+      secure: settings.secure,
+      requireTLS: !settings.secure,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
+      auth: {
+        user: settings.user,
+        pass: settings.pass,
+      },
+    })
+
+    await transporter.sendMail({
+      from: settings.from,
+      to,
+      replyTo: lead.email || settings.replyTo || undefined,
+      subject: `New website lead: ${lead.projectType || lead.funnelGroup || lead.name || 'Flanagan request'}`,
+      text: leadNotificationText(lead),
+    })
+  } catch (error) {
+    console.error('[LEAD] email notification failed:', error?.code || error?.message || 'smtp_error')
+  }
+}
+
 async function handleAdminEmailSettings(req, res, gzipOk) {
   if (!requireAdmin(req, res, gzipOk)) return
 
@@ -487,6 +553,9 @@ async function handleAdminTestEmail(req, res, gzipOk) {
       port: settings.port,
       secure: settings.secure,
       requireTLS: !settings.secure,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
       auth: {
         user: settings.user,
         pass: settings.pass,
@@ -585,6 +654,7 @@ async function handleAdminSystemHealth(req, res, gzipOk) {
       leadCrm: leadCrmFile,
     },
     storage: {
+      dataDir: dataDir === root ? 'app container' : dataDir,
       content: formatBytes(contentFile.bytes),
       leadLog: formatBytes(leadLogFile.bytes),
       leadCrm: formatBytes(leadCrmFile.bytes),
@@ -596,6 +666,7 @@ async function handleAdminSystemHealth(req, res, gzipOk) {
     },
     integrations: {
       emailConfigured: emailSettingsStatus().configured,
+      leadEmailNotificationsConfigured: emailSettingsStatus().configured && emailLooksValid(leadNotifyTo || process.env.SMTP_REPLY_TO || process.env.SMTP_USER),
       leadWebhookConfigured: Boolean(leadWebhookUrl),
       googlePlacesConfigured: Boolean(publicGoogleMapsApiKey),
     },
@@ -604,6 +675,7 @@ async function handleAdminSystemHealth(req, res, gzipOk) {
       { id: 'content', label: 'Site content storage', ok: contentFile.exists, detail: contentFile.exists ? `Updated ${contentFile.updatedAt}` : 'Using default content until saved' },
       { id: 'crm', label: 'Lead CRM storage', ok: leadLogFile.exists || leadCrmFile.exists, detail: `${leads.length} lead records available` },
       { id: 'email', label: 'Outbound email', ok: emailSettingsStatus().configured, detail: emailSettingsStatus().configured ? 'SMTP variables are configured' : 'Use Email tab to finish setup' },
+      { id: 'lead-email', label: 'Lead email alerts', ok: emailSettingsStatus().configured && emailLooksValid(leadNotifyTo || process.env.SMTP_REPLY_TO || process.env.SMTP_USER), detail: emailSettingsStatus().configured ? `Alerts go to ${leadNotifyTo || process.env.SMTP_REPLY_TO || process.env.SMTP_USER || 'unset'}` : 'Configure SMTP first' },
     ],
   }
 
@@ -618,7 +690,17 @@ async function readJsonFile(filePath, fallback) {
   }
 }
 
+async function ensureParentDir(filePath) {
+  await mkdir(dirname(filePath), { recursive: true })
+}
+
+async function appendDataFile(filePath, text) {
+  await ensureParentDir(filePath)
+  await appendFile(filePath, text, 'utf8')
+}
+
 async function writeJsonFile(filePath, data) {
+  await ensureParentDir(filePath)
   await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, 'utf8')
 }
 
@@ -834,7 +916,7 @@ async function handleAdminLeads(req, res, gzipOk, pathname) {
         nextStep: data.nextStep || scoring.nextStep,
       })
 
-      await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
+      await appendDataFile(leadLogPath, `${JSON.stringify(lead)}\n`)
       const crm = await readJsonFile(leadCrmPath, {})
       crm[lead.id] = {
         status: lead.status,
@@ -893,6 +975,15 @@ function withOrigin(text, req) {
   return origin === canonicalBase ? text : text.split(canonicalBase).join(origin)
 }
 
+function withShareAssetOrigin(text, req) {
+  const origin = requestOrigin(req)
+  if (origin === canonicalBase) return text
+  return shareAssetPaths.reduce(
+    (nextText, assetPath) => nextText.split(`${canonicalBase}/${assetPath}`).join(`${origin}/${assetPath}`),
+    text,
+  )
+}
+
 async function serveIndex(req, res, gzipOk) {
   const indexPath = join(distDir, 'index.html')
   if (!existsSync(indexPath)) {
@@ -904,7 +995,7 @@ async function serveIndex(req, res, gzipOk) {
     send(res, 200, headers, null)
     return
   }
-  const html = withOrigin(await readFile(indexPath, 'utf8'), req)
+  const html = withShareAssetOrigin(await readFile(indexPath, 'utf8'), req)
   send(res, 200, headers, html, gzipOk)
 }
 
@@ -1193,7 +1284,7 @@ async function handleLead(req, res, gzipOk) {
 
     // Best-effort durable copy (note: container disks are ephemeral on Railway).
     try {
-      await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
+      await appendDataFile(leadLogPath, `${JSON.stringify(lead)}\n`)
     } catch (error) {
       console.error('[LEAD] could not write leads.log:', error?.message)
     }
@@ -1210,6 +1301,8 @@ async function handleLead(req, res, gzipOk) {
         console.error('[LEAD] webhook delivery failed:', error?.message)
       }
     }
+
+    await notifyLeadByEmail(lead)
 
     sendJson(res, 200, { ok: true }, gzipOk)
   })
@@ -1290,7 +1383,7 @@ async function handleLeadDraft(req, res, gzipOk) {
   console.log('[LEAD_DRAFT]', JSON.stringify(lead))
 
   try {
-    await appendFile(leadLogPath, `${JSON.stringify(lead)}\n`)
+    await appendDataFile(leadLogPath, `${JSON.stringify(lead)}\n`)
   } catch (error) {
     console.error('[LEAD_DRAFT] could not write leads.log:', error?.message)
   }

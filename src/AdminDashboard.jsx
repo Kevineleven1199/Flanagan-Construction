@@ -164,6 +164,7 @@ const smtpEnvKeys = [
   smtpPasswordEnvKey,
   'SMTP_FROM',
   'SMTP_REPLY_TO',
+  'LEAD_NOTIFY_TO',
 ]
 const smtpDraftStorageKey = 'flanagan-smtp-draft-v1'
 
@@ -609,6 +610,7 @@ function smtpDraftFromSettings(emailSettings) {
     [smtpPasswordEnvKey]: '',
     SMTP_FROM: emailSettings?.from || (emailSettings?.user ? `Flanagan Construction <${emailSettings.user}>` : ''),
     SMTP_REPLY_TO: emailSettings?.replyTo || emailSettings?.user || '',
+    LEAD_NOTIFY_TO: emailSettings?.leadNotifyTo || emailSettings?.replyTo || emailSettings?.user || '',
     ...savedDraft,
     [smtpPasswordEnvKey]: '',
   }
@@ -3716,6 +3718,7 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
       ...current,
       [key]: value,
       ...(key === 'SMTP_USER' && !current.SMTP_REPLY_TO ? { SMTP_REPLY_TO: value } : {}),
+      ...(key === 'SMTP_USER' && !current.LEAD_NOTIFY_TO ? { LEAD_NOTIFY_TO: value } : {}),
       ...(key === 'SMTP_USER' && smtpFromNeedsAutofill(current.SMTP_FROM) ? { SMTP_FROM: `Flanagan Construction <${value}>` } : {}),
       ...(key === 'SMTP_PORT' && value === '465' ? { SMTP_SECURE: 'true' } : {}),
       ...(key === 'SMTP_PORT' && value === '587' ? { SMTP_SECURE: 'false' } : {}),
@@ -3917,6 +3920,7 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
             <Field label="Gmail app password (local helper only)" value={smtpDraft[smtpPasswordEnvKey]} type="password" onChange={(value) => updateDraft(smtpPasswordEnvKey, value)} />
             <Field label="From name and email" value={smtpDraft.SMTP_FROM} onChange={(value) => updateDraft('SMTP_FROM', value)} />
             <Field label="Reply-to email" value={smtpDraft.SMTP_REPLY_TO} onChange={(value) => updateDraft('SMTP_REPLY_TO', value)} />
+            <Field label="Lead alert email" value={smtpDraft.LEAD_NOTIFY_TO} onChange={(value) => updateDraft('LEAD_NOTIFY_TO', value)} />
           </div>
           <div className="env-preview-card">
             <p className="admin-eyebrow">Copy into Railway</p>
@@ -4042,7 +4046,7 @@ function AdsSeoDashboard({ draft, updateSection, saveContent, savingContent }) {
           <Field label="Google Ads conversion ID" value={integrations.googleAdsConversionId || ''} onChange={(value) => updateSection('integrations', 'googleAdsConversionId', value)} />
           <Field label="Lead conversion label" value={integrations.googleAdsLeadConversionLabel || ''} onChange={(value) => updateSection('integrations', 'googleAdsLeadConversionLabel', value)} />
           <Field label="Search Console URL" value={integrations.googleSearchConsoleUrl || integrationDocs.searchConsole} onChange={(value) => updateSection('integrations', 'googleSearchConsoleUrl', value)} />
-          <Field label="Ads landing page URL" value={integrations.adsLandingPageUrl || 'https://flanaganconstructionde.com/'} onChange={(value) => updateSection('integrations', 'adsLandingPageUrl', value)} />
+          <Field label="Ads landing page URL" value={integrations.adsLandingPageUrl || 'https://www.flanaganconstructionllc.com/'} onChange={(value) => updateSection('integrations', 'adsLandingPageUrl', value)} />
           <Field label="Starting monthly budget" value={integrations.adsMonthlyBudget || ''} onChange={(value) => updateSection('integrations', 'adsMonthlyBudget', value)} />
           <Field label="Primary campaign goal" value={integrations.adsPrimaryGoal || ''} textarea rows={3} onChange={(value) => updateSection('integrations', 'adsPrimaryGoal', value)} />
           <Field label="Google Ads notes" value={integrations.adsNotes || ''} textarea rows={4} onChange={(value) => updateSection('integrations', 'adsNotes', value)} />

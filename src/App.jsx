@@ -113,6 +113,15 @@ function setCanonicalUrl(value) {
   if (element) element.setAttribute('href', value)
 }
 
+function shareImageUrl(value) {
+  const url = String(value || '')
+  if (typeof window === 'undefined' || !url) return url
+  if (window.location.origin === 'https://www.flanaganconstructionllc.com') return url
+  return url
+    .replace('https://www.flanaganconstructionllc.com/og.png', `${window.location.origin}/og.png`)
+    .replace('https://www.flanaganconstructionllc.com/brand-mark.svg', `${window.location.origin}/brand-mark.svg`)
+}
+
 function normalizePathname(routePath = '/') {
   const path = String(routePath || '/').split('?')[0].replace(/^\/+/, '').replace(/\/+$/, '')
   return path || ''
@@ -154,7 +163,7 @@ function applyManagedStructuredData(content, routePath, pageUrl, title, descript
     return
   }
 
-  const baseUrl = 'https://flanaganconstructionde.com'
+  const baseUrl = 'https://www.flanaganconstructionllc.com'
   const activeServicePage = findServiceLandingPage(content, routePath)
   const business = content.business || defaultSiteContent.business
   const locations = content.serviceLocations?.places?.length
@@ -178,7 +187,7 @@ function applyManagedStructuredData(content, routePath, pageUrl, title, descript
       inLanguage: 'en-US',
       isPartOf: { '@id': `${baseUrl}/#website` },
       about: { '@id': `${baseUrl}/#business` },
-      primaryImageOfPage: content.seo?.ogImage || defaultSiteContent.seo.ogImage,
+      primaryImageOfPage: shareImageUrl(content.seo?.ogImage || defaultSiteContent.seo.ogImage),
     },
   ]
 
@@ -238,7 +247,7 @@ function applyManagedStructuredData(content, routePath, pageUrl, title, descript
 function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
   const seo = content.seo || defaultSiteContent.seo
   const business = content.business || defaultSiteContent.business
-  const baseUrl = 'https://flanaganconstructionde.com'
+  const baseUrl = 'https://www.flanaganconstructionllc.com'
   const isAdmin = routePath.startsWith('/admin')
   const isWork = routePath.startsWith('/our-work')
   const isQrCode = routePath.startsWith('/qr-code')
@@ -276,6 +285,7 @@ function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
           ? '/business-card'
           : '/'
   const url = `${baseUrl}${path}`
+  const imageUrl = shareImageUrl(seo.ogImage || defaultSiteContent.seo.ogImage)
 
   document.title = title
   setMetaAttribute('meta[name="description"]', 'content', description)
@@ -290,17 +300,18 @@ function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
   setMetaAttribute('meta[property="og:title"]', 'content', title)
   setMetaAttribute('meta[property="og:description"]', 'content', description)
   setMetaAttribute('meta[property="og:url"]', 'content', url)
-  setMetaAttribute('meta[property="og:image"]', 'content', seo.ogImage || defaultSiteContent.seo.ogImage)
+  setMetaAttribute('meta[property="og:image"]', 'content', imageUrl)
+  setMetaAttribute('meta[property="og:image:secure_url"]', 'content', imageUrl)
   setMetaAttribute('meta[name="twitter:title"]', 'content', title)
   setMetaAttribute('meta[name="twitter:description"]', 'content', description)
-  setMetaAttribute('meta[name="twitter:image"]', 'content', seo.ogImage || defaultSiteContent.seo.ogImage)
+  setMetaAttribute('meta[name="twitter:image"]', 'content', imageUrl)
   setCanonicalUrl(url)
   applyManagedStructuredData(content, routePath, url, title, description)
 }
 
 const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
 const leadHoneypotFields = ['company', 'website', 'fax']
-const productionSiteUrl = 'https://flanagan-construction-production.up.railway.app/'
+const productionSiteUrl = 'https://www.flanaganconstructionllc.com/'
 const qrCodeSvgPath = '/flanagan-construction-qr.svg'
 const qrCodePngPath = '/flanagan-construction-qr.png'
 

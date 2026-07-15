@@ -138,7 +138,7 @@ Everything customer-facing is in `src/content.js`:
   `FAQPage` structured data live in `index.html`.
 - `public/robots.txt`, `public/sitemap.xml`, and `public/site.webmanifest` ship
   with the build.
-- Canonical/share URLs use `https://flanaganconstructionde.com`. Update them (and
+- Canonical/share URLs use `https://www.flanaganconstructionllc.com`. Update them (and
   the structured-data phone/address) to match your real domain and NAP.
 
 ## Before you launch

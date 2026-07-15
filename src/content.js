@@ -5,7 +5,7 @@ export const defaultSiteContent = {
     name: 'Flanagan Construction',
     location: 'New Castle County, Delaware',
     phone: '(302) 565-5724',
-    email: 'quotes@flanaganconstructionde.com',
+    email: 'nickflanagan73@gmail.com',
     serviceArea:
       'All of New Castle County, including Wilmington, Newark, Middletown, Bear, Pike Creek, Hockessin, Claymont, New Castle, Townsend, Odessa, and Delaware City.',
   },
@@ -572,7 +572,7 @@ export const defaultSiteContent = {
       'See recent kitchens, baths, concrete, roofing, siding, windows, decks, and repair projects from Flanagan Construction around New Castle County, Delaware.',
     keywords:
       'remodeling contractor New Castle County DE, kitchen remodel New Castle County, bathroom remodel Wilmington DE, concrete driveway Newark DE, sidewalk repair New Castle County, roofing siding windows Delaware, deck contractor New Castle County',
-    ogImage: 'https://flanaganconstructionde.com/og.png',
+    ogImage: 'https://www.flanaganconstructionllc.com/og.png',
   },
 
   aiUpgrade: {
@@ -603,7 +603,7 @@ export const defaultSiteContent = {
     gtmContainerId: '',
     googleSearchConsoleUrl: 'https://search.google.com/search-console',
     googleTagAssistantUrl: 'https://tagassistant.google.com/',
-    adsLandingPageUrl: 'https://flanaganconstructionde.com/',
+    adsLandingPageUrl: 'https://www.flanaganconstructionllc.com/',
     adsMonthlyBudget: '',
     adsPrimaryGoal:
       'Phone calls and estimate requests for kitchens and baths, concrete driveways and sidewalks, roofing, siding, and windows in New Castle County.',
