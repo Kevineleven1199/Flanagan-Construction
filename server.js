@@ -385,6 +385,7 @@ function emailSettingsStatus() {
   return {
     ...settings,
     configured: required.every((key) => Boolean(process.env[key])),
+    verification: smtpVerificationState,
     passwordConfigured: Boolean(process.env[smtpPasswordEnvKey]),
     missing: required.filter((key) => !process.env[key]),
     required: requiredStatus,
@@ -396,6 +397,34 @@ function emailSettingsStatus() {
       auth: 'Gmail app password with 2-Step Verification enabled',
     },
   }
+}
+
+let smtpVerificationState = {
+  status: 'untested',
+  checkedAt: '',
+  error: '',
+}
+
+function updateSmtpVerification(status, error = '') {
+  smtpVerificationState = {
+    status,
+    checkedAt: new Date().toISOString(),
+    error,
+  }
+}
+
+function smtpErrorMessage(error) {
+  const response = String(error?.response || error?.message || '')
+  if (error?.responseCode === 535 || /badcredentials|username and password not accepted/i.test(response)) {
+    return 'Gmail rejected the login. Create a fresh Google App Password for this exact Gmail account, then replace SMTP_PASS in Railway. Do not use the normal Gmail password.'
+  }
+  if (/invalid login|authentication/i.test(response)) {
+    return 'Gmail authentication failed. Confirm SMTP_USER matches the account that created the Google App Password, then replace SMTP_PASS in Railway.'
+  }
+  if (/timeout|timed out|etimedout/i.test(response)) {
+    return 'Gmail did not answer before the connection timed out. Wait a minute and test again; if it repeats, check Railway networking and Gmail availability.'
+  }
+  return response || 'Test email failed. Check the Gmail App Password and Railway SMTP variables.'
 }
 
 function isTruthySetting(value) {
@@ -495,7 +524,9 @@ async function notifyLeadByEmail(lead) {
       subject: `New website lead: ${lead.projectType || lead.funnelGroup || lead.name || 'Flanagan request'}`,
       text: leadNotificationText(lead),
     })
+    updateSmtpVerification('verified')
   } catch (error) {
+    updateSmtpVerification('failed', smtpErrorMessage(error))
     console.error('[LEAD] email notification failed:', error?.code || error?.message || 'smtp_error')
   }
 }
@@ -577,6 +608,8 @@ async function handleAdminTestEmail(req, res, gzipOk) {
       ].join('\n'),
     })
 
+    updateSmtpVerification('verified')
+
     sendJson(res, 200, {
       ok: true,
       message: `Test email sent to ${to}.`,
@@ -586,9 +619,10 @@ async function handleAdminTestEmail(req, res, gzipOk) {
     }, gzipOk)
   } catch (error) {
     securityLog('test_email_failed', req, { user: hashForLog(user.email || user.name), error: String(error?.code || error?.name || 'smtp_error') })
-    const message = String(error?.response || error?.message || 'Test email failed.')
+    const message = smtpErrorMessage(error)
       .replace(/AUTH PLAIN [A-Za-z0-9+/=]+/g, 'AUTH PLAIN [hidden]')
       .replace(/pass(word)?=[^\s&]+/gi, 'password=[hidden]')
+    updateSmtpVerification('failed', message)
     sendJson(res, 400, { ok: false, error: message }, gzipOk)
   }
 }

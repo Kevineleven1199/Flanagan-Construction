@@ -578,12 +578,16 @@ function greetingFor(user) {
 
 function smtpStatusLabel(emailSettings) {
   if (!emailSettings) return 'Checking outbound email'
-  return emailSettings.configured ? 'Outbound email ready' : 'SMTP setup needed'
+  if (!emailSettings.configured) return 'SMTP setup needed'
+  if (emailSettings.verification?.status === 'verified') return 'Gmail sending verified'
+  if (emailSettings.verification?.status === 'failed') return 'Gmail connection failed'
+  return 'Settings loaded; test required'
 }
 
 function smtpStatusTone(emailSettings) {
   if (!emailSettings) return 'waiting'
-  return emailSettings.configured ? 'ready' : 'needs-setup'
+  if (!emailSettings.configured || emailSettings.verification?.status === 'failed') return 'needs-setup'
+  return emailSettings.verification?.status === 'verified' ? 'ready' : 'waiting'
 }
 
 function envLineValue(value) {
@@ -3763,6 +3767,7 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
     } catch (error) {
       setEmailActionTone('needs-setup')
       setEmailActionMessage(error.message || 'Test email failed. Check the app password and Railway variables.')
+      onRefresh()
     } finally {
       setTestingEmail(false)
     }
@@ -3798,15 +3803,39 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
       <section className={`admin-panel email-hero-panel ${statusTone}`}>
         <div>
           <p className="admin-eyebrow">Email readiness</p>
-          <h2>{emailSettings?.configured ? 'Outbound email is connected.' : 'Finish Gmail SMTP setup in Railway.'}</h2>
+          <h2>
+            {!emailSettings?.configured
+              ? 'Finish Gmail SMTP setup in Railway.'
+              : emailSettings.verification?.status === 'verified'
+                ? 'Outbound email is verified.'
+                : emailSettings.verification?.status === 'failed'
+                  ? 'Gmail rejected the current connection.'
+                  : 'SMTP settings are loaded. Send a test to verify them.'}
+          </h2>
           <p>
-            The dashboard can draft follow-ups today. SMTP variables let the server safely send from Gmail later without storing app passwords in the website editor.
+            {emailSettings?.verification?.status === 'failed'
+              ? emailSettings.verification.error
+              : 'The dashboard only marks Gmail verified after the live server successfully sends a message. App passwords stay in Railway and are never returned to the browser.'}
           </p>
         </div>
         <div className="email-readiness-card">
-          <span>{emailSettings?.configured ? 'Ready' : `${missing.length} missing`}</span>
+          <span>
+            {!emailSettings?.configured
+              ? `${missing.length} missing`
+              : emailSettings.verification?.status === 'verified'
+                ? 'Verified'
+                : emailSettings.verification?.status === 'failed'
+                  ? 'Action needed'
+                  : 'Test required'}
+          </span>
           <strong>{smtpStatusLabel(emailSettings)}</strong>
-          <small>{mode === 'server' ? 'Reading live Railway environment.' : 'Local mode uses this browser only.'}</small>
+          <small>
+            {emailSettings?.verification?.checkedAt
+              ? `Last checked ${formatDate(emailSettings.verification.checkedAt)}`
+              : mode === 'server'
+                ? 'Reading live Railway environment.'
+                : 'Local mode uses this browser only.'}
+          </small>
         </div>
       </section>
 
