@@ -2638,6 +2638,251 @@ legend {
   color: rgba(255, 255, 255, 0.78);
 }
 
+.share-page {
+  display: grid;
+  gap: clamp(18px, 3vw, 30px);
+  min-height: 100svh;
+  padding: clamp(124px, 15vh, 164px) clamp(18px, 6vw, 96px) clamp(44px, 7vh, 82px);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(242, 184, 75, 0.2), transparent 32%),
+    linear-gradient(135deg, #f6f4ee, #fff 55%, #eef5fb);
+  color: #1c1f21;
+}
+
+.qr-share-page {
+  grid-template-columns: minmax(0, 0.96fr) minmax(300px, 0.56fr);
+  align-items: center;
+}
+
+.share-hero-copy,
+.business-card-head {
+  display: grid;
+  gap: 14px;
+}
+
+.share-hero-copy h1,
+.business-card-head h1 {
+  max-width: 11ch;
+  margin: 0;
+  color: #071827;
+  font-size: clamp(2.6rem, 6vw, 5.4rem);
+  line-height: 0.93;
+}
+
+.share-hero-copy p,
+.business-card-head p {
+  max-width: 64ch;
+  margin: 0;
+  color: #59636a;
+  font-size: clamp(1rem, 1.45vw, 1.2rem);
+  line-height: 1.55;
+}
+
+.share-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.qr-display-card {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  border: 1px solid rgba(18, 63, 109, 0.14);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 28px 76px rgba(18, 63, 109, 0.16);
+  padding: clamp(18px, 3vw, 28px);
+  text-align: center;
+}
+
+.qr-display-card img {
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+
+.qr-display-card strong {
+  color: #071827;
+  font-size: clamp(1.35rem, 2.8vw, 2rem);
+  line-height: 1.08;
+}
+
+.qr-display-card span {
+  color: #59636a;
+  font-size: 0.9rem;
+  font-weight: 850;
+  word-break: break-word;
+}
+
+.share-link-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.share-link-grid article,
+.printer-note {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(18, 63, 109, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 14px;
+}
+
+.share-link-grid span,
+.printer-note strong {
+  color: #9a6712;
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.share-link-grid a,
+.printer-note a {
+  color: #123f6d;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.business-card-page {
+  align-content: start;
+}
+
+.business-card-head {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.business-card-stage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(310px, 1fr));
+  gap: clamp(16px, 3vw, 30px);
+  align-items: center;
+}
+
+.business-card {
+  display: grid;
+  width: min(100%, 640px);
+  aspect-ratio: 7 / 4;
+  border-radius: 8px;
+  box-shadow: 0 28px 76px rgba(18, 63, 109, 0.18);
+  padding: clamp(18px, 3vw, 30px);
+}
+
+.business-card-front {
+  align-content: space-between;
+  background:
+    linear-gradient(135deg, rgba(242, 184, 75, 0.18), transparent 34%),
+    linear-gradient(135deg, #071827, #123f6d);
+  color: #fff;
+}
+
+.card-brand-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.card-brand-row .brand-mark {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+}
+
+.card-brand-row strong {
+  display: block;
+  color: #fff;
+  font-size: clamp(1.1rem, 2.1vw, 1.55rem);
+}
+
+.card-brand-row small {
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 850;
+}
+
+.business-card h2 {
+  max-width: 18ch;
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.45rem, 3vw, 2.45rem);
+  line-height: 1.02;
+}
+
+.card-contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.card-contact-row a {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 11px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.business-card-back {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  background: #fff;
+  color: #1c1f21;
+}
+
+.business-card-back p {
+  margin: 0 0 8px;
+  color: #9a6712;
+  font-size: 0.8rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.business-card-back strong {
+  display: block;
+  color: #071827;
+  font-size: clamp(1.2rem, 2.4vw, 1.9rem);
+  line-height: 1.06;
+}
+
+.business-card-back span {
+  display: block;
+  margin-top: 10px;
+  color: #59636a;
+  font-weight: 850;
+}
+
+.business-card-back img {
+  width: clamp(116px, 17vw, 172px);
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+
+.business-card-back small {
+  grid-column: 1 / -1;
+  color: #59636a;
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-align: right;
+}
+
+.printer-note {
+  max-width: 900px;
+}
+
+.printer-note p {
+  margin: 0;
+  color: #59636a;
+  line-height: 1.5;
+}
+
 .site-footer {
   background: var(--brand-blue-dark);
   color: rgba(255, 255, 255, 0.72);
@@ -5983,6 +6228,25 @@ body.paint-cursor-active :where(input, textarea, select) {
 }
 
 @media (max-width: 980px) {
+  .qr-share-page,
+  .business-card-head,
+  .business-card-stage,
+  .share-link-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .business-card-head {
+    align-items: stretch;
+  }
+
+  .business-card {
+    width: 100%;
+  }
+
+  .business-card-back {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .simple-home-hero::after {
     display: none;
   }
@@ -6004,6 +6268,38 @@ body.paint-cursor-active :where(input, textarea, select) {
 }
 
 @media (max-width: 720px) {
+  .share-page {
+    padding-top: 106px;
+  }
+
+  .share-hero-copy h1,
+  .business-card-head h1 {
+    font-size: clamp(2.15rem, 13vw, 3.3rem);
+  }
+
+  .share-action-row,
+  .share-action-row .primary-action,
+  .share-action-row .secondary-action {
+    width: 100%;
+  }
+
+  .business-card {
+    min-height: 226px;
+    aspect-ratio: auto;
+  }
+
+  .business-card-back {
+    grid-template-columns: 1fr;
+  }
+
+  .business-card-back img {
+    width: 168px;
+  }
+
+  .business-card-back small {
+    text-align: left;
+  }
+
   .paint-cursor {
     display: none;
   }
@@ -6031,5 +6327,50 @@ body.paint-cursor-active :where(input, textarea, select) {
   body.paint-cursor-active :where(a, button, .simple-service-card, .need-chip, .brand),
   body.paint-cursor-active :where(input, textarea, select) {
     cursor: auto !important;
+  }
+}
+
+@media print {
+  .site-header,
+  .site-footer,
+  .mobile-cta,
+  .scroll-progress,
+  .paint-cursor,
+  .share-action-row,
+  .printer-note,
+  .business-card-head p,
+  .business-card-head .eyebrow {
+    display: none !important;
+  }
+
+  .share-page {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    background: #fff;
+  }
+
+  .business-card-head {
+    margin-bottom: 12px;
+  }
+
+  .business-card-head h1 {
+    color: #000;
+    font-size: 14pt;
+  }
+
+  .business-card-stage {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.18in;
+  }
+
+  .business-card {
+    width: 3.5in;
+    height: 2in;
+    break-inside: avoid;
+    box-shadow: none;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 }

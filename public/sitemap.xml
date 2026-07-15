@@ -8,9 +8,21 @@
   </url>
   <url>
     <loc>https://flanaganconstructionde.com/our-work</loc>
-    <lastmod>2026-07-11</lastmod>
+    <lastmod>2026-07-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flanaganconstructionde.com/qr-code</loc>
+    <lastmod>2026-07-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  <url>
+    <loc>https://flanaganconstructionde.com/business-card</loc>
+    <lastmod>2026-07-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.2</priority>
   </url>
   <url>
     <loc>https://flanaganconstructionde.com/kitchen-bathroom-remodeling-new-castle-county-de</loc>

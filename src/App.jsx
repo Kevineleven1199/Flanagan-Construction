@@ -237,31 +237,56 @@ function applyManagedStructuredData(content, routePath, pageUrl, title, descript
 
 function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
   const seo = content.seo || defaultSiteContent.seo
+  const business = content.business || defaultSiteContent.business
   const baseUrl = 'https://flanaganconstructionde.com'
   const isAdmin = routePath.startsWith('/admin')
   const isWork = routePath.startsWith('/our-work')
+  const isQrCode = routePath.startsWith('/qr-code')
+  const isBusinessCard = routePath.startsWith('/business-card')
   const activeServicePage = findServiceLandingPage(content, routePath)
   const title = isAdmin
     ? 'Flanagan Admin'
-    : activeServicePage
-      ? activeServicePage.seoTitle
-      : isWork
-        ? seo.ourWorkTitle
-        : seo.homeTitle
+    : isQrCode
+      ? `${business.name} QR Code`
+      : isBusinessCard
+        ? `${business.name} Business Card`
+        : activeServicePage
+          ? activeServicePage.seoTitle
+          : isWork
+            ? seo.ourWorkTitle
+            : seo.homeTitle
   const description = isAdmin
     ? 'Private Flanagan Construction admin dashboard.'
-    : activeServicePage
-      ? activeServicePage.seoDescription
-      : isWork
-        ? seo.ourWorkDescription
-        : seo.homeDescription
-  const path = activeServicePage ? `/${activeServicePage.slug}` : isWork ? '/our-work' : '/'
+    : isQrCode
+      ? `Scan or download the QR code for ${business.name}.`
+      : isBusinessCard
+        ? `Printer-friendly business card proof and QR code links for ${business.name}.`
+        : activeServicePage
+          ? activeServicePage.seoDescription
+          : isWork
+            ? seo.ourWorkDescription
+            : seo.homeDescription
+  const path = activeServicePage
+    ? `/${activeServicePage.slug}`
+    : isWork
+      ? '/our-work'
+      : isQrCode
+        ? '/qr-code'
+        : isBusinessCard
+          ? '/business-card'
+          : '/'
   const url = `${baseUrl}${path}`
 
   document.title = title
   setMetaAttribute('meta[name="description"]', 'content', description)
   setMetaAttribute('meta[name="keywords"]', 'content', seo.keywords || defaultSiteContent.seo.keywords)
-  setMetaAttribute('meta[name="robots"]', 'content', isAdmin ? 'noindex, nofollow' : 'index, follow, max-image-preview:large, max-snippet:-1')
+  setMetaAttribute(
+    'meta[name="robots"]',
+    'content',
+    isAdmin || isQrCode || isBusinessCard
+      ? 'noindex, follow'
+      : 'index, follow, max-image-preview:large, max-snippet:-1',
+  )
   setMetaAttribute('meta[property="og:title"]', 'content', title)
   setMetaAttribute('meta[property="og:description"]', 'content', description)
   setMetaAttribute('meta[property="og:url"]', 'content', url)
@@ -275,6 +300,9 @@ function applyDocumentSeo(content = defaultSiteContent, routePath = '/') {
 
 const phoneHrefFor = (phone) => `tel:${String(phone || '').replace(/\D/g, '')}`
 const leadHoneypotFields = ['company', 'website', 'fax']
+const productionSiteUrl = 'https://flanagan-construction-production.up.railway.app/'
+const qrCodeSvgPath = '/flanagan-construction-qr.svg'
+const qrCodePngPath = '/flanagan-construction-qr.png'
 
 function hasLeadHoneypot(form) {
   return leadHoneypotFields.some((field) => String(form?.[field] || '').trim())
@@ -1742,6 +1770,127 @@ function OurWorkPage({ content, goSection }) {
   )
 }
 
+function QrCodePage({ business, goSection }) {
+  const cardUrl = `${productionSiteUrl}business-card`
+  const qrUrl = `${productionSiteUrl.replace(/\/$/, '')}${qrCodeSvgPath}`
+  const qrPngUrl = `${productionSiteUrl.replace(/\/$/, '')}${qrCodePngPath}`
+
+  return (
+    <section className="share-page qr-share-page" id="top">
+      <div className="share-hero-copy">
+        <p className="eyebrow">Print and share</p>
+        <h1>QR code for {business.name}</h1>
+        <p>
+          This QR code opens the live website so customers can request an estimate from their phone.
+          Send the SVG link to the printer for the sharpest result.
+        </p>
+        <div className="share-action-row">
+          <a className="primary-action" href={qrCodeSvgPath} download>
+            Download QR SVG
+            <ArrowRight size={18} aria-hidden="true" />
+          </a>
+          <a className="secondary-action" href={qrCodePngPath} download>
+            Download QR PNG
+          </a>
+          <button className="secondary-action button-link" type="button" onClick={() => goSection('estimate')}>
+            Test the funnel
+          </button>
+        </div>
+      </div>
+
+      <aside className="qr-display-card" aria-label="Flanagan Construction QR code">
+        <img src={qrCodeSvgPath} alt={`QR code for ${business.name} website`} />
+        <strong>Scan for a free estimate</strong>
+        <span>{productionSiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+      </aside>
+
+      <div className="share-link-grid">
+        <article>
+          <span>Customer QR destination</span>
+          <a href={productionSiteUrl}>{productionSiteUrl}</a>
+        </article>
+        <article>
+          <span>Direct QR SVG for printer</span>
+          <a href={qrUrl}>{qrUrl}</a>
+        </article>
+        <article>
+          <span>Direct QR PNG for printer</span>
+          <a href={qrPngUrl}>{qrPngUrl}</a>
+        </article>
+        <article>
+          <span>Business card proof page</span>
+          <a href={cardUrl}>{cardUrl}</a>
+        </article>
+      </div>
+    </section>
+  )
+}
+
+function BusinessCardPage({ business }) {
+  const phoneHref = phoneHrefFor(business.phone)
+  const shortUrl = productionSiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+
+  return (
+    <section className="share-page business-card-page" id="top">
+      <div className="business-card-head">
+        <div>
+          <p className="eyebrow">Business card proof</p>
+          <h1>Flanagan Construction card with QR</h1>
+          <p>Open this page for an easy share card, or send the direct QR SVG link to the printer.</p>
+        </div>
+        <div className="share-action-row">
+          <button className="primary-action button-link" type="button" onClick={() => window.print()}>
+            Print card proof
+            <ArrowRight size={18} aria-hidden="true" />
+          </button>
+          <a className="secondary-action" href={qrCodeSvgPath} download>
+            Download QR
+          </a>
+        </div>
+      </div>
+
+      <div className="business-card-stage" aria-label="Business card preview">
+        <article className="business-card business-card-front">
+          <div className="card-brand-row">
+            <span className="brand-mark photo-mark" style={{ backgroundImage: cssUrl(brandVisual) }}></span>
+            <div>
+              <strong>{business.name}</strong>
+              <small>New Castle County, Delaware</small>
+            </div>
+          </div>
+          <h2>Home remodeling, repairs, concrete, roofing, siding & windows.</h2>
+          <div className="card-contact-row">
+            <a href={phoneHref}>{business.phone}</a>
+            <a href={`mailto:${business.email}`}>{business.email}</a>
+          </div>
+        </article>
+
+        <article className="business-card business-card-back">
+          <div>
+            <p>Scan for a free estimate</p>
+            <strong>Kitchens, baths, concrete, roofing, siding, windows, decks and repairs.</strong>
+            <span>Licensed and insured local contractor help.</span>
+          </div>
+          <img src={qrCodeSvgPath} alt={`QR code for ${business.name} website`} />
+          <small>{shortUrl}</small>
+        </article>
+      </div>
+
+      <div className="printer-note">
+        <strong>Printer note</strong>
+        <p>
+          Use the SVG QR file for print. Keep at least a quarter inch of clear space around the code,
+          and print it at least 0.8 inches wide so phone cameras can scan it easily.
+        </p>
+        <a href={`${productionSiteUrl.replace(/\/$/, '')}${qrCodeSvgPath}`}>
+          Direct QR SVG link
+          <ArrowRight size={16} aria-hidden="true" />
+        </a>
+      </div>
+    </section>
+  )
+}
+
 function SiteFooter({ business, services, goSection }) {
   const year = new Date().getFullYear()
   const phoneHref = phoneHrefFor(business.phone)
@@ -1808,6 +1957,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showSplash, setShowSplash] = useState(() => {
     if (window.location.pathname.startsWith('/admin')) return false
+    if (window.location.pathname.startsWith('/qr-code') || window.location.pathname.startsWith('/business-card')) return false
     try {
       const params = new URLSearchParams(window.location.search)
       if (params.has('nosplash')) return false
@@ -2299,7 +2449,11 @@ function App() {
         setMenuOpen={setMenuOpen}
       />
 
-      {routePath.startsWith('/our-work') ? (
+      {routePath.startsWith('/qr-code') ? (
+        <QrCodePage business={business} goSection={goSection} />
+      ) : routePath.startsWith('/business-card') ? (
+        <BusinessCardPage business={business} />
+      ) : routePath.startsWith('/our-work') ? (
         <OurWorkPage content={siteContent} goSection={goSection} />
       ) : (
         <HomePage
