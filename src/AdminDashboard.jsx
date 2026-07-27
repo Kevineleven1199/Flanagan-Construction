@@ -3,7 +3,10 @@ import {
   ArrowLeft,
   Bot,
   Calculator,
+  CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Clipboard,
   DollarSign,
@@ -2244,6 +2247,13 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
   const [estimateAmount, setEstimateAmount] = useState(lead?.estimateAmount || '')
   const [paymentLink, setPaymentLink] = useState(lead?.paymentLink || '')
   const [followUpAt, setFollowUpAt] = useState(toDateTimeInputValue(lead?.followUpAt))
+  const [appointmentStart, setAppointmentStart] = useState(toDateTimeInputValue(lead?.appointmentStart))
+  const [appointmentEnd, setAppointmentEnd] = useState(toDateTimeInputValue(lead?.appointmentEnd))
+  const [appointmentType, setAppointmentType] = useState(lead?.appointmentType || 'On-site estimate')
+  const [invoiceNumber, setInvoiceNumber] = useState(lead?.invoiceNumber || '')
+  const [invoiceStatus, setInvoiceStatus] = useState(lead?.invoiceStatus || 'Draft')
+  const [invoiceAmount, setInvoiceAmount] = useState(lead?.invoiceAmount || '')
+  const [invoiceDueDate, setInvoiceDueDate] = useState(calendarDateKey(lead?.invoiceDueDate))
   const [quoteLaborCost, setQuoteLaborCost] = useState(lead?.quoteLaborCost || '')
   const [quoteMaterialCost, setQuoteMaterialCost] = useState(lead?.quoteMaterialCost || '')
   const [quoteSubCost, setQuoteSubCost] = useState(lead?.quoteSubCost || '')
@@ -2282,6 +2292,13 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
       estimateAmount: detailFieldValue(root, 'estimateAmount', estimateAmount),
       paymentLink: detailFieldValue(root, 'paymentLink', paymentLink),
       followUpAt: fromDateTimeInputValue(detailFieldValue(root, 'followUpAt', followUpAt)),
+      appointmentStart: fromDateTimeInputValue(detailFieldValue(root, 'appointmentStart', appointmentStart)),
+      appointmentEnd: fromDateTimeInputValue(detailFieldValue(root, 'appointmentEnd', appointmentEnd)),
+      appointmentType: detailFieldValue(root, 'appointmentType', appointmentType),
+      invoiceNumber: detailFieldValue(root, 'invoiceNumber', invoiceNumber),
+      invoiceStatus: detailFieldValue(root, 'invoiceStatus', invoiceStatus),
+      invoiceAmount: detailFieldValue(root, 'invoiceAmount', invoiceAmount),
+      invoiceDueDate: detailFieldValue(root, 'invoiceDueDate', invoiceDueDate),
       quoteLaborCost: detailFieldValue(root, 'quoteLaborCost', quoteLaborCost),
       quoteMaterialCost: detailFieldValue(root, 'quoteMaterialCost', quoteMaterialCost),
       quoteSubCost: detailFieldValue(root, 'quoteSubCost', quoteSubCost),
@@ -2306,6 +2323,13 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     estimateAmount,
     paymentLink,
     followUpAt: fromDateTimeInputValue(followUpAt),
+    appointmentStart: fromDateTimeInputValue(appointmentStart),
+    appointmentEnd: fromDateTimeInputValue(appointmentEnd),
+    appointmentType,
+    invoiceNumber,
+    invoiceStatus,
+    invoiceAmount,
+    invoiceDueDate,
     quoteLaborCost,
     quoteMaterialCost,
     quoteSubCost,
@@ -2506,6 +2530,48 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
     if (patch.nextStep) setNextStep(patch.nextStep)
     if (patch.followUpAt) setFollowUpAt(toDateTimeInputValue(patch.followUpAt))
     updateLead(lead.id, patch)
+  }
+
+  const saveAppointment = () => {
+    const start = fromDateTimeInputValue(appointmentStart)
+    const end = fromDateTimeInputValue(appointmentEnd)
+    if (!start) return
+    updateLead(lead.id, {
+      appointmentStart: start,
+      appointmentEnd: end,
+      appointmentType,
+      followUpAt: start,
+      status: appointmentType === 'On-site estimate' ? 'Estimate Scheduled' : lead.status,
+      nextStep: `${appointmentType} scheduled for ${formatDate(start)}.`,
+    })
+  }
+
+  const markInvoiceSent = () => {
+    const number = invoiceNumber || invoiceNumberFor(lead)
+    const amount = invoiceAmount || quoteCustomerPrice || estimateAmount
+    setInvoiceNumber(number)
+    setInvoiceAmount(amount)
+    setInvoiceStatus('Sent')
+    updateLead(lead.id, {
+      invoiceNumber: number,
+      invoiceAmount: amount,
+      invoiceStatus: 'Sent',
+      invoiceDueDate: invoiceDueDate || calendarDateKey(nextBusinessMorningIso(7)),
+      invoiceSentAt: new Date().toISOString(),
+      status: 'Payment Link Sent',
+      followUpAt: nextBusinessMorningIso(1),
+      nextStep: 'Confirm the customer received the invoice and payment link.',
+    })
+  }
+
+  const markInvoicePaid = () => {
+    setInvoiceStatus('Paid')
+    updateLead(lead.id, {
+      invoiceStatus: 'Paid',
+      paidAt: new Date().toISOString(),
+      revenueReceived: invoiceAmount || quoteCustomerPrice || estimateAmount,
+      nextStep: lead.status === 'Complete' ? 'Send receipt and request a review.' : 'Payment received. Continue scheduled work.',
+    })
   }
 
   const mapsUrl = lead.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lead.address)}` : ''
@@ -2712,6 +2778,39 @@ function LeadDetail({ lead, updateLead, emailSettings }) {
           Last contacted
           <input value={lead.lastContactedAt ? formatDate(lead.lastContactedAt) : 'Not logged yet'} readOnly />
         </label>
+      </div>
+
+      <div className="lead-schedule-invoice-grid">
+        <section className="lead-workflow-card">
+          <div className="quote-workbench-head">
+            <div><p className="admin-eyebrow">Booking</p><strong>Put the next appointment on the calendar.</strong></div>
+            <CalendarDays size={21} aria-hidden="true" />
+          </div>
+          <div className="lead-detail-grid">
+            <label>Type<select data-lead-field="appointmentType" value={appointmentType} onChange={(event) => setAppointmentType(event.target.value)}><option>On-site estimate</option><option>Follow-up call</option><option>Project walkthrough</option><option>Job visit</option><option>Final walkthrough</option></select></label>
+            <label>Starts<input data-lead-field="appointmentStart" type="datetime-local" value={appointmentStart} onChange={(event) => setAppointmentStart(event.target.value)} /></label>
+            <label>Ends<input data-lead-field="appointmentEnd" type="datetime-local" value={appointmentEnd} onChange={(event) => setAppointmentEnd(event.target.value)} /></label>
+          </div>
+          <button className="admin-primary-button" type="button" onClick={saveAppointment}><CalendarDays size={16} /> Save to calendar</button>
+        </section>
+
+        <section className="lead-workflow-card">
+          <div className="quote-workbench-head">
+            <div><p className="admin-eyebrow">Invoice</p><strong>Track the bill from draft through paid.</strong></div>
+            <ReceiptText size={21} aria-hidden="true" />
+          </div>
+          <div className="lead-detail-grid">
+            <label>Invoice #<input data-lead-field="invoiceNumber" value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} /></label>
+            <label>Amount<input data-lead-field="invoiceAmount" inputMode="decimal" value={invoiceAmount} onChange={(event) => setInvoiceAmount(event.target.value)} /></label>
+            <label>Due date<input data-lead-field="invoiceDueDate" type="date" value={invoiceDueDate} onChange={(event) => setInvoiceDueDate(event.target.value)} /></label>
+            <label>Status<select data-lead-field="invoiceStatus" value={invoiceStatus} onChange={(event) => setInvoiceStatus(event.target.value)}><option>Draft</option><option>Sent</option><option>Deposit paid</option><option>Partially paid</option><option>Paid</option><option>Void</option></select></label>
+          </div>
+          <div className="lead-contact-actions">
+            <button type="button" onClick={markInvoiceSent}><Send size={16} /> Mark invoice sent</button>
+            <button type="button" onClick={markInvoicePaid}><CheckCircle2 size={16} /> Mark paid</button>
+            <button type="button" onClick={(event) => saveNotes({}, event.currentTarget)}><Save size={16} /> Save invoice</button>
+          </div>
+        </section>
       </div>
 
       <div className="quote-workbench">
@@ -4651,6 +4750,221 @@ function exportFinancialCsv(leads) {
   URL.revokeObjectURL(url)
 }
 
+function calendarDateKey(value) {
+  if (!value) return ''
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return String(value)
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function defaultAppointmentIso(daysAhead = 1, hour = 9) {
+  const date = new Date()
+  date.setDate(date.getDate() + daysAhead)
+  date.setHours(hour, 0, 0, 0)
+  return date.toISOString()
+}
+
+function invoiceNumberFor(lead) {
+  const date = new Date()
+  const stamp = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`
+  return `FC-${stamp}-${String(lead.id || '').replace(/[^a-z0-9]/gi, '').slice(-5).toUpperCase() || 'JOB'}`
+}
+
+function CalendarDashboard({ leads, updateLead, setActiveView, setSelectedLeadId }) {
+  const [calendarNow] = useState(() => Date.now())
+  const [monthDate, setMonthDate] = useState(() => {
+    const date = new Date()
+    return new Date(date.getFullYear(), date.getMonth(), 1)
+  })
+  const [bookingLeadId, setBookingLeadId] = useState(leads[0]?.id || '')
+  const [bookingType, setBookingType] = useState('On-site estimate')
+  const [bookingStart, setBookingStart] = useState(() => toDateTimeInputValue(defaultAppointmentIso()))
+  const [bookingEnd, setBookingEnd] = useState(() => toDateTimeInputValue(defaultAppointmentIso(1, 10)))
+  const bookingLead = leads.find((lead) => lead.id === bookingLeadId)
+  const monthLabel = monthDate.toLocaleDateString([], { month: 'long', year: 'numeric' })
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)
+  const gridStart = new Date(firstDay)
+  gridStart.setDate(firstDay.getDate() - firstDay.getDay())
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart)
+    date.setDate(gridStart.getDate() + index)
+    return date
+  })
+  const events = leads.flatMap((lead) => [
+    lead.appointmentStart ? { type: lead.appointmentType || 'Appointment', at: lead.appointmentStart, lead, tone: 'appointment' } : null,
+    lead.followUpAt ? { type: 'Follow-up', at: lead.followUpAt, lead, tone: 'followup' } : null,
+    lead.jobStartAt ? { type: 'Job starts', at: lead.jobStartAt, lead, tone: 'job' } : null,
+    lead.invoiceDueDate && !['Paid', 'Void'].includes(lead.invoiceStatus)
+      ? { type: 'Invoice due', at: lead.invoiceDueDate, lead, tone: 'invoice' }
+      : null,
+  ].filter(Boolean))
+  const upcoming = events
+    .filter((event) => new Date(event.at).getTime() >= calendarNow - 24 * 60 * 60 * 1000)
+    .sort((a, b) => new Date(a.at) - new Date(b.at))
+    .slice(0, 10)
+
+  const openLead = (lead) => {
+    setSelectedLeadId(lead.id)
+    setActiveView('leads')
+  }
+  const scheduleBooking = () => {
+    if (!bookingLead || !bookingStart) return
+    const appointmentStart = fromDateTimeInputValue(bookingStart)
+    const appointmentEnd = fromDateTimeInputValue(bookingEnd)
+    updateLead(bookingLead.id, {
+      appointmentType: bookingType,
+      appointmentStart,
+      appointmentEnd,
+      followUpAt: appointmentStart,
+      status: bookingType === 'On-site estimate' ? 'Estimate Scheduled' : bookingLead.status,
+      nextStep: `${bookingType} scheduled for ${formatDate(appointmentStart)}.`,
+    })
+  }
+  const invoiceAmountFor = (lead) => lead.invoiceAmount || lead.quoteCustomerPrice || lead.estimateAmount || ''
+  const sendInvoice = (lead) => {
+    const amount = invoiceAmountFor(lead)
+    updateLead(lead.id, {
+      invoiceNumber: lead.invoiceNumber || invoiceNumberFor(lead),
+      invoiceAmount: amount,
+      invoiceStatus: 'Sent',
+      invoiceSentAt: new Date().toISOString(),
+      invoiceDueDate: lead.invoiceDueDate || nextBusinessMorningIso(7),
+      status: 'Payment Link Sent',
+      followUpAt: nextBusinessMorningIso(1),
+      nextStep: 'Confirm the customer received the invoice and payment link.',
+      joistStatus: lead.joistStatus || 'Invoice sent',
+    })
+  }
+  const markDepositPaid = (lead) => updateLead(lead.id, {
+    invoiceStatus: 'Deposit paid',
+    depositPaidAt: new Date().toISOString(),
+    status: 'Deposit Paid',
+    followUpAt: nextBusinessMorningIso(1),
+    nextStep: 'Book the job start date and confirm materials.',
+    joistStatus: 'Deposit paid',
+  })
+  const markPaid = (lead) => updateLead(lead.id, {
+    invoiceStatus: 'Paid',
+    paidAt: new Date().toISOString(),
+    revenueReceived: invoiceAmountFor(lead),
+    followUpAt: '',
+    nextStep: lead.status === 'Complete' ? 'Send receipt and review request.' : 'Payment received. Continue scheduled work.',
+    joistStatus: 'Paid',
+  })
+  const startJob = (lead) => updateLead(lead.id, {
+    status: 'In Progress',
+    jobStartAt: lead.jobStartAt || new Date().toISOString(),
+    nextStep: 'Track progress, changes, materials, and customer updates.',
+  })
+  const completeJob = (lead) => updateLead(lead.id, {
+    status: 'Complete',
+    completedAt: new Date().toISOString(),
+    jobEndAt: lead.jobEndAt || new Date().toISOString(),
+    followUpAt: nextBusinessMorningIso(1),
+    nextStep: 'Final walkthrough, collect balance, send receipt, and request review.',
+  })
+
+  return (
+    <section className="admin-page calendar-page">
+      <div className="admin-page-head">
+        <div>
+          <p className="admin-eyebrow">Schedule + delivery</p>
+          <h1>Calendar, follow-ups, invoices, and job completion</h1>
+        </div>
+        <button className="admin-primary-button" type="button" onClick={() => setMonthDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>
+          Today
+        </button>
+      </div>
+
+      <section className="admin-panel full-span-panel booking-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Book real work</p>
+            <strong>Schedule an estimate, follow-up call, walkthrough, or job visit.</strong>
+          </div>
+        </div>
+        <div className="booking-form-grid">
+          <label>Customer<select value={bookingLeadId} onChange={(event) => setBookingLeadId(event.target.value)}>{leads.map((lead) => <option value={lead.id} key={lead.id}>{lead.name} · {lead.projectType}</option>)}</select></label>
+          <label>Appointment type<select value={bookingType} onChange={(event) => setBookingType(event.target.value)}><option>On-site estimate</option><option>Follow-up call</option><option>Project walkthrough</option><option>Job visit</option><option>Final walkthrough</option></select></label>
+          <label>Starts<input type="datetime-local" value={bookingStart} onChange={(event) => setBookingStart(event.target.value)} /></label>
+          <label>Ends<input type="datetime-local" value={bookingEnd} onChange={(event) => setBookingEnd(event.target.value)} /></label>
+          <button className="admin-primary-button" type="button" onClick={scheduleBooking} disabled={!bookingLeadId || !bookingStart}><CalendarDays size={17} /> Save booking</button>
+        </div>
+      </section>
+
+      <div className="calendar-layout">
+        <section className="admin-panel calendar-month-panel">
+          <div className="calendar-month-head">
+            <button type="button" onClick={() => setMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth() - 1, 1))}><ChevronLeft size={18} /></button>
+            <h2>{monthLabel}</h2>
+            <button type="button" onClick={() => setMonthDate(new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1))}><ChevronRight size={18} /></button>
+          </div>
+          <div className="calendar-weekdays">{['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}</div>
+          <div className="calendar-grid">
+            {calendarDays.map((date) => {
+              const key = calendarDateKey(date)
+              const dayEvents = events.filter((event) => calendarDateKey(event.at) === key)
+              const outside = date.getMonth() !== monthDate.getMonth()
+              const today = key === calendarDateKey(new Date())
+              return (
+                <article className={`${outside ? 'outside' : ''} ${today ? 'today' : ''}`} key={key}>
+                  <strong>{date.getDate()}</strong>
+                  <div>
+                    {dayEvents.slice(0, 4).map((event, index) => (
+                      <button className={`calendar-event ${event.tone}`} type="button" key={`${event.lead.id}-${event.type}-${index}`} onClick={() => openLead(event.lead)}>
+                        <span>{new Date(event.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                        {event.type}: {event.lead.name}
+                      </button>
+                    ))}
+                    {dayEvents.length > 4 ? <small>+{dayEvents.length - 4} more</small> : null}
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </section>
+
+        <aside className="admin-panel upcoming-panel">
+          <p className="admin-eyebrow">Next up</p>
+          <h2>Upcoming work</h2>
+          {upcoming.length ? upcoming.map((event, index) => (
+            <button type="button" onClick={() => openLead(event.lead)} key={`${event.lead.id}-${event.type}-${index}`}>
+              <strong>{event.type}</strong>
+              <span>{event.lead.name}</span>
+              <small>{formatDate(event.at)}</small>
+            </button>
+          )) : <p>No appointments or follow-ups booked yet.</p>}
+        </aside>
+      </div>
+
+      <section className="admin-panel full-span-panel workflow-ledger">
+        <div className="panel-title-row"><div><p className="admin-eyebrow">Estimate to completion</p><strong>Move every job through invoice, payment, production, and closeout.</strong></div></div>
+        <div className="workflow-ledger-list">
+          {leads.filter((lead) => !['Lost', 'Won', 'Receipt Sent'].includes(lead.status)).map((lead) => (
+            <article key={lead.id}>
+              <button className="workflow-customer" type="button" onClick={() => openLead(lead)}>
+                <strong>{lead.name}</strong><span>{lead.status} · {lead.projectType}</span>
+              </button>
+              <div className="workflow-money"><strong>{formatCurrency(invoiceAmountFor(lead))}</strong><span>{lead.invoiceStatus || 'No invoice yet'}</span></div>
+              <div className="workflow-actions">
+                <button type="button" onClick={() => sendInvoice(lead)}>Invoice sent</button>
+                <button type="button" onClick={() => markDepositPaid(lead)}>Deposit paid</button>
+                <button type="button" onClick={() => markPaid(lead)}>Paid</button>
+                <button type="button" onClick={() => startJob(lead)}>Start job</button>
+                <button type="button" onClick={() => completeJob(lead)}>Complete</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </section>
+  )
+}
+
 function FinancialDashboard({ leads, emailSettings }) {
   const rows = useMemo(() => leads.map((lead) => ({ lead, financials: leadFinancials(lead) })), [leads])
   const totals = rows.reduce(
@@ -4809,6 +5123,19 @@ function exportCsv(leads) {
     'Estimate Amount',
     'Payment Link',
     'Follow Up',
+    'Appointment Type',
+    'Appointment Start',
+    'Appointment End',
+    'Job Start',
+    'Job End',
+    'Invoice Number',
+    'Invoice Status',
+    'Invoice Amount',
+    'Invoice Due',
+    'Invoice Sent',
+    'Deposit Paid',
+    'Paid',
+    'Completed',
     'Last Contacted',
     'Campaign',
     'Campaign Step',
@@ -4834,6 +5161,19 @@ function exportCsv(leads) {
     lead.estimateAmount,
     lead.paymentLink,
     lead.followUpAt,
+    lead.appointmentType,
+    lead.appointmentStart,
+    lead.appointmentEnd,
+    lead.jobStartAt,
+    lead.jobEndAt,
+    lead.invoiceNumber,
+    lead.invoiceStatus,
+    lead.invoiceAmount,
+    lead.invoiceDueDate,
+    lead.invoiceSentAt,
+    lead.depositPaidAt,
+    lead.paidAt,
+    lead.completedAt,
     lead.lastContactedAt,
     lead.campaignName,
     lead.campaignStep,
@@ -5270,6 +5610,10 @@ function AdminDashboard({ content, setContent, goHome }) {
             <Users size={17} aria-hidden="true" />
             Leads
           </button>
+          <button className={activeView === 'calendar' ? 'active' : ''} type="button" onClick={() => setActiveView('calendar')}>
+            <CalendarDays size={17} aria-hidden="true" />
+            Calendar
+          </button>
           <button className={activeView === 'money' ? 'active' : ''} type="button" onClick={() => setActiveView('money')}>
             <DollarSign size={17} aria-hidden="true" />
             Money
@@ -5451,6 +5795,15 @@ function AdminDashboard({ content, setContent, goHome }) {
             />
           </div>
         </section>
+      ) : null}
+
+      {activeView === 'calendar' ? (
+        <CalendarDashboard
+          leads={leads}
+          updateLead={updateLead}
+          setActiveView={setActiveView}
+          setSelectedLeadId={setSelectedLeadId}
+        />
       ) : null}
 
       {activeView === 'money' ? (

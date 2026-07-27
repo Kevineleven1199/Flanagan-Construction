@@ -4142,3 +4142,275 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.calendar-page {
+  gap: 20px;
+}
+
+.booking-panel,
+.calendar-month-panel,
+.upcoming-panel,
+.workflow-ledger {
+  display: grid;
+  gap: 18px;
+}
+
+.booking-form-grid {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+}
+
+.booking-form-grid label {
+  color: #506276;
+  display: grid;
+  font-size: 0.76rem;
+  font-weight: 900;
+  gap: 7px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.booking-form-grid input,
+.booking-form-grid select {
+  background: #fff;
+  border: 1px solid rgba(7, 35, 58, 0.18);
+  border-radius: 11px;
+  color: #10283b;
+  font: inherit;
+  min-height: 44px;
+  padding: 9px 11px;
+  text-transform: none;
+}
+
+.calendar-layout {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+
+.calendar-month-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.calendar-month-head h2 {
+  margin: 0;
+}
+
+.calendar-month-head button {
+  align-items: center;
+  background: #edf4f8;
+  border: 1px solid rgba(7, 35, 58, 0.14);
+  border-radius: 10px;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 42px;
+  min-width: 42px;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.calendar-weekdays span {
+  color: #66798a;
+  font-size: 0.73rem;
+  font-weight: 900;
+  padding: 6px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.calendar-grid {
+  border-left: 1px solid rgba(7, 35, 58, 0.12);
+  border-top: 1px solid rgba(7, 35, 58, 0.12);
+}
+
+.calendar-grid > article {
+  background: #fff;
+  border-bottom: 1px solid rgba(7, 35, 58, 0.12);
+  border-right: 1px solid rgba(7, 35, 58, 0.12);
+  min-height: 126px;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.calendar-grid > article.outside {
+  background: #f4f6f7;
+  color: #9aa7b0;
+}
+
+.calendar-grid > article.today {
+  box-shadow: inset 0 0 0 2px #f1ae32;
+}
+
+.calendar-grid > article > strong {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 7px;
+}
+
+.calendar-grid > article > div {
+  display: grid;
+  gap: 5px;
+}
+
+.calendar-event {
+  border: 0;
+  border-radius: 7px;
+  color: #0c2a42;
+  cursor: pointer;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  overflow: hidden;
+  padding: 5px 6px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-event span {
+  font-weight: 900;
+}
+
+.calendar-event.appointment { background: #dbeeff; }
+.calendar-event.followup { background: #fff0c9; }
+.calendar-event.job { background: #d9f3e6; }
+.calendar-event.invoice { background: #f7dce2; }
+
+.upcoming-panel {
+  align-content: start;
+}
+
+.upcoming-panel h2 {
+  margin: -10px 0 2px;
+}
+
+.upcoming-panel > button {
+  background: #f7fafc;
+  border: 1px solid rgba(7, 35, 58, 0.12);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  text-align: left;
+}
+
+.upcoming-panel > button span,
+.upcoming-panel > button small {
+  color: #627587;
+}
+
+.workflow-ledger-list {
+  display: grid;
+  gap: 10px;
+}
+
+.workflow-ledger-list > article {
+  align-items: center;
+  background: #f8fbfc;
+  border: 1px solid rgba(7, 35, 58, 0.12);
+  border-radius: 14px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(190px, 1.2fr) minmax(120px, 0.6fr) minmax(430px, 2fr);
+  padding: 14px;
+}
+
+.workflow-customer,
+.workflow-money {
+  background: transparent;
+  border: 0;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.workflow-customer span,
+.workflow-money span {
+  color: #647789;
+  font-size: 0.78rem;
+}
+
+.workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
+}
+
+.workflow-actions button {
+  background: #fff;
+  border: 1px solid rgba(7, 35, 58, 0.17);
+  border-radius: 9px;
+  color: #17344b;
+  font-weight: 800;
+  min-height: 37px;
+  padding: 7px 10px;
+}
+
+.workflow-actions button:last-child {
+  background: #0f694d;
+  color: #fff;
+}
+
+.lead-schedule-invoice-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lead-workflow-card {
+  background: #f7fafc;
+  border: 1px solid rgba(7, 35, 58, 0.12);
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.lead-workflow-card > .admin-primary-button {
+  justify-self: start;
+}
+
+@media (max-width: 1180px) {
+  .booking-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-ledger-list > article {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-actions {
+    justify-content: flex-start;
+  }
+
+  .lead-schedule-invoice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .booking-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-month-panel {
+    overflow-x: auto;
+  }
+
+  .calendar-weekdays,
+  .calendar-grid {
+    min-width: 760px;
+  }
+}
