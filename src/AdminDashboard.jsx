@@ -3709,6 +3709,7 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
   const [savingDraft, setSavingDraft] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
   const statusTone = smtpStatusTone(emailSettings)
+  const passwordFormatInvalid = emailSettings?.passwordConfigured && emailSettings?.passwordFormatValid === false
   const missing = emailSettings?.missing || ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', smtpPasswordEnvKey, 'SMTP_FROM']
   const requiredStatus =
     emailSettings?.required ||
@@ -3813,7 +3814,9 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
                   : 'SMTP settings are loaded. Send a test to verify them.'}
           </h2>
           <p>
-            {emailSettings?.verification?.status === 'failed'
+            {passwordFormatInvalid
+              ? emailSettings.configurationProblems?.[0]
+              : emailSettings?.verification?.status === 'failed'
               ? emailSettings.verification.error
               : 'The dashboard only marks Gmail verified after the live server successfully sends a message. App passwords stay in Railway and are never returned to the browser.'}
           </p>
@@ -3875,11 +3878,19 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
 
       <div className="smtp-readiness-grid">
         {requiredStatus.map((item) => (
-          <article className={item.configured ? 'ready' : 'missing'} key={item.key}>
+          <article className={item.configured && !(item.secret && passwordFormatInvalid) ? 'ready' : 'missing'} key={item.key}>
             <CheckCircle2 size={17} aria-hidden="true" />
             <div>
               <strong>{item.key}</strong>
-              <span>{item.secret && item.configured ? 'Set and hidden' : item.configured ? 'Set in environment' : 'Missing in Railway'}</span>
+              <span>
+                {item.secret && passwordFormatInvalid
+                  ? 'Replace with 16-character app password'
+                  : item.secret && item.configured
+                    ? 'Set and hidden'
+                    : item.configured
+                      ? 'Set in environment'
+                      : 'Missing in Railway'}
+              </span>
             </div>
           </article>
         ))}

@@ -366,8 +366,12 @@ async function handleAdminLogin(req, res, gzipOk) {
 
 function emailSettingsStatus() {
   const smtpUser = process.env.SMTP_USER || ''
+  const smtpPassword = process.env[smtpPasswordEnvKey] || ''
+  const provider = process.env.SMTP_PROVIDER || 'gmail'
+  const gmailPasswordFormatValid =
+    String(provider).toLowerCase() !== 'gmail' || normalizeGmailAppPassword(smtpPassword).length === 16
   const settings = {
-    provider: process.env.SMTP_PROVIDER || 'gmail',
+    provider,
     host: process.env.SMTP_HOST || gmailSmtpHost,
     port: process.env.SMTP_PORT || '587',
     secure: process.env.SMTP_SECURE || 'false',
@@ -386,7 +390,11 @@ function emailSettingsStatus() {
     ...settings,
     configured: required.every((key) => Boolean(process.env[key])),
     verification: smtpVerificationState,
-    passwordConfigured: Boolean(process.env[smtpPasswordEnvKey]),
+    passwordConfigured: Boolean(smtpPassword),
+    passwordFormatValid: gmailPasswordFormatValid,
+    configurationProblems: gmailPasswordFormatValid
+      ? []
+      : ['SMTP_PASS is not a 16-character Gmail app password. Create a fresh app password in the SMTP_USER Google account and replace it in Railway.'],
     missing: required.filter((key) => !process.env[key]),
     required: requiredStatus,
     recommended: {
@@ -415,7 +423,10 @@ function updateSmtpVerification(status, error = '') {
 
 function smtpErrorMessage(error) {
   const response = String(error?.response || error?.message || '')
-  if (error?.responseCode === 535 || /badcredentials|username and password not accepted/i.test(response)) {
+  if (
+    error?.responseCode === 535 ||
+    /badcredentials|username and password not accepted|application-specific password required|invalidsecondfactor/i.test(response)
+  ) {
     return 'Gmail rejected the login. Create a fresh Google App Password for this exact Gmail account, then replace SMTP_PASS in Railway. Do not use the normal Gmail password.'
   }
   if (/invalid login|authentication/i.test(response)) {
@@ -438,15 +449,21 @@ function safeSmtpPassword(value) {
   return password
 }
 
+function normalizeGmailAppPassword(value) {
+  return String(value || '').replace(/\s/g, '')
+}
+
 function emailLooksValid(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
 }
 
 function effectiveSmtpSettings(overrides = {}) {
   const smtpUser = String(overrides.SMTP_USER || process.env.SMTP_USER || '').trim()
-  const password = safeSmtpPassword(overrides[smtpPasswordEnvKey]) || process.env[smtpPasswordEnvKey] || ''
+  const rawPassword = safeSmtpPassword(overrides[smtpPasswordEnvKey]) || process.env[smtpPasswordEnvKey] || ''
+  const provider = String(overrides.SMTP_PROVIDER || process.env.SMTP_PROVIDER || 'gmail').trim()
+  const password = provider.toLowerCase() === 'gmail' ? normalizeGmailAppPassword(rawPassword) : rawPassword
   return {
-    provider: String(overrides.SMTP_PROVIDER || process.env.SMTP_PROVIDER || 'gmail').trim(),
+    provider,
     host: String(overrides.SMTP_HOST || process.env.SMTP_HOST || gmailSmtpHost).trim(),
     port: Number(overrides.SMTP_PORT || process.env.SMTP_PORT || 587),
     secure: isTruthySetting(overrides.SMTP_SECURE ?? process.env.SMTP_SECURE ?? 'false'),
@@ -574,6 +591,14 @@ async function handleAdminTestEmail(req, res, gzipOk) {
       sendJson(res, 422, {
         ok: false,
         error: 'SMTP host, port, user, app password, and from address are required before sending a test.',
+        settings: publicSmtpSettings(settings),
+      }, gzipOk)
+      return
+    }
+    if (settings.provider.toLowerCase() === 'gmail' && settings.pass.length !== 16) {
+      sendJson(res, 422, {
+        ok: false,
+        error: 'SMTP_PASS is not a valid 16-character Gmail app password. Create it in the SMTP_USER Google account, replace SMTP_PASS in Railway, then test again.',
         settings: publicSmtpSettings(settings),
       }, gzipOk)
       return
