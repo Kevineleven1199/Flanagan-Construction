@@ -4001,7 +4001,7 @@ function EmailSetupDashboard({ emailSettings, onRefresh, mode, token }) {
   )
 }
 
-function AdsSeoDashboard({ draft, updateSection, saveContent, savingContent }) {
+function AdsSeoDashboard({ draft, updateSection, saveContent, savingContent, analytics }) {
   const integrations = draft.integrations || {}
   const trackingItems = [
     { label: 'GTM', value: integrations.gtmContainerId },
@@ -4057,6 +4057,100 @@ function AdsSeoDashboard({ draft, updateSection, saveContent, savingContent }) {
           <strong>Tracking fields ready</strong>
           <small>Form leads fire Google events once IDs are saved.</small>
         </div>
+      </section>
+
+      <section className="admin-panel full-span-panel seo-analytics-panel">
+        <div className="panel-title-row">
+          <div>
+            <p className="admin-eyebrow">Live website performance</p>
+            <strong>Persistent first-party traffic and lead activity</strong>
+          </div>
+          <span className="analytics-period">Last {analytics?.periodDays || 30} days</span>
+        </div>
+        <div className="seo-metric-grid">
+          <article>
+            <span>Page views</span>
+            <strong>{analytics?.pageViews ?? 0}</strong>
+            <small>Tracked after analytics activation</small>
+          </article>
+          <article>
+            <span>Visitor sessions</span>
+            <strong>{analytics?.uniqueSessions ?? 0}</strong>
+            <small>First-party session count</small>
+          </article>
+          <article>
+            <span>Lead starts</span>
+            <strong>{analytics?.leadStarts ?? 0}</strong>
+            <small>Contact autosaves</small>
+          </article>
+          <article>
+            <span>Completed leads</span>
+            <strong>{analytics?.completedLeads ?? 0}</strong>
+            <small>Final CRM submissions</small>
+          </article>
+          <article>
+            <span>Phone clicks</span>
+            <strong>{analytics?.phoneClicks ?? 0}</strong>
+            <small>Tracked call actions</small>
+          </article>
+          <article>
+            <span>Lead conversion</span>
+            <strong>{analytics?.conversionRate ?? 0}%</strong>
+            <small>Completed leads ÷ page views</small>
+          </article>
+        </div>
+        <div className="analytics-detail-grid">
+          <div>
+            <h3>Top pages</h3>
+            {(analytics?.topPages || []).length ? (
+              <ol>
+                {analytics.topPages.map((item) => (
+                  <li key={item.value}><span>{item.value}</span><strong>{item.total}</strong></li>
+                ))}
+              </ol>
+            ) : <p>Traffic will appear here as visitors use the site.</p>}
+          </div>
+          <div>
+            <h3>Traffic sources</h3>
+            {(analytics?.topSources || []).length ? (
+              <ol>
+                {analytics.topSources.map((item) => (
+                  <li key={item.value}><span>{item.value}</span><strong>{item.total}</strong></li>
+                ))}
+              </ol>
+            ) : <p>Direct, referral, and campaign sources will appear here.</p>}
+          </div>
+          <div>
+            <h3>Recent activity</h3>
+            {(analytics?.recentActivity || []).length ? (
+              <ol>
+                {analytics.recentActivity.slice(0, 8).map((item, index) => (
+                  <li key={`${item.occurredAt}-${index}`}>
+                    <span>{item.event.replaceAll('_', ' ')} · {item.path}</span>
+                    <strong>{formatDate(item.occurredAt)}</strong>
+                  </li>
+                ))}
+              </ol>
+            ) : <p>New page views, calls, and lead events will appear here.</p>}
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-panel full-span-panel recovered-analytics-panel">
+        <div>
+          <p className="admin-eyebrow">Historical recovery</p>
+          <h2>What Railway could still prove before tracking was activated</h2>
+          <p>{analytics?.historicalBaseline?.note || 'Historical visitor identities were not retained.'}</p>
+        </div>
+        <div className="recovered-metric-grid">
+          <article><strong>{analytics?.historicalBaseline?.homepageRequests ?? 586}</strong><span>Homepage requests</span></article>
+          <article><strong>{analytics?.historicalBaseline?.siteRequests ?? 4130}</strong><span>Total HTTP requests</span></article>
+          <article><strong>{analytics?.historicalBaseline?.startedFormRequests ?? 28}</strong><span>Autosave requests</span></article>
+          <article><strong>{analytics?.historicalBaseline?.completedLeadRequests ?? 1}</strong><span>Completed submission</span></article>
+        </div>
+        <p className="analytics-disclaimer">
+          Requests are not unique people. The older completed lead’s contact details were lost before persistent storage existed and cannot be recreated honestly.
+        </p>
       </section>
 
       <section className="admin-panel full-span-panel">
@@ -4779,6 +4873,7 @@ function AdminDashboard({ content, setContent, goHome }) {
   const [leads, setLeads] = useState([])
   const [emailSettings, setEmailSettings] = useState(null)
   const [systemHealth, setSystemHealth] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
   const [lastLoadedAt, setLastLoadedAt] = useState('')
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -4796,11 +4891,12 @@ function AdminDashboard({ content, setContent, goHome }) {
     }
 
     try {
-      const [leadPayload, contentPayload, emailPayload, healthPayload] = await Promise.all([
+      const [leadPayload, contentPayload, emailPayload, healthPayload, analyticsPayload] = await Promise.all([
         adminRequest('/api/admin/leads', { token }),
         adminRequest('/api/admin/content', { token }),
         adminRequest('/api/admin/email-settings', { token }),
         adminRequest('/api/admin/system-health', { token }),
+        adminRequest('/api/admin/analytics', { token }),
       ])
       const nextLeads = (leadPayload.leads || []).map(normalizeLead)
       const nextContent = mergeSiteContent(defaultSiteContent, contentPayload.content || {})
@@ -4809,6 +4905,7 @@ function AdminDashboard({ content, setContent, goHome }) {
       setContent(nextContent)
       setEmailSettings(emailPayload.emailSettings || null)
       setSystemHealth(healthPayload.health || null)
+      setAnalytics(analyticsPayload.analytics || null)
       setLastLoadedAt(new Date().toISOString())
       saveStoredContent(nextContent)
       setMode('server')
@@ -4836,12 +4933,14 @@ function AdminDashboard({ content, setContent, goHome }) {
         setUnlocked(true)
         setLeads(loadStoredLeads())
         setSystemHealth(null)
+        setAnalytics(null)
         if (!silent) setMessage(error.message || 'Admin setup needs ADMIN_PASSWORD or ADMIN_USERS_JSON.')
       } else {
         setMode('local')
         setUnlocked(true)
         setLeads(loadStoredLeads())
         setSystemHealth(null)
+        setAnalytics(null)
         if (!silent) setMessage('Local admin mode.')
       }
     } finally {
@@ -5383,6 +5482,7 @@ function AdminDashboard({ content, setContent, goHome }) {
           updateSection={updateSection}
           saveContent={saveContent}
           savingContent={savingContent}
+          analytics={analytics}
         />
       ) : null}
 

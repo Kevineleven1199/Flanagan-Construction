@@ -31,12 +31,26 @@ const dataDir = resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT
 const siteContentPath = join(dataDir, 'site-content.json')
 const leadLogPath = join(dataDir, 'leads.log')
 const leadCrmPath = join(dataDir, 'lead-crm.json')
+const analyticsLogPath = join(dataDir, 'analytics.log')
 const smtpPasswordEnvKey = ['SMTP', 'PASS'].join('_')
 const gmailSmtpHost = ['smtp', 'gmail', 'com'].join('.')
 const leadNotifyTo = process.env.LEAD_NOTIFY_TO || process.env.SMTP_REPLY_TO || process.env.SMTP_USER || ''
 const publicGoogleMapsApiKey =
   process.env.PUBLIC_GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_BROWSER_KEY || ''
 const serverStartedAt = new Date()
+const recoveredRailwayBaseline = {
+  label: 'Recovered Railway baseline',
+  since: '2026-06-28T00:00:00.000Z',
+  until: '2026-07-27T23:59:59.999Z',
+  siteRequests: 4130,
+  successfulRequests: 2915,
+  clientErrorRequests: 1215,
+  serverErrorRequests: 0,
+  homepageRequests: 586,
+  startedFormRequests: 28,
+  completedLeadRequests: 1,
+  note: 'Aggregate request counters only. Old visitor identities and lead contact details were not retained.',
+}
 
 const builtInSuperAdmins = [
   {
@@ -493,6 +507,116 @@ function publicConfigStatus() {
     googleMapsApiKey: publicGoogleMapsApiKey,
     googlePlacesConfigured: Boolean(publicGoogleMapsApiKey),
   }
+}
+
+function cleanAnalyticsValue(value, maxLength = 240) {
+  return String(value || '').trim().slice(0, maxLength)
+}
+
+async function recordAnalyticsEvent(event = {}) {
+  const row = {
+    id: randomUUID(),
+    event: cleanAnalyticsValue(event.event, 64),
+    path: cleanAnalyticsValue(event.path || '/', 300),
+    source: cleanAnalyticsValue(event.source || 'direct', 160),
+    medium: cleanAnalyticsValue(event.medium, 100),
+    campaign: cleanAnalyticsValue(event.campaign, 160),
+    referrer: cleanAnalyticsValue(event.referrer, 300),
+    sessionId: cleanAnalyticsValue(event.sessionId, 100),
+    leadId: cleanAnalyticsValue(event.leadId, 120),
+    location: cleanAnalyticsValue(event.location, 100),
+    ipHash: cleanAnalyticsValue(event.ipHash, 64),
+    userAgent: cleanAnalyticsValue(event.userAgent, 300),
+    occurredAt: event.occurredAt || new Date().toISOString(),
+  }
+  if (!row.event) return null
+  await appendDataFile(analyticsLogPath, `${JSON.stringify(row)}\n`)
+  return row
+}
+
+async function readAnalyticsEvents() {
+  const log = await readFile(analyticsLogPath, 'utf8').catch(() => '')
+  return log
+    .split('\n')
+    .filter(Boolean)
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line)]
+      } catch {
+        return []
+      }
+    })
+}
+
+function analyticsSummary(events = []) {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000
+  const recent = events.filter((event) => new Date(event.occurredAt).getTime() >= cutoff)
+  const count = (name) => recent.filter((event) => event.event === name).length
+  const uniqueLeadCount = (name) =>
+    new Set(recent.filter((event) => event.event === name).map((event) => event.leadId).filter(Boolean)).size
+  const uniqueSessions = new Set(recent.map((event) => event.sessionId).filter(Boolean)).size
+  const groupTop = (field) => {
+    const counts = new Map()
+    recent
+      .filter((event) => event.event === 'page_view')
+      .forEach((event) => {
+        const value = cleanAnalyticsValue(event[field]) || (field === 'source' ? 'direct' : '/')
+        counts.set(value, (counts.get(value) || 0) + 1)
+      })
+    return [...counts.entries()]
+      .map(([value, total]) => ({ value, total }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8)
+  }
+  const pageViews = count('page_view')
+  const completedLeads = uniqueLeadCount('lead_submitted')
+  return {
+    periodDays: 30,
+    trackingStartedAt: events[0]?.occurredAt || '',
+    lastEventAt: events.at(-1)?.occurredAt || '',
+    pageViews,
+    uniqueSessions,
+    leadStarts: uniqueLeadCount('lead_started'),
+    completedLeads,
+    phoneClicks: count('phone_click'),
+    conversionRate: pageViews ? Number(((completedLeads / pageViews) * 100).toFixed(1)) : 0,
+    topPages: groupTop('path'),
+    topSources: groupTop('source'),
+    recentActivity: recent.slice(-30).reverse().map((event) => ({
+      event: event.event,
+      path: event.path,
+      source: event.source,
+      occurredAt: event.occurredAt,
+    })),
+    historicalBaseline: recoveredRailwayBaseline,
+  }
+}
+
+async function handleAnalyticsEvent(req, res, gzipOk) {
+  if (req.method !== 'POST') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'POST' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    return
+  }
+  try {
+    const data = await readJsonBody(req, 24000)
+    await recordAnalyticsEvent({
+      ...data,
+      ipHash: hashForLog(clientIp(req)),
+      userAgent: req.headers['user-agent'] || '',
+    })
+    sendJson(res, 202, { ok: true }, gzipOk)
+  } catch {
+    sendJson(res, 400, { ok: false, error: 'Invalid analytics event.' }, gzipOk)
+  }
+}
+
+async function handleAdminAnalytics(req, res, gzipOk) {
+  if (!requireAdmin(req, res, gzipOk)) return
+  if (req.method !== 'GET') {
+    send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'GET' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
+    return
+  }
+  sendJson(res, 200, { ok: true, analytics: analyticsSummary(await readAnalyticsEvents()) }, gzipOk)
 }
 
 function leadNotificationText(lead = {}) {
@@ -1521,6 +1645,15 @@ async function handleLead(req, res, gzipOk) {
       customerEmail: customerEmail.sent,
       customerEmailReason: customerEmail.reason || '',
     }))
+    await recordAnalyticsEvent({
+      event: 'lead_submitted',
+      path: lead.sourcePath || '/',
+      source: lead.utmSource || 'direct',
+      medium: lead.utmMedium,
+      campaign: lead.utmCampaign,
+      leadId: lead.id,
+      ipHash: lead.ipHash,
+    }).catch((error) => console.error('[ANALYTICS] lead event failed:', error?.message))
 
     sendJson(res, 200, {
       ok: true,
@@ -1615,6 +1748,15 @@ async function handleLeadDraft(req, res, gzipOk) {
 
   try {
     await appendDataFile(leadLogPath, `${JSON.stringify(lead)}\n`)
+    await recordAnalyticsEvent({
+      event: 'lead_started',
+      path: lead.sourcePath || '/',
+      source: lead.utmSource || 'direct',
+      medium: lead.utmMedium,
+      campaign: lead.utmCampaign,
+      leadId: lead.id,
+      ipHash: lead.ipHash,
+    })
   } catch (error) {
     console.error('[LEAD_DRAFT] could not write leads.log:', error?.message)
   }
@@ -1671,6 +1813,11 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
+  if (pathname === '/api/admin/analytics') {
+    await handleAdminAnalytics(req, res, gzipOk)
+    return
+  }
+
   if (pathname === '/api/admin/content') {
     await handleAdminContent(req, res, gzipOk)
     return
@@ -1687,6 +1834,11 @@ const server = http.createServer(async (req, res) => {
     } else {
       send(res, 405, { 'Content-Type': 'application/json; charset=utf-8', Allow: 'POST' }, JSON.stringify({ ok: false, error: 'Method not allowed' }))
     }
+    return
+  }
+
+  if (pathname === '/api/analytics') {
+    await handleAnalyticsEvent(req, res, gzipOk)
     return
   }
 

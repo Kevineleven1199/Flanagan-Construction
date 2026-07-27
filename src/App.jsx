@@ -24,6 +24,41 @@ import {
 } from './siteContent'
 import './App.css'
 
+function analyticsSessionId() {
+  try {
+    const key = 'flanagan-analytics-session'
+    const existing = window.sessionStorage.getItem(key)
+    if (existing) return existing
+    const next = window.crypto?.randomUUID?.() || `session-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    window.sessionStorage.setItem(key, next)
+    return next
+  } catch {
+    return ''
+  }
+}
+
+function recordFirstPartyAnalytics(event, data = {}) {
+  if (typeof window === 'undefined' || window.location.pathname.startsWith('/admin')) return
+  const params = new URLSearchParams(window.location.search || '')
+  const payload = {
+    event,
+    path: window.location.pathname || '/',
+    source: params.get('utm_source') || (document.referrer ? 'referral' : 'direct'),
+    medium: params.get('utm_medium') || '',
+    campaign: params.get('utm_campaign') || '',
+    referrer: document.referrer || '',
+    sessionId: analyticsSessionId(),
+    location: data.location || '',
+    occurredAt: new Date().toISOString(),
+  }
+  fetch('/api/analytics', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => {})
+}
+
 // Best-effort analytics: pushes events to a GTM/GA4-style dataLayer if one
 // exists. No-ops (and never throws) until a tag manager is installed.
 function track(event, data = {}) {
@@ -36,6 +71,7 @@ function track(event, data = {}) {
   } catch {
     // analytics must never break the page
   }
+  recordFirstPartyAnalytics(event, data)
 }
 
 function cleanTrackingId(value) {
@@ -2014,6 +2050,10 @@ function App() {
   useEffect(() => {
     applyDocumentSeo(siteContent, routePath)
   }, [routePath, siteContent])
+
+  useEffect(() => {
+    if (!routePath.startsWith('/admin')) recordFirstPartyAnalytics('page_view')
+  }, [routePath])
 
   const dismissSplash = useCallback(() => {
     try {

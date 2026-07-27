@@ -4014,3 +4014,131 @@
     grid-template-columns: 1fr;
   }
 }
+.seo-analytics-panel,
+.recovered-analytics-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.analytics-period {
+  border: 1px solid rgba(7, 35, 58, 0.16);
+  border-radius: 999px;
+  color: #24415a;
+  font-weight: 800;
+  padding: 8px 13px;
+}
+
+.seo-metric-grid,
+.recovered-metric-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.seo-metric-grid article,
+.recovered-metric-grid article {
+  background: linear-gradient(145deg, #f8fbfd, #edf5f7);
+  border: 1px solid rgba(7, 35, 58, 0.12);
+  border-radius: 16px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 18px;
+}
+
+.seo-metric-grid span,
+.recovered-metric-grid span {
+  color: #536779;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.seo-metric-grid strong,
+.recovered-metric-grid strong {
+  color: #071f33;
+  font-size: clamp(1.6rem, 2.4vw, 2.4rem);
+}
+
+.seo-metric-grid small {
+  color: #667a8b;
+  line-height: 1.35;
+}
+
+.analytics-detail-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-detail-grid > div {
+  border: 1px solid rgba(7, 35, 58, 0.12);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+.analytics-detail-grid h3 {
+  margin: 0 0 12px;
+}
+
+.analytics-detail-grid ol {
+  display: grid;
+  gap: 9px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.analytics-detail-grid li {
+  align-items: center;
+  border-bottom: 1px solid rgba(7, 35, 58, 0.09);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding-bottom: 8px;
+}
+
+.analytics-detail-grid li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analytics-detail-grid li strong {
+  flex: 0 0 auto;
+  font-size: 0.78rem;
+}
+
+.recovered-analytics-panel {
+  background: linear-gradient(135deg, #fff9ea, #fffdf7);
+  border-color: rgba(190, 129, 18, 0.3);
+}
+
+.recovered-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.analytics-disclaimer {
+  color: #6c5326;
+  font-weight: 700;
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .seo-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .analytics-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .seo-metric-grid,
+  .recovered-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
