@@ -18,6 +18,7 @@ import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import nodemailer from 'nodemailer'
 import { buildWebhookPayload } from './lead-delivery.js'
+import { defaultSiteContent } from './src/content.js'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 const distDir = resolve(root, 'dist')
@@ -517,7 +518,9 @@ function leadNotificationText(lead = {}) {
 async function notifyLeadByEmail(lead) {
   const settings = effectiveSmtpSettings()
   const to = String(leadNotifyTo || settings.replyTo || settings.user || '').trim()
-  if (!emailSettingsStatus().configured || !emailLooksValid(to)) return
+  if (!emailSettingsStatus().configured || !emailLooksValid(to)) {
+    return { sent: false, reason: 'not_configured' }
+  }
 
   try {
     const transporter = nodemailer.createTransport({
@@ -542,9 +545,61 @@ async function notifyLeadByEmail(lead) {
       text: leadNotificationText(lead),
     })
     updateSmtpVerification('verified')
+    return { sent: true }
   } catch (error) {
     updateSmtpVerification('failed', smtpErrorMessage(error))
     console.error('[LEAD] email notification failed:', error?.code || error?.message || 'smtp_error')
+    return { sent: false, reason: 'send_failed' }
+  }
+}
+
+async function acknowledgeLeadByEmail(lead) {
+  const settings = effectiveSmtpSettings()
+  const to = String(lead.email || '').trim()
+  if (!emailSettingsStatus().configured || !emailLooksValid(to)) {
+    return { sent: false, reason: emailLooksValid(to) ? 'not_configured' : 'no_customer_email' }
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.host,
+      port: settings.port,
+      secure: settings.secure,
+      requireTLS: !settings.secure,
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 12000,
+      auth: {
+        user: settings.user,
+        pass: settings.pass,
+      },
+    })
+    const firstName = String(lead.name || '').trim().split(/\s+/)[0] || 'there'
+    await transporter.sendMail({
+      from: settings.from,
+      to,
+      replyTo: settings.replyTo || settings.user,
+      subject: 'We received your Flanagan Construction request',
+      text: [
+        `Hi ${firstName},`,
+        '',
+        'Thanks for contacting Flanagan Construction. We received your project request and will review it within one business day.',
+        '',
+        `Project: ${lead.projectType || lead.funnelGroup || 'Home improvement project'}`,
+        lead.address ? `Address: ${lead.address}` : '',
+        lead.selectedNeeds?.length ? `Requested work: ${lead.selectedNeeds.join(', ')}` : '',
+        '',
+        'If you have photos or more details, reply directly to this email.',
+        '',
+        'Nick Flanagan',
+        'Flanagan Construction',
+        '(302) 565-5724',
+      ].filter(Boolean).join('\n'),
+    })
+    return { sent: true }
+  } catch (error) {
+    console.error('[LEAD] customer acknowledgment failed:', error?.code || error?.message || 'smtp_error')
+    return { sent: false, reason: 'send_failed' }
   }
 }
 
@@ -756,6 +811,22 @@ async function ensureParentDir(filePath) {
 async function appendDataFile(filePath, text) {
   await ensureParentDir(filePath)
   await appendFile(filePath, text, 'utf8')
+}
+
+async function finalizedLeadAlreadyExists(leadId) {
+  if (!leadId) return false
+  const log = await readFile(leadLogPath, 'utf8').catch(() => '')
+  return log
+    .split('\n')
+    .filter(Boolean)
+    .some((line) => {
+      try {
+        const existing = JSON.parse(line)
+        return String(existing.id || '') === String(leadId) && existing.status !== 'Started'
+      } catch {
+        return false
+      }
+    })
 }
 
 async function writeJsonFile(filePath, data) {
@@ -1054,11 +1125,75 @@ async function serveIndex(req, res, gzipOk) {
     send(res, 200, headers, null)
     return
   }
-  const html = withShareAssetOrigin(await readFile(indexPath, 'utf8'), req)
+  const html = applyServerSeo(withShareAssetOrigin(await readFile(indexPath, 'utf8'), req), req.url || '/')
   send(res, 200, headers, html, gzipOk)
 }
 
-async function serveTextWithOrigin(req, res, filePath, contentType, gzipOk) {
+function escapeHtmlAttribute(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+}
+
+function serverSeoForPath(rawPath = '/') {
+  const pathname = decodeURIComponent(String(rawPath).split('?')[0]).replace(/\/+$/, '') || '/'
+  const seo = defaultSiteContent.seo
+  const servicePage = defaultSiteContent.localSeo?.servicePages?.find((page) => `/${page.slug}` === pathname)
+  if (servicePage) {
+    return {
+      title: servicePage.seoTitle,
+      description: servicePage.seoDescription,
+      canonical: `${canonicalBase}/${servicePage.slug}`,
+      robots: 'index, follow, max-image-preview:large, max-snippet:-1',
+    }
+  }
+  if (pathname === '/our-work') {
+    return {
+      title: seo.ourWorkTitle,
+      description: seo.ourWorkDescription,
+      canonical: `${canonicalBase}/our-work`,
+      robots: 'index, follow, max-image-preview:large, max-snippet:-1',
+    }
+  }
+  if (pathname.startsWith('/admin') || pathname === '/qr-code' || pathname === '/business-card') {
+    return {
+      title: pathname.startsWith('/admin') ? 'Flanagan Admin' : 'Flanagan Construction',
+      description: pathname.startsWith('/admin')
+        ? 'Private Flanagan Construction admin dashboard.'
+        : 'Flanagan Construction customer resource.',
+      canonical: `${canonicalBase}${pathname}`,
+      robots: 'noindex, follow',
+    }
+  }
+  return {
+    title: seo.homeTitle,
+    description: seo.homeDescription,
+    canonical: `${canonicalBase}/`,
+    robots: 'index, follow, max-image-preview:large, max-snippet:-1',
+  }
+}
+
+function applyServerSeo(html, rawPath) {
+  const meta = serverSeoForPath(rawPath)
+  const title = escapeHtmlAttribute(meta.title)
+  const description = escapeHtmlAttribute(meta.description)
+  const canonical = escapeHtmlAttribute(meta.canonical)
+  const robots = escapeHtmlAttribute(meta.robots)
+  return html
+    .replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`)
+    .replace(/<meta\s+name="description"\s+content="[^"]*"\s*\/?>/i, `<meta name="description" content="${description}" />`)
+    .replace(/<meta\s+name="robots"\s+content="[^"]*"\s*\/?>/i, `<meta name="robots" content="${robots}" />`)
+    .replace(/<link\s+rel="canonical"\s+href="[^"]*"\s*\/?>/i, `<link rel="canonical" href="${canonical}" />`)
+    .replace(/<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:title" content="${title}" />`)
+    .replace(/<meta\s+property="og:description"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:description" content="${description}" />`)
+    .replace(/<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/i, `<meta property="og:url" content="${canonical}" />`)
+    .replace(/<meta\s+name="twitter:title"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:title" content="${title}" />`)
+    .replace(/<meta\s+name="twitter:description"\s+content="[^"]*"\s*\/?>/i, `<meta name="twitter:description" content="${description}" />`)
+}
+
+async function serveTextWithOrigin(req, res, filePath, contentType, gzipOk, rewriteOrigin = true) {
   if (!existsSync(filePath) || !statSync(filePath).isFile()) {
     send(res, 404, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not found')
     return
@@ -1068,7 +1203,8 @@ async function serveTextWithOrigin(req, res, filePath, contentType, gzipOk) {
     send(res, 200, headers, null)
     return
   }
-  const body = withOrigin(await readFile(filePath, 'utf8'), req)
+  const text = await readFile(filePath, 'utf8')
+  const body = rewriteOrigin ? withOrigin(text, req) : text
   send(res, 200, headers, body, gzipOk)
 }
 
@@ -1297,8 +1433,9 @@ async function handleLead(req, res, gzipOk) {
 
     const name = String(data.name || '').trim()
     const phone = String(data.phone || '').trim()
-    if (!name || !phone) {
-      sendJson(res, 422, { ok: false, error: 'Name and phone are required.' }, gzipOk)
+    const email = String(data.email || '').trim()
+    if (!name || (!phone && !email)) {
+      sendJson(res, 422, { ok: false, error: 'Name and either phone or email are required.' }, gzipOk)
       return
     }
 
@@ -1308,7 +1445,7 @@ async function handleLead(req, res, gzipOk) {
       id: String(data.leadId || data.id || randomUUID()),
       name,
       phone,
-      email: String(data.email || '').trim(),
+      email,
       address: String(data.address || '').trim(),
       addressPlaceId: String(data.addressPlaceId || '').trim(),
       addressLat: String(data.addressLat || '').trim(),
@@ -1338,6 +1475,16 @@ async function handleLead(req, res, gzipOk) {
       ipHash: hashForLog(ip),
     }
 
+    if (await finalizedLeadAlreadyExists(lead.id)) {
+      sendJson(res, 200, {
+        ok: true,
+        leadId: lead.id,
+        duplicate: true,
+        delivery: { crm: true, officeEmail: false, customerEmail: false },
+      }, gzipOk)
+      return
+    }
+
     // Always surface the lead in the deploy logs so it is never silently lost.
     console.log('[LEAD]', JSON.stringify(lead))
 
@@ -1361,9 +1508,27 @@ async function handleLead(req, res, gzipOk) {
       }
     }
 
-    await notifyLeadByEmail(lead)
+    const [officeEmail, customerEmail] = await Promise.all([
+      notifyLeadByEmail(lead),
+      acknowledgeLeadByEmail(lead),
+    ])
+    console.log('[LEAD_DELIVERY]', JSON.stringify({
+      leadId: lead.id,
+      crm: true,
+      officeEmail: officeEmail.sent,
+      customerEmail: customerEmail.sent,
+      customerEmailReason: customerEmail.reason || '',
+    }))
 
-    sendJson(res, 200, { ok: true }, gzipOk)
+    sendJson(res, 200, {
+      ok: true,
+      leadId: lead.id,
+      delivery: {
+        crm: true,
+        officeEmail: officeEmail.sent,
+        customerEmail: customerEmail.sent,
+      },
+    }, gzipOk)
   })
   req.on('error', () => {
     try {
@@ -1533,14 +1698,14 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
-  // robots.txt and sitemap.xml: rewrite the canonical domain to the serving
-  // origin so they are correct on the Railway URL or any custom domain.
+  // Always advertise the canonical production domain, even when this service is
+  // reached through its Railway fallback hostname.
   if (pathname === '/robots.txt') {
-    await serveTextWithOrigin(req, res, join(distDir, 'robots.txt'), 'text/plain; charset=utf-8', gzipOk)
+    await serveTextWithOrigin(req, res, join(distDir, 'robots.txt'), 'text/plain; charset=utf-8', gzipOk, false)
     return
   }
   if (pathname === '/sitemap.xml') {
-    await serveTextWithOrigin(req, res, join(distDir, 'sitemap.xml'), 'application/xml; charset=utf-8', gzipOk)
+    await serveTextWithOrigin(req, res, join(distDir, 'sitemap.xml'), 'application/xml; charset=utf-8', gzipOk, false)
     return
   }
 

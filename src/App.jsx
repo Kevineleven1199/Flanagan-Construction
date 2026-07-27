@@ -970,7 +970,7 @@ function LeadPanel({
     }
   }
 
-  const hasContact = form.phone.replace(/\D/g, '').length >= 7 && /\S+@\S+\.\S+/.test(form.email)
+  const hasContact = form.phone.replace(/\D/g, '').length >= 7 || /\S+@\S+\.\S+/.test(form.email)
   const hasAddress = Boolean(form.address.trim())
   const hasNeed = selectedNeeds.length > 0
   const serviceCheckNeeded = addressNeedsServiceCheck(form)
@@ -1077,11 +1077,10 @@ function LeadPanel({
               autoComplete="tel"
               inputMode="tel"
               placeholder="(302) 555-0123"
-              required
             />
           </label>
           <label>
-            Email
+            Email <span className="optional-label">(for confirmation)</span>
             <input
               name="email"
               type="email"
@@ -1093,7 +1092,6 @@ function LeadPanel({
               autoComplete="email"
               inputMode="email"
               placeholder="you@example.com"
-              required
             />
           </label>
         </div>
@@ -1158,7 +1156,6 @@ function LeadPanel({
               aria-expanded={addressSuggestions.length > 0}
               autoComplete="street-address"
               placeholder="Start typing the job address"
-              required
             />
             {addressSuggestions.length ? (
               <div
@@ -2370,6 +2367,12 @@ function App() {
     event.preventDefault()
     if (submitting) return
     const submittedForm = formValuesFromElement(event.currentTarget)
+    const hasPhone = submittedForm.phone.replace(/\D/g, '').length >= 7
+    const hasEmail = /\S+@\S+\.\S+/.test(submittedForm.email)
+    if (!hasPhone && !hasEmail) {
+      setStatus('Enter a phone number or email so we can follow up.')
+      return
+    }
     setSubmitting(true)
     setStatus('Sending your request...')
 
@@ -2388,9 +2391,13 @@ function App() {
     saveLocalLeadBackup(finalLead)
 
     try {
-      await postJsonWithTimeout('/api/lead', finalLead, 14000)
+      const result = await postJsonWithTimeout('/api/lead', finalLead, 14000)
       setSubmitted(true)
-      setStatus('Request received. We will reach out within one business day.')
+      setStatus(
+        result?.delivery?.customerEmail
+          ? 'Request received. Check your email for confirmation.'
+          : 'Request received. We will reach out within one business day.',
+      )
       sendLeadConversion(siteContent.integrations || {}, finalLead)
       window.setTimeout(() => {
         document.getElementById('estimate')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
