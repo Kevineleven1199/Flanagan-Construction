@@ -968,6 +968,8 @@ async function readLeadsWithCrm() {
       try {
         const lead = JSON.parse(line)
         const id = leadIdFor(lead, index)
+        const existing = leadMap.get(id)
+        if (existing && existing.status !== 'Started' && lead.status === 'Started') return
         leadMap.set(id, normalizeLeadRecord({ ...lead, id }, index, crm[id] || {}))
       } catch {
         // Ignore malformed log lines.
@@ -1602,6 +1604,11 @@ async function handleLeadDraft(req, res, gzipOk) {
     nextStep: String(data.nextStep || scoring.nextStep),
     notes: '',
     ipHash: hashForLog(ip),
+  }
+
+  if (await finalizedLeadAlreadyExists(lead.id)) {
+    sendJson(res, 200, { ok: true, leadId: lead.id, duplicate: true, finalized: true }, gzipOk)
+    return
   }
 
   console.log('[LEAD_DRAFT]', JSON.stringify(lead))
